@@ -1,39 +1,55 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "SUNAN Notifier",
+    "slug": "sunan-notifier",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "icon": "./assets/images/sunan-notifier-mark.png",
+    "scheme": "sunan-notifier",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/images/sunan-notifier-mark.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#f0f4ff",
+      "dark": {
+        "image": "./assets/images/sunan-notifier-mark.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#0b1120"
+      }
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "id.umk.sunannotifier"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/sunan-notifier-mark.png",
+        "backgroundColor": "#f0f4ff"
       },
+      "package": "id.umk.sunannotifier",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/sunan-notifier-mark.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-secure-store",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "eb508cc1-ec67-415f-a234-bb2cdf068286"
+      }
+    },
+    "owner": "azhurel"
   }
 }

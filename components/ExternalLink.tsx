@@ -6,12 +6,13 @@ import { Platform } from 'react-native';
 export function ExternalLink(
   props: Omit<React.ComponentProps<typeof Link>, 'href'> & { href: string }
 ) {
+  const linkHref = props.href as unknown as React.ComponentProps<typeof Link>['href'];
+
   return (
     <Link
       target="_blank"
       {...props}
-      // @ts-expect-error: External URLs are not typed.
-      href={props.href}
+      href={linkHref}
       onPress={(e) => {
         if (Platform.OS !== 'web') {
           // Prevent the default behavior of linking to the default browser on native.

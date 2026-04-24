@@ -6,12 +6,12 @@ import { Text, View } from '@/components/Themed';
 export default function NotFoundScreen() {
   return (
     <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
+      <Stack.Screen options={{ title: 'Halaman Tidak Ditemukan' }} />
       <View style={styles.container}>
-        <Text style={styles.title}>This screen doesn't exist.</Text>
+        <Text style={styles.title}>Halaman yang kamu buka tidak tersedia.</Text>
 
-        <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>Go to home screen!</Text>
+        <Link href="/(tabs)" style={styles.link}>
+          <Text style={styles.linkText}>Kembali ke dashboard</Text>
         </Link>
       </View>
     </>
@@ -35,6 +35,6 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 14,
-    color: '#2e78b7',
+    color: '#1f4ca0',
   },
 });
