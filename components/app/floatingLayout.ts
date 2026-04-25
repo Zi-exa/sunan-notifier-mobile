@@ -1,7 +1,7 @@
 const MIN_SAFE_BOTTOM = 12;
 const FLOATING_DOCK_CLEARANCE = 100;
-const FLOATING_FILTER_BOTTOM_OFFSET = 84;
-const FLOATING_FILTER_CONTENT_CLEARANCE = 130;
+const FLOATING_FILTER_BOTTOM_OFFSET = 76;
+const FLOATING_FILTER_CONTENT_CLEARANCE = 118;
 
 function resolveSafeBottom(bottomInset: number) {
   return Math.max(bottomInset, MIN_SAFE_BOTTOM);
