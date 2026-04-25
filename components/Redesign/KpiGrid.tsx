@@ -8,7 +8,9 @@ type KpiItem = {
   label: string;
   value: string | number;
   icon?: React.ComponentProps<typeof FontAwesome>['name'];
-  accent?: string;
+  valueColor?: string;
+  iconColor?: string;
+  iconBackground?: string;
 };
 
 type KpiGridProps = { items: KpiItem[] };
@@ -18,16 +20,33 @@ export function KpiGrid({ items }: KpiGridProps) {
   return (
     <View style={styles.grid}>
       {items.map((item) => (
-        <View key={item.label} style={[styles.item, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
-          <View style={styles.labelRow}>
+        <View
+          key={item.label}
+          style={[
+            styles.item,
+            { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle },
+          ]}
+        >
+          <View
+            style={[
+              styles.iconWrap,
+              { backgroundColor: item.iconBackground ?? colors.accentDim },
+            ]}
+          >
             {item.icon ? (
-              <View style={[styles.iconWrap, { backgroundColor: colors.accentDim }]}>
-                <FontAwesome name={item.icon} size={12} color={colors.accent} />
-              </View>
+              <FontAwesome
+                name={item.icon}
+                size={28}
+                color={item.iconColor ?? colors.accent}
+              />
             ) : null}
-            <Text style={[styles.label, { color: colors.textSecondary }]}>{item.label}</Text>
           </View>
-          <Text style={[styles.value, { color: item.accent ?? colors.textPrimary }]}>{item.value}</Text>
+          <View style={styles.copy}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{item.label}</Text>
+            <Text style={[styles.value, { color: item.valueColor ?? colors.textPrimary }]}>
+              {item.value}
+            </Text>
+          </View>
         </View>
       ))}
     </View>
@@ -35,22 +54,31 @@ export function KpiGrid({ items }: KpiGridProps) {
 }
 
 const styles = StyleSheet.create({
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   item: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
+    borderRadius: Radius.lg,
+    paddingVertical: 16,
     paddingHorizontal: 14,
-    width: '47.5%',
-    gap: 6,
+    width: '48.2%',
+    gap: 12,
     shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 20,
+    elevation: 6,
   },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconWrap: { width: 22, height: 22, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 12, fontWeight: '500' },
-  value: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
+  iconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  copy: { flex: 1, gap: 4 },
+  label: { fontSize: 13.5, fontWeight: '500', lineHeight: 18 },
+  value: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5, lineHeight: 30 },
 });

@@ -60,6 +60,11 @@ export default function AttendanceScreen() {
       return 0;
     });
   }, [attendanceQuery.data, filter, targetEventId]);
+  const emptyStateTitle = filter === 'closed' ? 'Belum ada riwayat absensi' : 'Tidak ada absensi';
+  const emptyStateDescription =
+    filter === 'closed'
+      ? 'Riwayat menampilkan sesi absensi yang pernah terdeteksi di aplikasi lalu sudah lewat waktunya.'
+      : 'Belum ada sesi absensi untuk filter yang dipilih.';
 
   if (attendanceQuery.isLoading) {
     return <LoadingView text="Memuat absensi SUNAN..." />;
@@ -98,8 +103,8 @@ export default function AttendanceScreen() {
         <View style={styles.list}>
           {visibleSessions.length === 0 ? (
             <EmptyState
-              title="Tidak ada absensi"
-              description="Belum ada sesi absensi untuk filter yang dipilih."
+              title={emptyStateTitle}
+              description={emptyStateDescription}
               icon="check-square-o"
             />
           ) : (
@@ -122,8 +127,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterWrapper: {
+    paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 10,
     borderBottomWidth: 1,
   },
   content: {

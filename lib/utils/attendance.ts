@@ -26,7 +26,7 @@ function normalizeUrl(value: string | undefined): string {
   return normalizeText(value).replace(/#.*$/, '');
 }
 
-function resolveAttendanceWindowStatus(
+export function resolveAttendanceWindowStatus(
   { startsAt, closesAt }: AttendanceWindow,
   nowUnixSeconds = Math.floor(Date.now() / 1000),
   closingSoonMinutes = 30
@@ -48,6 +48,21 @@ function resolveAttendanceWindowStatus(
   }
 
   return 'available';
+}
+
+export function resolveAttendanceItemStatus(
+  item: Pick<AttendanceItem, 'startsAt' | 'closesAt'>,
+  nowUnixSeconds = Math.floor(Date.now() / 1000),
+  closingSoonMinutes = 30
+): AttendanceStatus {
+  return resolveAttendanceWindowStatus(
+    {
+      startsAt: item.startsAt,
+      closesAt: item.closesAt,
+    },
+    nowUnixSeconds,
+    closingSoonMinutes
+  );
 }
 function buildAttendanceIdentity(item: AttendanceItem): string {
   // Each calendar event has a unique eventId — use it as primary identity.

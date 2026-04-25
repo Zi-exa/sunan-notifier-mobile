@@ -71,6 +71,7 @@ export default function TasksScreen() {
           options={availableFilters}
           selected={filter}
           onSelect={setFilter}
+          columns={2}
         />
       </View>
 
@@ -111,8 +112,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterWrapper: {
+    paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 10,
     borderBottomWidth: 1,
   },
   content: {

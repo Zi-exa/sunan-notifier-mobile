@@ -83,7 +83,9 @@ export default function CalendarScreen() {
   const isLoading = assignmentsQuery.isLoading || calendarQuery.isLoading || attendanceQuery.isLoading;
   const isError = assignmentsQuery.isError || calendarQuery.isError || attendanceQuery.isError;
 
-  if (isLoading) return <LoadingView text="Menyusun kalender deadline..." />;
+  if (isLoading) {
+    return <LoadingView text="Menyusun kalender deadline..." />;
+  }
 
   if (isError) {
     const err = assignmentsQuery.error ?? calendarQuery.error ?? attendanceQuery.error;

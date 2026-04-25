@@ -1,4 +1,7 @@
 export type AppErrorKind = 'auth' | 'offline' | 'validation' | 'server' | 'unknown';
+export const MAINTENANCE_ERROR_CODE = 'maintenance_page';
+export const SUNAN_MAINTENANCE_MESSAGE =
+  'SUNAN sedang maintenance. Coba login lagi beberapa menit.';
 
 type AppErrorInput = {
   kind: AppErrorKind;
@@ -64,6 +67,14 @@ export function isOfflineError(error: unknown): error is AppError {
   return isAppError(error) && error.kind === 'offline';
 }
 
+export function isMaintenanceError(error: unknown): boolean {
+  return isAppError(error) && normalizeErrorCode(error.code) === MAINTENANCE_ERROR_CODE;
+}
+
+export function isMaintenanceMessage(message: string | null | undefined): boolean {
+  return (message ?? '').trim() === SUNAN_MAINTENANCE_MESSAGE;
+}
+
 export function toNetworkAwareError(error: unknown, fallbackMessage: string): AppError {
   if (isAppError(error)) {
     return error;
@@ -105,11 +116,13 @@ export function getReadableErrorMessage(
       : 'Terjadi gangguan saat mengambil data SUNAN. Coba lagi beberapa saat.';
   }
 
-  if (error.kind === 'auth') {
+  const appError = error;
+
+  if (appError.kind === 'auth') {
     return 'Sesi SUNAN berakhir. Silakan login ulang.';
   }
 
-  if (error.kind === 'offline') {
+  if (appError.kind === 'offline') {
     if (context === 'login') {
       return 'Tidak bisa login karena perangkat sedang offline. Periksa koneksi internet.';
     }
@@ -117,9 +130,13 @@ export function getReadableErrorMessage(
     return 'Perangkat sedang offline atau koneksi tidak stabil. Tarik layar ke bawah untuk mencoba lagi.';
   }
 
-  if (error.kind === 'validation' && context === 'login') {
-    return error.message;
+  if (isMaintenanceError(appError)) {
+    return SUNAN_MAINTENANCE_MESSAGE;
   }
 
-  return error.message || 'Terjadi gangguan saat mengambil data SUNAN. Coba lagi beberapa saat.';
+  if (appError.kind === 'validation' && context === 'login') {
+    return appError.message;
+  }
+
+  return appError.message || 'Terjadi gangguan saat mengambil data SUNAN. Coba lagi beberapa saat.';
 }

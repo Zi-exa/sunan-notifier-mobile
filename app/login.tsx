@@ -15,6 +15,7 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { AppAlertDialog, useTheme } from '@/components/Redesign';
 import { CONFIG, SECURE_KEYS } from '@/lib/config';
+import { isMaintenanceMessage } from '@/lib/moodle/errors';
 import { getSecureItem } from '@/lib/storage/secureStore';
 import { useAuthStore } from '@/lib/stores/authStore';
 
@@ -43,6 +44,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [savedCredentials, setSavedCredentials] = useState<SavedCredentials | null>(null);
+  const [maintenanceAlertVisible, setMaintenanceAlertVisible] = useState(false);
 
   // Load saved credentials on mount
   useEffect(() => {
@@ -55,6 +57,12 @@ export default function LoginScreen() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (isMaintenanceMessage(error)) {
+      setMaintenanceAlertVisible(true);
+    }
+  }, [error]);
 
   if (!hydrated) {
     return null;
@@ -246,6 +254,15 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AppAlertDialog
+        visible={maintenanceAlertVisible}
+        tone="warning"
+        title="SUNAN Maintenance"
+        message="Server SUNAN sedang maintenance. Coba login lagi beberapa menit setelah maintenance selesai."
+        confirmLabel="Mengerti"
+        onClose={() => setMaintenanceAlertVisible(false)}
+      />
 
       <AppAlertDialog
         visible={!!logoutNotice}

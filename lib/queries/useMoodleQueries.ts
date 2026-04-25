@@ -8,6 +8,7 @@ import {
   getCourses,
   hydrateAssignmentsWithSubmissionStatus,
 } from '@/lib/moodle/client';
+import { useAttendanceHistoryStore } from '@/lib/stores/attendanceHistoryStore';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { sortAssignmentsByDeadline } from '@/lib/utils/tasks';
 
@@ -149,7 +150,15 @@ export function useAttendanceSessionsQuery() {
     enabled: Boolean(token && allCourseIds.length > 0),
     staleTime: STALE_TIME_MS,
     retry: shouldRetryQuery,
-    queryFn: () => getAttendanceSessions(token as string, allCourseIds),
+    queryFn: async () => {
+      const sessions = await getAttendanceSessions(token as string, allCourseIds);
+
+      if (!user?.id) {
+        return sessions;
+      }
+
+      return useAttendanceHistoryStore.getState().mergeSessionsForUser(user.id, sessions);
+    },
   });
 
   useSessionExpiryGuard(query.error, query.isError);

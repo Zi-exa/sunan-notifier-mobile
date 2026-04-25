@@ -1,8 +1,8 @@
 const appJson = require('./app.json');
 
 const PREVIEW_PROFILES = new Set(['preview', 'development']);
-const PRODUCTION_ANDROID_PACKAGE = 'id.umk.sunannotifier';
-const PREVIEW_ANDROID_PACKAGE = 'id.umk.sunannotifier.preview';
+const PRODUCTION_APP_ID = 'id.umk.sunannotifier';
+const PREVIEW_APP_ID = 'id.umk.sunannotifier.preview';
 
 module.exports = () => {
   const buildProfile = process.env.EAS_BUILD_PROFILE ?? '';
@@ -11,16 +11,16 @@ module.exports = () => {
 
   return {
     ...expo,
-    name: isPreviewProfile ? 'SUNAN Notifier Preview' : expo.name,
+    name: expo.name,
     ios: {
       ...expo.ios,
       bundleIdentifier: isPreviewProfile
-        ? PREVIEW_ANDROID_PACKAGE
-        : PRODUCTION_ANDROID_PACKAGE,
+        ? PREVIEW_APP_ID
+        : PRODUCTION_APP_ID,
     },
     android: {
       ...expo.android,
-      package: isPreviewProfile ? PREVIEW_ANDROID_PACKAGE : PRODUCTION_ANDROID_PACKAGE,
+      package: isPreviewProfile ? PREVIEW_APP_ID : PRODUCTION_APP_ID,
     },
   };
 };

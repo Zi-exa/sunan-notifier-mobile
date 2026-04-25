@@ -1,5 +1,13 @@
 import { CONFIG } from '@/lib/config';
-import { AppError, isAuthError, isAuthErrorCode, normalizeErrorCode, toNetworkAwareError } from '@/lib/moodle/errors';
+import {
+  AppError,
+  isAuthError,
+  isAuthErrorCode,
+  MAINTENANCE_ERROR_CODE,
+  normalizeErrorCode,
+  SUNAN_MAINTENANCE_MESSAGE,
+  toNetworkAwareError,
+} from '@/lib/moodle/errors';
 import {
   extractAttendanceFromCalendar,
   mergeAttendanceSources,
@@ -124,10 +132,22 @@ async function parseResponse<T>(response: Response): Promise<T> {
   try {
     data = text ? JSON.parse(text) : {};
   } catch {
+    const responseSnippet = text.trim().slice(0, 160).replace(/\s+/g, ' ');
+    const looksLikeHtml = /<!doctype html|<html|<head|<body/i.test(text);
+    const looksLikeMaintenance =
+      looksLikeHtml &&
+      /maintenance|maintance|under maintenance|sedang maintenance|dalam perbaikan/i.test(text);
+
     throw new AppError({
       kind: 'server',
+      code: looksLikeMaintenance ? MAINTENANCE_ERROR_CODE : undefined,
       status: response.status,
-      message: 'Respons SUNAN tidak valid (bukan JSON).',
+      message: looksLikeMaintenance
+        ? SUNAN_MAINTENANCE_MESSAGE
+        : looksLikeHtml
+          ? 'SUNAN membalas halaman web, bukan respons API JSON.'
+          : 'Respons SUNAN tidak valid (bukan JSON).',
+      details: responseSnippet || undefined,
     });
   }
 
@@ -374,7 +394,7 @@ export async function requestMoodleToken(nim: string, password: string): Promise
     return 'mock-token';
   }
 
-  const query = new URLSearchParams({
+  const body = new URLSearchParams({
     username: nim,
     password,
     service: CONFIG.moodleService,
@@ -382,7 +402,14 @@ export async function requestMoodleToken(nim: string, password: string): Promise
 
   let response: Response;
   try {
-    response = await fetch(`${CONFIG.moodleBaseUrl}/login/token.php?${query.toString()}`);
+    response = await fetch(`${CONFIG.moodleBaseUrl}/login/token.php`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    });
   } catch (error) {
     throw toNetworkAwareError(error, 'Tidak dapat menghubungi SUNAN. Periksa koneksi internet.');
   }

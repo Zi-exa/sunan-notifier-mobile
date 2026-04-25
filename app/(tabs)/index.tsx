@@ -169,24 +169,45 @@ export default function DashboardScreen() {
       {/* KPI Grid */}
       <KpiGrid
         items={[
-          { label: 'Matkul Aktif', value: courses.length, icon: 'book', accent: colors.accent },
+          {
+            label: 'Matkul Aktif',
+            value: courses.length,
+            icon: 'book',
+            iconColor: colors.accent,
+            iconBackground: colors.accentDim,
+          },
           {
             label: 'Belum Dikerjakan',
             value: pendingCount,
-            icon: 'clock-o',
-            accent: assignmentsReady && typeof pendingCount === 'number' && pendingCount > 0 ? colors.warning : colors.textPrimary,
+            icon: 'clipboard',
+            iconColor: colors.success,
+            iconBackground: colors.successDim,
+            valueColor:
+              assignmentsReady && typeof pendingCount === 'number' && pendingCount > 0
+                ? colors.textPrimary
+                : colors.textPrimary,
           },
           {
             label: 'Overdue',
             value: overdueCount,
-            icon: 'exclamation-circle',
-            accent: assignmentsReady && typeof overdueCount === 'number' && overdueCount > 0 ? colors.danger : colors.textPrimary,
+            icon: 'clock-o',
+            iconColor: colors.danger,
+            iconBackground: colors.dangerDim,
+            valueColor:
+              assignmentsReady && typeof overdueCount === 'number' && overdueCount > 0
+                ? colors.textPrimary
+                : colors.textPrimary,
           },
           {
             label: 'Sudah Submit',
             value: submittedCount,
-            icon: 'check-circle-o',
-            accent: assignmentsReady && typeof submittedCount === 'number' && submittedCount > 0 ? colors.success : colors.textPrimary,
+            icon: 'check-circle',
+            iconColor: colors.success,
+            iconBackground: colors.successDim,
+            valueColor:
+              assignmentsReady && typeof submittedCount === 'number' && submittedCount > 0
+                ? colors.textPrimary
+                : colors.textPrimary,
           },
         ]}
       />

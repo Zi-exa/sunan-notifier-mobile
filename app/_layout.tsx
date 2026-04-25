@@ -8,6 +8,7 @@ import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/components/Redesign';
+import { TabsHeaderTitle } from '@/components/app/TabsHeaderTitle';
 
 
 import {
@@ -184,7 +185,15 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="(tabs)"
+          options={{
+            headerShown: true,
+            headerStyle: { backgroundColor: colors.bgSurface },
+            headerShadowVisible: false,
+            headerTitle: () => <TabsHeaderTitle />,
+          }}
+        />
         <Stack.Screen name="task/[id]" options={{ title: 'Detail Tugas' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
