@@ -237,6 +237,8 @@ function RootLayoutNav() {
           options={{
             title: 'Detail Tugas',
             freezeOnBlur: false,
+            contentStyle: { backgroundColor: colors.bgBase },
+            animation: 'none',
           }}
         />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
