@@ -226,12 +226,19 @@ function RootLayoutNav() {
           options={{
             headerShown: true,
             contentStyle: { backgroundColor: colors.bgBase },
+            freezeOnBlur: false,
             headerStyle: { backgroundColor: colors.bgSurface },
             headerShadowVisible: false,
             headerTitle: () => <TabsHeaderTitle />,
           }}
         />
-        <Stack.Screen name="task/[id]" options={{ title: 'Detail Tugas' }} />
+        <Stack.Screen
+          name="task/[id]"
+          options={{
+            title: 'Detail Tugas',
+            freezeOnBlur: false,
+          }}
+        />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </NavThemeProvider>

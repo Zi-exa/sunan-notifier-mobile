@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet, View } from 'react-native';
 import { ParamListBase, TabNavigationState } from '@react-navigation/native';
 import {
   createMaterialTopTabNavigator,
@@ -28,32 +29,35 @@ function AuthedTabsNavigator() {
   const { colors } = useTheme();
 
   return (
-    <ExpoRouterMaterialTopTabs
-      tabBar={(props) => <FloatingTabBar {...props} />}
-      screenOptions={{
-        swipeEnabled: true,
-        animationEnabled: true,
-        lazy: false,
-        sceneStyle: {
-          backgroundColor: colors.bgBase,
-        },
-      }}
-    >
-      {APP_TAB_ORDER.map((routeKey) => {
-        const meta = APP_TAB_META[routeKey];
+    <View style={[styles.navigatorSurface, { backgroundColor: colors.bgBase }]}>
+      <ExpoRouterMaterialTopTabs
+        tabBar={(props) => <FloatingTabBar {...props} />}
+        style={{ backgroundColor: colors.bgBase }}
+        screenOptions={{
+          swipeEnabled: true,
+          animationEnabled: true,
+          lazy: false,
+          sceneStyle: {
+            backgroundColor: colors.bgBase,
+          },
+        }}
+      >
+        {APP_TAB_ORDER.map((routeKey) => {
+          const meta = APP_TAB_META[routeKey];
 
-        return (
-          <ExpoRouterMaterialTopTabs.Screen
-            key={routeKey}
-            name={routeKey}
-            options={{
-              title: meta.title,
-              tabBarLabel: meta.tabLabel,
-            }}
-          />
-        );
-      })}
-    </ExpoRouterMaterialTopTabs>
+          return (
+            <ExpoRouterMaterialTopTabs.Screen
+              key={routeKey}
+              name={routeKey}
+              options={{
+                title: meta.title,
+                tabBarLabel: meta.tabLabel,
+              }}
+            />
+          );
+        })}
+      </ExpoRouterMaterialTopTabs>
+    </View>
   );
 }
 
@@ -78,3 +82,9 @@ export default function TabLayout() {
     </InitialDataGate>
   );
 }
+
+const styles = StyleSheet.create({
+  navigatorSurface: {
+    flex: 1,
+  },
+});
