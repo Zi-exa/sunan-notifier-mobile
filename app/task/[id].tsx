@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { EmptyState, LoadingView, useTheme, Radius, Shadow } from '@/components/Redesign';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EmptyState, useTheme, Radius, Shadow } from '@/components/Redesign';
 import { useAssignmentsQuery } from '@/lib/queries/useMoodleQueries';
 import { formatDateTime } from '@/lib/utils/date';
 
@@ -16,6 +17,8 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function TaskDetailScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
   const assignmentsQuery = useAssignmentsQuery();
 
@@ -32,32 +35,43 @@ export default function TaskDetailScreen() {
     return (assignmentsQuery.data ?? []).find((item) => item.id === taskId) ?? null;
   }, [assignmentsQuery.data, params.id]);
 
-  if (assignmentsQuery.isLoading) {
-    return <LoadingView text="Memuat detail tugas..." />;
-  }
+  const cardMaxHeight = Math.max(420, 760 - insets.top - insets.bottom);
 
-  if (!task) {
+  const renderBody = () => {
+    if (assignmentsQuery.isLoading) {
+      return (
+        <View style={styles.stateWrap}>
+          <FontAwesome name="circle-o-notch" size={28} color={colors.accent} />
+          <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Memuat detail tugas...</Text>
+          <Text style={[styles.stateText, { color: colors.textSecondary }]}>
+            Menyiapkan data tugas dari SUNAN.
+          </Text>
+        </View>
+      );
+    }
+
+    if (!task) {
+      return (
+        <View style={styles.stateWrap}>
+          <EmptyState
+            title="Tugas tidak ditemukan"
+            description="Kemungkinan data sudah berubah. Tutup popup ini lalu refresh daftar tugas."
+            icon="search"
+          />
+        </View>
+      );
+    }
+
+    const isQuizTask = task.activityType === 'quiz';
+    const activityLabel = isQuizTask ? 'Quiz' : 'Tugas';
+    const statusColor = STATUS_COLOR[task.status] ?? colors.accent;
+    const statusLabel = STATUS_LABEL[task.status] ?? task.status;
+
     return (
-      <View style={[styles.errorWrap, { backgroundColor: colors.bgBase }]}>
-        <EmptyState
-          title="Tugas tidak ditemukan"
-          description="Kemungkinan data sudah berubah. Kembali ke tab Tugas lalu refresh data."
-          icon="search"
-        />
-      </View>
-    );
-  }
-
-  const isQuizTask = task.activityType === 'quiz';
-  const activityLabel = isQuizTask ? 'Quiz' : 'Tugas';
-  const statusColor = STATUS_COLOR[task.status] ?? colors.accent;
-  const statusLabel = STATUS_LABEL[task.status] ?? task.status;
-
-  return (
-    <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
       <ScrollView
-        style={styles.screenFlex}
-        contentContainerStyle={styles.content}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
         <View style={[styles.headerCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
           <View style={[styles.accentBar, { backgroundColor: statusColor }]} />
@@ -125,6 +139,43 @@ export default function TaskDetailScreen() {
           </View>
         </Pressable>
       </ScrollView>
+    );
+  };
+
+  return (
+    <View style={styles.overlayRoot}>
+      <Pressable style={styles.backdrop} onPress={() => router.back()} />
+      <View
+        style={[
+          styles.modalCard,
+          {
+            backgroundColor: colors.bgSurface,
+            borderColor: colors.borderSubtle,
+            marginTop: insets.top + 24,
+            marginBottom: Math.max(insets.bottom + 24, 32),
+            maxHeight: cardMaxHeight,
+          },
+        ]}
+      >
+        <View style={[styles.modalHeader, { borderBottomColor: colors.borderSubtle }]}>
+          <View style={styles.headerCopy}>
+            <Text style={[styles.modalEyebrow, { color: colors.textMuted }]}>DETAIL TUGAS</Text>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Ringkasan Tugas</Text>
+          </View>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [
+              styles.closeButton,
+              { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle },
+              pressed && { opacity: 0.82 },
+            ]}
+          >
+            <FontAwesome name="close" size={16} color={colors.textPrimary} />
+          </Pressable>
+        </View>
+
+        {renderBody()}
+      </View>
     </View>
   );
 }
@@ -150,10 +201,74 @@ function DetailMetaRow({ icon, label, value }: DetailMetaRowProps) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  screenFlex: { flex: 1 },
-  content: { padding: 16, gap: 12, paddingBottom: 32 },
-  errorWrap: { flex: 1, justifyContent: 'center', padding: 16 },
+  overlayRoot: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(3, 8, 20, 0.68)',
+  },
+  modalCard: {
+    borderWidth: 1,
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
+    ...Shadow.card,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  headerCopy: {
+    gap: 2,
+    flexShrink: 1,
+  },
+  modalEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.3,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  scroll: {
+    flexGrow: 0,
+  },
+  scrollContent: {
+    padding: 16,
+    gap: 12,
+    paddingBottom: 18,
+  },
+  stateWrap: {
+    minHeight: 280,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  stateTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  stateText: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   headerCard: { borderRadius: Radius.lg, borderWidth: 1, overflow: 'hidden', ...Shadow.card },
   accentBar: { height: 4, width: '100%' },
   headerBody: { padding: 16, gap: 6 },

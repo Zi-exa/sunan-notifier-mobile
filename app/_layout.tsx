@@ -235,10 +235,11 @@ function RootLayoutNav() {
         <Stack.Screen
           name="task/[id]"
           options={{
-            title: 'Detail Tugas',
+            headerShown: false,
+            presentation: 'transparentModal',
             freezeOnBlur: false,
-            contentStyle: { backgroundColor: colors.bgBase },
-            animation: 'none',
+            contentStyle: { backgroundColor: 'transparent' },
+            animation: 'fade',
           }}
         />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
