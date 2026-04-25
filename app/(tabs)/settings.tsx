@@ -16,6 +16,7 @@ import {
   UIManager,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppAlertDialog, Radius, Spacing, ThemeMode, useTheme } from '@/components/Redesign';
 import { POLLING_INTERVAL_OPTIONS } from '@/lib/config';
 import { useCoursesQuery } from '@/lib/queries/useMoodleQueries';
@@ -98,6 +99,7 @@ const APP_MARK = 'ZxiruL';
 
 export default function SettingsScreen() {
   const { colors, mode } = useTheme();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const appName = Constants.expoConfig?.name ?? 'SUNAN Notifier';
@@ -150,6 +152,7 @@ export default function SettingsScreen() {
       : `${draftMonitoredCourseIds.length} mata kuliah dipantau`;
   const aboutSummary = `v${appVersion} • ${APP_MARK}`;
   const accountName = user?.fullname ?? 'Belum ada sesi login';
+  const contentBottomPadding = Math.max(insets.bottom, 12) + 132;
 
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -295,7 +298,8 @@ export default function SettingsScreen() {
     <>
       <ScrollView
         style={[styles.screen, { backgroundColor: colors.bgBase }]}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
+        scrollIndicatorInsets={{ bottom: contentBottomPadding }}
         showsVerticalScrollIndicator={false}
       >
         <View
