@@ -1,7 +1,6 @@
 const MIN_SAFE_BOTTOM = 12;
 const FLOATING_DOCK_CLEARANCE = 100;
 const FLOATING_FILTER_BOTTOM_OFFSET = 76;
-const FLOATING_FILTER_CONTENT_CLEARANCE = 118;
 
 function resolveSafeBottom(bottomInset: number) {
   return Math.max(bottomInset, MIN_SAFE_BOTTOM);
@@ -16,5 +15,5 @@ export function getFloatingFilterBottomOffset(bottomInset: number) {
 }
 
 export function getFloatingFilterContentPadding(bottomInset: number) {
-  return resolveSafeBottom(bottomInset) + FLOATING_FILTER_CONTENT_CLEARANCE;
+  return getDockContentPadding(bottomInset);
 }
