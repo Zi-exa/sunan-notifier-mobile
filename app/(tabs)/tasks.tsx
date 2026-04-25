@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, LoadingView, TaskCard, useTheme } from '@/components/Redesign';
-import { FloatingFilterMenu } from '@/components/app/FloatingFilterMenu';
+import { FloatingFilterMenu, FloatingFilterOption } from '@/components/app/FloatingFilterMenu';
 import { getFloatingFilterContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { useAssignmentsQuery } from '@/lib/queries/useMoodleQueries';
@@ -12,12 +12,12 @@ import { areAssignmentStatusesResolved } from '@/lib/utils/tasks';
 
 type FilterKey = 'all' | AssignmentStatus;
 
-const FILTER_OPTIONS: { key: FilterKey; label: string }[] = [
-  { key: 'all', label: 'Semua' },
-  { key: 'pending', label: 'Belum Dikerjakan' },
-  { key: 'submitted', label: 'Sudah Submit' },
-  { key: 'overdue', label: 'Terlambat' },
-  { key: 'unknown', label: 'Belum Terverifikasi' },
+const FILTER_OPTIONS: FloatingFilterOption<FilterKey>[] = [
+  { key: 'all', label: 'Semua', icon: 'th-large' },
+  { key: 'pending', label: 'Belum Dikerjakan', icon: 'edit' },
+  { key: 'submitted', label: 'Sudah Submit', icon: 'check-circle' },
+  { key: 'overdue', label: 'Terlambat', icon: 'warning' },
+  { key: 'unknown', label: 'Belum Terverifikasi', icon: 'question-circle-o' },
 ];
 
 export default function TasksScreen() {

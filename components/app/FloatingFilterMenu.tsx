@@ -1,4 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import type { ComponentProps } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,9 +7,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Radius, Shadow, Spacing, useTheme } from '@/components/Redesign';
 import { getFloatingFilterBottomOffset } from '@/components/app/floatingLayout';
 
+type FontAwesomeName = ComponentProps<typeof FontAwesome>['name'];
+
 export type FloatingFilterOption<T extends string> = {
   key: T;
   label: string;
+  icon?: FontAwesomeName;
 };
 
 type FloatingFilterMenuProps<T extends string> = {
@@ -32,10 +36,11 @@ export function FloatingFilterMenu<T extends string>({
   const [renderMenu, setRenderMenu] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
   const isFiltered = selected !== allKey;
-  const selectedLabel = useMemo(
-    () => options.find((option) => option.key === selected)?.label ?? 'Semua',
+  const selectedOption = useMemo(
+    () => options.find((option) => option.key === selected),
     [options, selected],
   );
+  const selectedLabel = selectedOption?.label ?? 'Semua';
   const bottomOffset = getFloatingFilterBottomOffset(insets.bottom);
   const fabActive = open || isFiltered;
   const backdropOpacity = progress.interpolate({
@@ -136,9 +141,27 @@ export function FloatingFilterMenu<T extends string>({
               ]}
             >
               <Text style={[styles.menuTitle, { color: colors.textPrimary }]}>{title}</Text>
-              <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
-                Aktif: {selectedLabel}
-              </Text>
+              <View style={styles.menuHeaderMetaRow}>
+                <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
+                  Pilih kategori yang ingin ditampilkan
+                </Text>
+                <View
+                  style={[
+                    styles.menuActiveBadge,
+                    {
+                      backgroundColor: colors.accentDim,
+                      borderColor: colors.borderAccent,
+                    },
+                  ]}
+                >
+                  {selectedOption?.icon ? (
+                    <FontAwesome name={selectedOption.icon} size={11} color={colors.accent} />
+                  ) : null}
+                  <Text style={[styles.menuActiveBadgeText, { color: colors.accentBright }]}>
+                    {selectedLabel}
+                  </Text>
+                </View>
+              </View>
             </Animated.View>
 
             <View style={styles.optionList}>
@@ -176,25 +199,55 @@ export function FloatingFilterMenu<T extends string>({
                       style={[
                         styles.option,
                         {
-                          backgroundColor: active ? colors.accentDim : colors.bgBase,
+                          backgroundColor: active ? colors.accentDim : colors.bgCardHover,
                           borderColor: active ? colors.borderAccent : colors.borderSubtle,
                         },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.optionLabel,
-                          { color: active ? colors.accent : colors.textPrimary },
-                        ]}
-                      >
-                        {option.label}
-                      </Text>
+                      <View style={styles.optionMain}>
+                        <View
+                          style={[
+                            styles.optionIconWrap,
+                            {
+                              backgroundColor: active ? colors.bgSurface : colors.bgBase,
+                              borderColor: active ? colors.borderAccent : colors.borderSubtle,
+                            },
+                          ]}
+                        >
+                          <FontAwesome
+                            name={option.icon ?? 'tag'}
+                            size={14}
+                            color={active ? colors.accent : colors.textSecondary}
+                          />
+                        </View>
+                        <View style={styles.optionTextWrap}>
+                          <Text
+                            style={[
+                              styles.optionLabel,
+                              { color: active ? colors.accent : colors.textPrimary },
+                            ]}
+                          >
+                            {option.label}
+                          </Text>
+                          <Text style={[styles.optionHint, { color: colors.textMuted }]}>
+                            {active ? 'Filter aktif' : 'Tap untuk memilih'}
+                          </Text>
+                        </View>
+                      </View>
                       <FontAwesome
-                        name={active ? 'check-circle' : 'circle-o'}
-                        size={18}
+                        name={active ? 'check-circle' : 'angle-right'}
+                        size={active ? 18 : 16}
                         color={active ? colors.accent : colors.textMuted}
                       />
                     </Pressable>
+                    {index < options.length - 1 ? (
+                      <View
+                        style={[
+                          styles.optionDivider,
+                          { backgroundColor: colors.borderSubtle },
+                        ]}
+                      />
+                    ) : null}
                   </Animated.View>
                 );
               })}
@@ -268,21 +321,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     paddingBottom: Spacing.sm,
     borderBottomWidth: 1,
-    gap: 2,
+    gap: 6,
   },
   menuTitle: {
     fontSize: 15,
     fontWeight: '800',
   },
+  menuHeaderMetaRow: {
+    gap: 8,
+  },
   menuSubtitle: {
     fontSize: 12,
     fontWeight: '600',
+    lineHeight: 17,
+  },
+  menuActiveBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  menuActiveBadgeText: {
+    fontSize: 11.5,
+    fontWeight: '800',
   },
   optionList: {
-    gap: Spacing.sm,
+    gap: 0,
   },
   option: {
-    minHeight: 46,
+    minHeight: 60,
     borderRadius: Radius.lg,
     borderWidth: 1,
     paddingHorizontal: Spacing.md,
@@ -293,9 +364,35 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   optionLabel: {
-    flex: 1,
     fontSize: 14,
     fontWeight: '700',
+  },
+  optionMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  optionIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  optionHint: {
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  optionDivider: {
+    height: 1,
+    marginHorizontal: 14,
+    opacity: 0.65,
   },
   fab: {
     width: 58,

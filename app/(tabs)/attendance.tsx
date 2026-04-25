@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AttendanceCard, EmptyState, LoadingView, useTheme } from '@/components/Redesign';
-import { FloatingFilterMenu } from '@/components/app/FloatingFilterMenu';
+import { FloatingFilterMenu, FloatingFilterOption } from '@/components/app/FloatingFilterMenu';
 import { getFloatingFilterContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { useAttendanceSessionsQuery } from '@/lib/queries/useMoodleQueries';
@@ -11,13 +11,13 @@ import { AttendanceStatus } from '@/types/moodle';
 
 type FilterKey = 'all' | AttendanceStatus;
 
-const FILTER_OPTIONS: { key: FilterKey; label: string }[] = [
-  { key: 'all', label: 'Semua' },
-  { key: 'open', label: 'Dibuka' },
-  { key: 'closing_soon', label: 'Segera Tutup' },
-  { key: 'upcoming', label: 'Akan Datang' },
-  { key: 'available', label: 'Tersedia' },
-  { key: 'closed', label: 'Riwayat' },
+const FILTER_OPTIONS: FloatingFilterOption<FilterKey>[] = [
+  { key: 'all', label: 'Semua', icon: 'th-large' },
+  { key: 'open', label: 'Dibuka', icon: 'unlock-alt' },
+  { key: 'closing_soon', label: 'Segera Tutup', icon: 'clock-o' },
+  { key: 'upcoming', label: 'Akan Datang', icon: 'calendar-o' },
+  { key: 'available', label: 'Tersedia', icon: 'check-square-o' },
+  { key: 'closed', label: 'Riwayat', icon: 'history' },
 ];
 
 function normalizeFilterParam(value: string | string[] | undefined): FilterKey {
