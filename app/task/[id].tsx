@@ -54,10 +54,11 @@ export default function TaskDetailScreen() {
   const statusLabel = STATUS_LABEL[task.status] ?? task.status;
 
   return (
-    <ScrollView
-      style={[styles.screen, { backgroundColor: colors.bgBase }]}
-      contentContainerStyle={styles.content}
-    >
+    <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, { backgroundColor: colors.bgBase }]}
+      >
       {/* Header card */}
       <View style={[styles.headerCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
         <View style={[styles.accentBar, { backgroundColor: statusColor }]} />
@@ -112,22 +113,23 @@ export default function TaskDetailScreen() {
       </View>
 
       {/* CTA */}
-      <Pressable
-        style={({ pressed }) => [
-          styles.primaryButton,
-          { backgroundColor: colors.accent },
-          pressed && { opacity: 0.82 },
-        ]}
-        onPress={() => Linking.openURL(task.quickLink)}
-      >
-        <View style={styles.primaryButtonContent}>
-          <FontAwesome name="external-link" size={14} color="#FFFFFF" />
-          <Text style={styles.primaryButtonText}>
-            {isQuizTask ? 'Buka Quiz di SUNAN' : 'Buka Tugas di SUNAN'}
-          </Text>
-        </View>
-      </Pressable>
-    </ScrollView>
+        <Pressable
+          style={({ pressed }) => [
+            styles.primaryButton,
+            { backgroundColor: colors.accent },
+            pressed && { opacity: 0.82 },
+          ]}
+          onPress={() => Linking.openURL(task.quickLink)}
+        >
+          <View style={styles.primaryButtonContent}>
+            <FontAwesome name="external-link" size={14} color="#FFFFFF" />
+            <Text style={styles.primaryButtonText}>
+              {isQuizTask ? 'Buka Quiz di SUNAN' : 'Buka Tugas di SUNAN'}
+            </Text>
+          </View>
+        </Pressable>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -153,7 +155,8 @@ function DetailMetaRow({ icon, label, value }: DetailMetaRowProps) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: 16, gap: 12, paddingBottom: 32 },
+  scroll: { flex: 1 },
+  content: { flexGrow: 1, padding: 16, gap: 12, paddingBottom: 32 },
   errorWrap: { flex: 1, justifyContent: 'center', padding: 16 },
   // ─ Header card ─────────────────────────────────────────────
   headerCard: { borderRadius: Radius.lg, borderWidth: 1, overflow: 'hidden', ...Shadow.card },

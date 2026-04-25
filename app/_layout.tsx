@@ -216,7 +216,14 @@ function RootLayoutNav() {
             headerTitle: () => <TabsHeaderTitle />,
           }}
         />
-        <Stack.Screen name="task/[id]" options={{ title: 'Detail Tugas' }} />
+        <Stack.Screen
+          name="task/[id]"
+          options={{
+            title: 'Detail Tugas',
+            animation: 'fade',
+            contentStyle: { backgroundColor: colors.bgBase },
+          }}
+        />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </NavThemeProvider>
