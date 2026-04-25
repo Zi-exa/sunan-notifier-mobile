@@ -39,7 +39,26 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#f0f4ff",
+          "image": "./assets/images/sunan-notifier-mark.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#0b1120",
+            "image": "./assets/images/sunan-notifier-mark.png"
+          },
+          "android": {
+            "drawable": {
+              "icon": "./plugins/splashscreen-logo.xml",
+              "darkIcon": "./plugins/splashscreen-logo-dark.xml"
+            }
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
