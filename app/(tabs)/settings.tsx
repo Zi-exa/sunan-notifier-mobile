@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppAlertDialog, Radius, Spacing, ThemeMode, useTheme } from '@/components/Redesign';
+import { getDockContentPadding } from '@/components/app/floatingLayout';
 import { POLLING_INTERVAL_OPTIONS } from '@/lib/config';
 import { useCoursesQuery } from '@/lib/queries/useMoodleQueries';
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -152,7 +153,7 @@ export default function SettingsScreen() {
       : `${draftMonitoredCourseIds.length} mata kuliah dipantau`;
   const aboutSummary = `v${appVersion} • ${APP_MARK}`;
   const accountName = user?.fullname ?? 'Belum ada sesi login';
-  const contentBottomPadding = Math.max(insets.bottom, 12) + 132;
+  const contentBottomPadding = getDockContentPadding(insets.bottom) + 8;
 
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {

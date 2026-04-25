@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, LoadingView, TaskCard, useTheme } from '@/components/Redesign';
 import { FloatingFilterMenu } from '@/components/app/FloatingFilterMenu';
+import { getFloatingFilterContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { useAssignmentsQuery } from '@/lib/queries/useMoodleQueries';
 import { AssignmentStatus } from '@/types/moodle';
@@ -20,9 +22,11 @@ const FILTER_OPTIONS: { key: FilterKey; label: string }[] = [
 
 export default function TasksScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<FilterKey>('all');
   const assignmentsQuery = useAssignmentsQuery();
   const assignmentsReady = areAssignmentStatusesResolved(assignmentsQuery.data ?? []);
+  const contentBottomPadding = getFloatingFilterContentPadding(insets.bottom);
 
   const availableFilters = useMemo(() => {
     const hasUnknown = (assignmentsQuery.data ?? []).some((task) => task.status === 'unknown');
@@ -67,7 +71,8 @@ export default function TasksScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
+        scrollIndicatorInsets={{ bottom: contentBottomPadding }}
         refreshControl={
           <RefreshControl
             refreshing={assignmentsQuery.isRefetching}
@@ -111,7 +116,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 176,
   },
   taskList: {
     gap: 10,

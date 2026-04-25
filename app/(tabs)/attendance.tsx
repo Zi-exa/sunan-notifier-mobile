@@ -1,8 +1,10 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AttendanceCard, EmptyState, LoadingView, useTheme } from '@/components/Redesign';
 import { FloatingFilterMenu } from '@/components/app/FloatingFilterMenu';
+import { getFloatingFilterContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { useAttendanceSessionsQuery } from '@/lib/queries/useMoodleQueries';
 import { AttendanceStatus } from '@/types/moodle';
@@ -34,10 +36,12 @@ function parseEventIdParam(value: string | string[] | undefined): number | null 
 
 export default function AttendanceScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ filter?: string | string[]; eventId?: string | string[] }>();
   const [filter, setFilter] = useState<FilterKey>(() => normalizeFilterParam(params.filter));
   const attendanceQuery = useAttendanceSessionsQuery();
   const targetEventId = useMemo(() => parseEventIdParam(params.eventId), [params.eventId]);
+  const contentBottomPadding = getFloatingFilterContentPadding(insets.bottom);
 
   useEffect(() => {
     const nextFilter = normalizeFilterParam(params.filter);
@@ -88,7 +92,8 @@ export default function AttendanceScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
+        scrollIndicatorInsets={{ bottom: contentBottomPadding }}
         refreshControl={
           <RefreshControl
             refreshing={attendanceQuery.isRefetching}
@@ -132,7 +137,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 176,
   },
   list: {
     gap: 10,

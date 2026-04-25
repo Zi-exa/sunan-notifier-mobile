@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AttendanceCard, EmptyState, LoadingView, SectionCard, TaskCard, useTheme, Radius } from '@/components/Redesign';
+import { getDockContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import {
   useAssignmentsQuery,
@@ -22,6 +24,7 @@ const ATTENDANCE_DOT_COLOR = '#A78BFA';
 
 export default function CalendarScreen() {
   const { colors, mode } = useTheme();
+  const insets = useSafeAreaInsets();
   const today = toDateKey(Math.floor(Date.now() / 1000));
   const [selectedDate, setSelectedDate] = useState(today);
   const assignmentsQuery = useAssignmentsQuery();
@@ -82,6 +85,7 @@ export default function CalendarScreen() {
 
   const isLoading = assignmentsQuery.isLoading || calendarQuery.isLoading || attendanceQuery.isLoading;
   const isError = assignmentsQuery.isError || calendarQuery.isError || attendanceQuery.isError;
+  const contentBottomPadding = getDockContentPadding(insets.bottom);
 
   if (isLoading) {
     return <LoadingView text="Menyusun kalender deadline..." />;
@@ -99,7 +103,11 @@ export default function CalendarScreen() {
   }
 
   return (
-    <ScrollView style={[styles.screen, { backgroundColor: colors.bgBase }]} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={[styles.screen, { backgroundColor: colors.bgBase }]}
+      contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
+      scrollIndicatorInsets={{ bottom: contentBottomPadding }}
+    >
       {/* Calendar card */}
       <View style={[styles.calendarCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
         <View style={[styles.calendarHeader, { borderBottomColor: colors.borderSubtle }]}>
@@ -198,7 +206,7 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: 16, gap: 16, paddingBottom: 32 },
+  content: { padding: 16, gap: 16 },
   calendarCard: { borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1 },
   calendarHeader: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
   calendarHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },

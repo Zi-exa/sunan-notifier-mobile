@@ -4,6 +4,7 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Radius, Shadow, Spacing, useTheme } from '@/components/Redesign';
+import { getFloatingFilterBottomOffset } from '@/components/app/floatingLayout';
 
 export type FloatingFilterOption<T extends string> = {
   key: T;
@@ -35,7 +36,7 @@ export function FloatingFilterMenu<T extends string>({
     () => options.find((option) => option.key === selected)?.label ?? 'Semua',
     [options, selected],
   );
-  const bottomOffset = Math.max(insets.bottom, 12) + 92;
+  const bottomOffset = getFloatingFilterBottomOffset(insets.bottom);
   const fabActive = open || isFiltered;
   const backdropOpacity = progress.interpolate({
     inputRange: [0, 1],

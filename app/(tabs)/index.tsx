@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AttendanceCard,
   EmptyState,
@@ -10,6 +11,7 @@ import {
   TaskCard,
   useTheme,
 } from '@/components/Redesign';
+import { getDockContentPadding } from '@/components/app/floatingLayout';
 import {
   useAssignmentsQuery,
   useAttendanceSessionsQuery,
@@ -33,6 +35,7 @@ const HERO_PALETTE = {
 
 export default function DashboardScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const coursesQuery = useCoursesQuery();
   const assignmentsQuery = useAssignmentsQuery();
@@ -54,6 +57,7 @@ export default function DashboardScreen() {
   const overdueCount = assignmentsReady ? assignments.filter((item) => item.status === 'overdue').length : '...';
   const submittedCount = assignmentsReady ? assignments.filter((item) => item.status === 'submitted').length : '...';
   const displayName = user?.fullname?.trim()?.split(/\s+/)[0] ?? 'Mahasiswa';
+  const contentBottomPadding = getDockContentPadding(insets.bottom);
 
   if (coursesQuery.isLoading || assignmentsQuery.isLoading || attendanceQuery.isLoading) {
     return <LoadingView text="Memuat dashboard SUNAN..." />;
@@ -75,7 +79,8 @@ export default function DashboardScreen() {
   return (
     <ScrollView
       style={[styles.screen, { backgroundColor: colors.bgBase }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
+      scrollIndicatorInsets={{ bottom: contentBottomPadding }}
       refreshControl={
         <RefreshControl
           refreshing={
@@ -266,7 +271,7 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: 16, gap: 14, paddingBottom: 32 },
+  content: { padding: 16, gap: 14 },
   errorContainer: { flex: 1, padding: 16, justifyContent: 'center' },
   hero: { position: 'relative', borderRadius: 24, borderWidth: 1, overflow: 'hidden' },
   heroContent: { padding: 20, gap: 14 },
