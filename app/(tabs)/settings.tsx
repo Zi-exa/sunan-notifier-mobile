@@ -1,4 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import Constants from 'expo-constants';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -64,7 +65,7 @@ const NOTIFICATION_OPTIONS: {
   },
 ];
 
-type SettingsSectionKey = 'theme' | 'sync' | 'notifications' | 'courses';
+type SettingsSectionKey = 'theme' | 'sync' | 'notifications' | 'courses' | 'about';
 
 const ACCORDION_LAYOUT_ANIMATION = {
   duration: 220,
@@ -93,10 +94,14 @@ const ACCOUNT_CARD_PALETTE = {
   avatarBorder: 'rgba(126, 175, 255, 0.36)',
 };
 
+const APP_MARK = 'ZxiruL';
+
 export default function SettingsScreen() {
   const { colors, mode } = useTheme();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const appName = Constants.expoConfig?.name ?? 'SUNAN Notifier';
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   const notifications = useSettingsStore((state) => state.notifications);
   const pollingInterval = useSettingsStore((state) => state.pollingInterval);
@@ -143,6 +148,7 @@ export default function SettingsScreen() {
     draftMonitoredCourseIds.length === 0
       ? 'Semua mata kuliah dipantau'
       : `${draftMonitoredCourseIds.length} mata kuliah dipantau`;
+  const aboutSummary = `v${appVersion} • ${APP_MARK}`;
   const accountName = user?.fullname ?? 'Belum ada sesi login';
 
   useEffect(() => {
@@ -661,6 +667,91 @@ export default function SettingsScreen() {
               })}
             </View>
           )}
+        </SectionCard>
+
+        <SectionCard
+          title="About"
+          icon="info-circle"
+          collapsible
+          expanded={expandedSection === 'about'}
+          onToggle={() => toggleSection('about')}
+          summary={aboutSummary}
+        >
+          <View
+            style={[
+              styles.aboutHero,
+              {
+                backgroundColor: colors.bgCardHover,
+                borderColor: colors.borderSubtle,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.aboutLogoShell,
+                {
+                  backgroundColor: colors.accentDim,
+                  borderColor: colors.borderAccent,
+                },
+              ]}
+            >
+              <Image
+                source={require('@/assets/images/sunan-notifier-mark.png')}
+                style={styles.aboutLogo}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={styles.aboutHeroBody}>
+              <Text style={[styles.aboutAppName, { color: colors.textPrimary }]}>{appName}</Text>
+              <Text style={[styles.aboutAppMeta, { color: colors.textSecondary }]}>
+                Versi {appVersion}
+              </Text>
+              <Text style={[styles.aboutDescription, { color: colors.textSecondary }]}>
+                Pendamping akademik SUNAN untuk tugas, absensi, kalender, dan pengingat dalam satu aplikasi.
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+
+          <View style={styles.aboutStack}>
+            <View style={styles.aboutInfoRow}>
+              <View
+                style={[
+                  styles.aboutInfoIcon,
+                  { backgroundColor: colors.accentDim },
+                ]}
+              >
+                <FontAwesome name="shield" size={13} color={colors.accent} />
+              </View>
+              <Text style={[styles.aboutInfoText, { color: colors.textSecondary }]}>
+                Data akademik utama tetap bersumber dari SUNAN UMK dan ditampilkan dalam tampilan yang lebih ringkas.
+              </Text>
+            </View>
+
+            <View style={styles.aboutMarkRow}>
+              <View style={styles.aboutMarkCopy}>
+                <Text style={[styles.aboutMarkLabel, { color: colors.textSecondary }]}>Mark proyek</Text>
+                <Text style={[styles.aboutMarkHint, { color: colors.textMuted }]}>
+                  Signature di dalam aplikasi
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.aboutMarkBadge,
+                  {
+                    backgroundColor: colors.accentDim,
+                    borderColor: colors.borderAccent,
+                  },
+                ]}
+              >
+                <FontAwesome name="star-o" size={12} color={colors.accent} />
+                <Text style={[styles.aboutMarkBadgeText, { color: colors.accentBright }]}>
+                  {APP_MARK}
+                </Text>
+              </View>
+            </View>
+          </View>
         </SectionCard>
 
         <View
@@ -1217,6 +1308,97 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  aboutHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  aboutLogoShell: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aboutLogo: {
+    width: 40,
+    height: 40,
+  },
+  aboutHeroBody: {
+    flex: 1,
+    gap: 3,
+  },
+  aboutAppName: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  aboutAppMeta: {
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  aboutDescription: {
+    fontSize: 12.5,
+    lineHeight: 18,
+  },
+  aboutStack: {
+    gap: 12,
+  },
+  aboutInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  aboutInfoIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: Radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  aboutInfoText: {
+    flex: 1,
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  aboutMarkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  aboutMarkCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  aboutMarkLabel: {
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  aboutMarkHint: {
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  aboutMarkBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  aboutMarkBadgeText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   actionCard: {
     borderRadius: Radius.lg,
