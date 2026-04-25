@@ -9,8 +9,9 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { useFonts } from 'expo-font';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import 'react-native-reanimated';
+import { Appearance } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/components/Redesign';
 import { TabsHeaderTitle } from '@/components/app/TabsHeaderTitle';
@@ -140,6 +141,8 @@ function AppBootstrap() {
 
 export default function RootLayout() {
   const settingsHydrated = useSettingsStore((state) => state.hydrated);
+  const themeMode = useSettingsStore((state) => state.themeMode);
+  const [appearanceApplied, setAppearanceApplied] = useState(false);
   const queryClientRef = useRef(
     new QueryClient({
       defaultOptions: {
@@ -161,7 +164,16 @@ export default function RootLayout() {
     if (error) throw error;
   }, [error]);
 
-  if (!loaded || !settingsHydrated) {
+  useLayoutEffect(() => {
+    if (!settingsHydrated) {
+      return;
+    }
+
+    Appearance.setColorScheme(themeMode === 'system' ? null : themeMode);
+    setAppearanceApplied(true);
+  }, [settingsHydrated, themeMode]);
+
+  if (!loaded || !settingsHydrated || !appearanceApplied) {
     return null;
   }
 
