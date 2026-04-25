@@ -1,7 +1,8 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { AttendanceCard, EmptyState, FilterChips, LoadingView, useTheme } from '@/components/Redesign';
+import { AttendanceCard, EmptyState, LoadingView, useTheme } from '@/components/Redesign';
+import { FloatingFilterMenu } from '@/components/app/FloatingFilterMenu';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { useAttendanceSessionsQuery } from '@/lib/queries/useMoodleQueries';
 import { AttendanceStatus } from '@/types/moodle';
@@ -86,10 +87,6 @@ export default function AttendanceScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
-      <View style={[styles.filterWrapper, { borderBottomColor: colors.borderSubtle }]}>
-        <FilterChips options={FILTER_OPTIONS} selected={filter} onSelect={setFilter} />
-      </View>
-
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
@@ -118,6 +115,13 @@ export default function AttendanceScreen() {
           )}
         </View>
       </ScrollView>
+      <FloatingFilterMenu
+        title="Filter Absensi"
+        options={FILTER_OPTIONS}
+        selected={filter}
+        onSelect={setFilter}
+        allKey="all"
+      />
     </View>
   );
 }
@@ -126,15 +130,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  filterWrapper: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-  },
   content: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 176,
   },
   list: {
     gap: 10,

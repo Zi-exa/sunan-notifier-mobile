@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { EmptyState, FilterChips, LoadingView, TaskCard, useTheme } from '@/components/Redesign';
+import { EmptyState, LoadingView, TaskCard, useTheme } from '@/components/Redesign';
+import { FloatingFilterMenu } from '@/components/app/FloatingFilterMenu';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { useAssignmentsQuery } from '@/lib/queries/useMoodleQueries';
 import { AssignmentStatus } from '@/types/moodle';
@@ -65,16 +66,6 @@ export default function TasksScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
-      {/* Filter chips outside ScrollView so it scrolls horizontally independent */}
-      <View style={[styles.filterWrapper, { borderBottomColor: colors.borderSubtle }]}>
-        <FilterChips
-          options={availableFilters}
-          selected={filter}
-          onSelect={setFilter}
-          columns={2}
-        />
-      </View>
-
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
@@ -103,6 +94,13 @@ export default function TasksScreen() {
           )}
         </View>
       </ScrollView>
+      <FloatingFilterMenu
+        title="Filter Tugas"
+        options={availableFilters}
+        selected={filter}
+        onSelect={setFilter}
+        allKey="all"
+      />
     </View>
   );
 }
@@ -111,15 +109,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  filterWrapper: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-  },
   content: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 176,
   },
   taskList: {
     gap: 10,
