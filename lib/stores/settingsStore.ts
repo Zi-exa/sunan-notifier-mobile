@@ -13,12 +13,14 @@ export type NotificationSettings = {
 };
 
 type SettingsState = {
+  hydrated: boolean;
   notifications: NotificationSettings;
   pollingInterval: PollingInterval;
   dndStart: string;
   dndEnd: string;
   monitoredCourseIds: number[];
   themeMode: ThemeMode;
+  setHydrated: (value: boolean) => void;
   setNotification: (key: keyof NotificationSettings, value: boolean) => void;
   setPollingInterval: (value: PollingInterval) => void;
   setDndWindow: (start: string, end: string) => void;
@@ -30,6 +32,7 @@ type SettingsState = {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
+      hydrated: false,
       notifications: {
         notifyNewTask: true,
         notifyDeadlineH1: true,
@@ -42,6 +45,7 @@ export const useSettingsStore = create<SettingsState>()(
       dndEnd: '07:00',
       monitoredCourseIds: [],
       themeMode: 'system' as ThemeMode,
+      setHydrated: (value) => set({ hydrated: value }),
       setNotification: (key, value) =>
         set((state) => ({
           notifications: {
@@ -75,6 +79,9 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'sunan.settings',
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
       partialize: (state) => ({
         notifications: state.notifications,
         pollingInterval: state.pollingInterval,

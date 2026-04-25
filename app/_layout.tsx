@@ -21,6 +21,7 @@ import {
   registerForPushNotificationsAsync,
 } from '@/lib/notifications';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useSettingsStore } from '@/lib/stores/settingsStore';
 import { upsertDevicePushToken } from '@/lib/supabase/repositories';
 
 export {
@@ -138,6 +139,7 @@ function AppBootstrap() {
 }
 
 export default function RootLayout() {
+  const settingsHydrated = useSettingsStore((state) => state.hydrated);
   const queryClientRef = useRef(
     new QueryClient({
       defaultOptions: {
@@ -159,7 +161,7 @@ export default function RootLayout() {
     if (error) throw error;
   }, [error]);
 
-  if (!loaded) {
+  if (!loaded || !settingsHydrated) {
     return null;
   }
 
@@ -211,6 +213,7 @@ function RootLayoutNav() {
           name="(tabs)"
           options={{
             headerShown: true,
+            contentStyle: { backgroundColor: colors.bgBase },
             headerStyle: { backgroundColor: colors.bgSurface },
             headerShadowVisible: false,
             headerTitle: () => <TabsHeaderTitle />,
