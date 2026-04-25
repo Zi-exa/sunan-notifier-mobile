@@ -1,16 +1,29 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { usePathname } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/components/Redesign';
-import { APP_TAB_META, getAppTabRouteKeyFromPathname } from '@/lib/navigation/tabMeta';
+import { APP_TAB_META, AppTabRouteKey, getAppTabRouteKeyFromPathname } from '@/lib/navigation/tabMeta';
+
+function isTaskDetailPath(pathname: string | null | undefined) {
+  return Boolean(pathname?.startsWith('/task/'));
+}
 
 export function TabsHeaderTitle() {
   const pathname = usePathname();
   const { colors } = useTheme();
   const activeTabKey = getAppTabRouteKeyFromPathname(pathname);
-  const meta = APP_TAB_META[activeTabKey];
+  const lastResolvedTabRef = useRef<AppTabRouteKey>('index');
+
+  useEffect(() => {
+    if (!isTaskDetailPath(pathname)) {
+      lastResolvedTabRef.current = activeTabKey;
+    }
+  }, [activeTabKey, pathname]);
+
+  const displayTabKey = isTaskDetailPath(pathname) ? lastResolvedTabRef.current : activeTabKey;
+  const meta = APP_TAB_META[displayTabKey];
 
   return (
     <View style={styles.headerTitleWrap}>
