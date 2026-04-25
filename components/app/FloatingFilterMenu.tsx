@@ -1,6 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Radius, Shadow, Spacing, useTheme } from '@/components/Redesign';
@@ -28,6 +28,8 @@ export function FloatingFilterMenu<T extends string>({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
+  const [renderMenu, setRenderMenu] = useState(false);
+  const progress = useRef(new Animated.Value(0)).current;
   const isFiltered = selected !== allKey;
   const selectedLabel = useMemo(
     () => options.find((option) => option.key === selected)?.label ?? 'Semua',
@@ -35,27 +37,70 @@ export function FloatingFilterMenu<T extends string>({
   );
   const bottomOffset = Math.max(insets.bottom, 12) + 92;
   const fabActive = open || isFiltered;
+  const backdropOpacity = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+  const menuTranslateY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [14, 0],
+  });
+  const menuScale = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.94, 1],
+  });
+  const fabScale = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.04],
+  });
+
+  useEffect(() => {
+    if (open) {
+      setRenderMenu(true);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!renderMenu) {
+      return;
+    }
+
+    Animated.timing(progress, {
+      toValue: open ? 1 : 0,
+      duration: open ? 190 : 150,
+      easing: open ? Easing.out(Easing.cubic) : Easing.inOut(Easing.quad),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished && !open) {
+        setRenderMenu(false);
+      }
+    });
+  }, [open, progress, renderMenu]);
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      {open ? (
-        <Pressable
-          style={styles.overlay}
-          accessibilityRole="button"
-          accessibilityLabel="Tutup popup filter"
-          onPress={() => setOpen(false)}
-        />
+      {renderMenu ? (
+        <Animated.View style={[styles.overlayLayer, { opacity: backdropOpacity }]}>
+          <Pressable
+            style={styles.overlay}
+            accessibilityRole="button"
+            accessibilityLabel="Tutup popup filter"
+            onPress={() => setOpen(false)}
+          />
+        </Animated.View>
       ) : null}
 
       <View pointerEvents="box-none" style={[styles.anchor, { right: 20, bottom: bottomOffset }]}>
-        {open ? (
-          <View
+        {renderMenu ? (
+          <Animated.View
             style={[
               styles.menu,
               Shadow.card,
               {
                 backgroundColor: colors.bgSurface,
                 borderColor: colors.borderSubtle,
+                opacity: progress,
+                transform: [{ translateY: menuTranslateY }, { scale: menuScale }],
               },
             ]}
           >
@@ -104,45 +149,50 @@ export function FloatingFilterMenu<T extends string>({
                 );
               })}
             </View>
-          </View>
+          </Animated.View>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${title}. Filter aktif ${selectedLabel}`}
-          onPress={() => setOpen((value) => !value)}
-          style={[
-            styles.fab,
-            Shadow.card,
-            {
-              backgroundColor: fabActive ? colors.accent : colors.bgSurface,
-              borderColor: fabActive ? colors.accent : colors.tabBorder,
-            },
-          ]}
-        >
-          <FontAwesome
-            name="sliders"
-            size={20}
-            color={fabActive ? colors.textInverse : colors.accent}
-          />
-          {isFiltered ? (
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor: fabActive ? colors.bgSurface : colors.accent,
-                  borderColor: fabActive ? colors.accent : colors.bgSurface,
-                },
-              ]}
+        <Animated.View style={{ transform: [{ scale: fabScale }] }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${title}. Filter aktif ${selectedLabel}`}
+            onPress={() => setOpen((value) => !value)}
+            style={[
+              styles.fab,
+              Shadow.card,
+              {
+                backgroundColor: fabActive ? colors.accent : colors.bgSurface,
+                borderColor: fabActive ? colors.accent : colors.tabBorder,
+              },
+            ]}
+          >
+            <FontAwesome
+              name="sliders"
+              size={20}
+              color={fabActive ? colors.textInverse : colors.accent}
             />
-          ) : null}
-        </Pressable>
+            {isFiltered ? (
+              <View
+                style={[
+                  styles.badge,
+                  {
+                    backgroundColor: fabActive ? colors.bgSurface : colors.accent,
+                    borderColor: fabActive ? colors.accent : colors.bgSurface,
+                  },
+                ]}
+              />
+            ) : null}
+          </Pressable>
+        </Animated.View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  overlayLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.12)',
