@@ -64,9 +64,17 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
       <View style={styles.body}>
         <View style={styles.headerRow}>
           <Text style={[styles.course, { color: colors.textSecondary }]} numberOfLines={1}>{task.courseName}</Text>
-          <View style={styles.badgeRow}>
-            {openBadge && <Badge variant={openBadge.variant} label={openBadge.label} />}
-            <Badge variant={statusVariant} label={statusLabel} />
+          <View style={styles.headerMeta}>
+            {showDetailAction && (
+              <View style={styles.detailLinkRow}>
+                <Text style={[styles.detailLinkText, { color: colors.accent }]}>{detailLabel}</Text>
+                <FontAwesome name="angle-right" size={13} color={colors.accent} />
+              </View>
+            )}
+            <View style={styles.badgeRow}>
+              {openBadge && <Badge variant={openBadge.variant} label={openBadge.label} />}
+              <Badge variant={statusVariant} label={statusLabel} />
+            </View>
           </View>
         </View>
         <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>{task.name}</Text>
@@ -97,22 +105,6 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
             valueColor={task.status === 'overdue' ? colors.danger : colors.textPrimary}
           />
         </View>
-        {showDetailAction && (
-          <View
-            style={[
-              styles.detailButton,
-              {
-                backgroundColor: colors.bgSurface,
-                borderColor: colors.borderAccent,
-              },
-            ]}
-          >
-            <View style={styles.detailButtonContent}>
-              <Text style={[styles.detailButtonText, { color: colors.accent }]}>{detailLabel}</Text>
-              <FontAwesome name="angle-right" size={14} color={colors.accent} />
-            </View>
-          </View>
-        )}
       </View>
     </Pressable>
   );
@@ -145,22 +137,16 @@ const styles = StyleSheet.create({
   accentStrip: { width: 4, borderTopLeftRadius: Radius.md, borderBottomLeftRadius: Radius.md },
   body: { flex: 1, padding: 12, gap: 6 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 },
+  headerMeta: { alignItems: 'flex-end', gap: 6, flexShrink: 0 },
   badgeRow: { flexDirection: 'row', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 },
   course: { fontSize: 11, fontWeight: '600', flexShrink: 1, textTransform: 'uppercase', letterSpacing: 0.3 },
+  detailLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  detailLinkText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
   title: { fontSize: 15, fontWeight: '700', lineHeight: 21 },
   activityRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   activityType: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   intro: { fontSize: 12, lineHeight: 18 },
   timeBlock: { marginTop: 4, gap: 3, paddingTop: 8, borderTopWidth: 1 },
-  detailButton: {
-    marginTop: 6,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  detailButtonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  detailButtonText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
   timeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   timeLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   timeLabel: { fontSize: 11, fontWeight: '500' },
