@@ -41,17 +41,33 @@ export function FloatingFilterMenu<T extends string>({
     inputRange: [0, 1],
     outputRange: [0, 1],
   });
+  const menuTranslateX = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [12, 0],
+  });
   const menuTranslateY = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [14, 0],
+    outputRange: [18, 0],
   });
   const menuScale = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.94, 1],
+    outputRange: [0.88, 1],
   });
   const fabScale = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 1.04],
+  });
+  const fabRotation = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '-12deg'],
+  });
+  const headerOpacity = progress.interpolate({
+    inputRange: [0, 0.35, 1],
+    outputRange: [0, 0.2, 1],
+  });
+  const headerTranslateY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [8, 0],
   });
 
   useEffect(() => {
@@ -100,52 +116,85 @@ export function FloatingFilterMenu<T extends string>({
                 backgroundColor: colors.bgSurface,
                 borderColor: colors.borderSubtle,
                 opacity: progress,
-                transform: [{ translateY: menuTranslateY }, { scale: menuScale }],
+                transform: [
+                  { translateX: menuTranslateX },
+                  { translateY: menuTranslateY },
+                  { scale: menuScale },
+                ],
               },
             ]}
           >
-            <View style={[styles.menuHeader, { borderBottomColor: colors.borderSubtle }]}>
+            <Animated.View
+              style={[
+                styles.menuHeader,
+                {
+                  borderBottomColor: colors.borderSubtle,
+                  opacity: headerOpacity,
+                  transform: [{ translateY: headerTranslateY }],
+                },
+              ]}
+            >
               <Text style={[styles.menuTitle, { color: colors.textPrimary }]}>{title}</Text>
               <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
                 Aktif: {selectedLabel}
               </Text>
-            </View>
+            </Animated.View>
 
             <View style={styles.optionList}>
-              {options.map((option) => {
+              {options.map((option, index) => {
                 const active = option.key === selected;
+                const optionStart = Math.min(0.2 + index * 0.1, 0.72);
+                const optionOpacity = progress.interpolate({
+                  inputRange: [0, optionStart, 1],
+                  outputRange: [0, 0, 1],
+                });
+                const optionTranslateX = progress.interpolate({
+                  inputRange: [0, optionStart, 1],
+                  outputRange: [18, 18, 0],
+                });
+                const optionTranslateY = progress.interpolate({
+                  inputRange: [0, optionStart, 1],
+                  outputRange: [6, 6, 0],
+                });
 
                 return (
-                  <Pressable
+                  <Animated.View
                     key={option.key}
-                    accessibilityRole="button"
-                    accessibilityState={active ? { selected: true } : {}}
-                    onPress={() => {
-                      onSelect(option.key);
-                      setOpen(false);
+                    style={{
+                      opacity: optionOpacity,
+                      transform: [{ translateX: optionTranslateX }, { translateY: optionTranslateY }],
                     }}
-                    style={[
-                      styles.option,
-                      {
-                        backgroundColor: active ? colors.accentDim : colors.bgBase,
-                        borderColor: active ? colors.borderAccent : colors.borderSubtle,
-                      },
-                    ]}
                   >
-                    <Text
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={active ? { selected: true } : {}}
+                      onPress={() => {
+                        onSelect(option.key);
+                        setOpen(false);
+                      }}
                       style={[
-                        styles.optionLabel,
-                        { color: active ? colors.accent : colors.textPrimary },
+                        styles.option,
+                        {
+                          backgroundColor: active ? colors.accentDim : colors.bgBase,
+                          borderColor: active ? colors.borderAccent : colors.borderSubtle,
+                        },
                       ]}
                     >
-                      {option.label}
-                    </Text>
-                    <FontAwesome
-                      name={active ? 'check-circle' : 'circle-o'}
-                      size={18}
-                      color={active ? colors.accent : colors.textMuted}
-                    />
-                  </Pressable>
+                      <Text
+                        style={[
+                          styles.optionLabel,
+                          { color: active ? colors.accent : colors.textPrimary },
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                      <FontAwesome
+                        name={active ? 'check-circle' : 'circle-o'}
+                        size={18}
+                        color={active ? colors.accent : colors.textMuted}
+                      />
+                    </Pressable>
+                  </Animated.View>
                 );
               })}
             </View>
@@ -166,11 +215,13 @@ export function FloatingFilterMenu<T extends string>({
               },
             ]}
           >
-            <FontAwesome
-              name="sliders"
-              size={20}
-              color={fabActive ? colors.textInverse : colors.accent}
-            />
+            <Animated.View style={{ transform: [{ rotate: fabRotation }] }}>
+              <FontAwesome
+                name="sliders"
+                size={20}
+                color={fabActive ? colors.textInverse : colors.accent}
+              />
+            </Animated.View>
             {isFiltered ? (
               <View
                 style={[
