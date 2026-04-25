@@ -48,100 +48,7 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
   const accentColor = STATUS_ACCENT[task.status];
   const activityLabel = task.activityType === 'quiz' ? 'Quiz' : 'Tugas';
   const openBadge = getOpenBadge(task.openDate);
-  const showDetailAction = Boolean(detailLabel && onPress);
-
-  const mainContent = (
-    <>
-      <View style={styles.headerRow}>
-        <Text style={[styles.course, { color: colors.textSecondary }]} numberOfLines={1}>{task.courseName}</Text>
-        <View style={styles.badgeRow}>
-          {openBadge && <Badge variant={openBadge.variant} label={openBadge.label} />}
-          <Badge variant={statusVariant} label={statusLabel} />
-        </View>
-      </View>
-      <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>{task.name}</Text>
-      <View style={styles.activityRow}>
-        <FontAwesome
-          name={task.activityType === 'quiz' ? 'question-circle-o' : 'file-text-o'}
-          size={12}
-          color={colors.accent}
-        />
-        <Text style={[styles.activityType, { color: colors.accent }]}>{activityLabel}</Text>
-      </View>
-      {!!task.intro && (
-        <Text style={[styles.intro, { color: colors.textSecondary }]} numberOfLines={2}>{task.intro}</Text>
-      )}
-      <View style={[styles.timeBlock, { borderTopColor: colors.borderSubtle }]}>
-        {task.openDate != null && task.openDate > 0 && (
-          <TaskMetaRow
-            icon="calendar-o"
-            label="Dibuka"
-            value={formatDateTime(task.openDate)}
-            valueColor={colors.textPrimary}
-          />
-        )}
-        <TaskMetaRow
-          icon="clock-o"
-          label="Deadline"
-          value={formatDateTime(task.dueDate)}
-          valueColor={task.status === 'overdue' ? colors.danger : colors.textPrimary}
-        />
-      </View>
-    </>
-  );
-
-  const cardBody = (
-    <>
-      <View style={[styles.accentStrip, { backgroundColor: accentColor }]} />
-      <View style={styles.body}>
-        {showDetailAction ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => onPress?.(task)}
-            android_ripple={{ color: colors.borderMuted, borderless: false }}
-            style={({ pressed }) => [styles.contentPressable, pressed && styles.pressed]}
-          >
-            {mainContent}
-          </Pressable>
-        ) : (
-          mainContent
-        )}
-        {showDetailAction && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => onPress?.(task)}
-            android_ripple={{ color: colors.borderMuted, borderless: false }}
-            style={({ pressed }) => [
-              styles.detailButton,
-              {
-                backgroundColor: colors.bgSurface,
-                borderColor: colors.borderAccent,
-              },
-              pressed && { opacity: 0.86 },
-            ]}
-          >
-            <View style={styles.detailButtonContent}>
-              <Text style={[styles.detailButtonText, { color: colors.accent }]}>{detailLabel}</Text>
-              <FontAwesome name="angle-right" size={14} color={colors.accent} />
-            </View>
-          </Pressable>
-        )}
-      </View>
-    </>
-  );
-
-  if (showDetailAction) {
-    return (
-      <View
-        style={[
-          styles.container,
-          { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle },
-        ]}
-      >
-        {cardBody}
-      </View>
-    );
-  }
+  const showDetailAction = Boolean(detailLabel);
 
   return (
     <Pressable
@@ -150,10 +57,63 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
       style={({ pressed }) => [
         styles.container,
         { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle },
-        pressed && { opacity: 0.85 },
+        pressed && styles.pressed,
       ]}
     >
-      {cardBody}
+      <View style={[styles.accentStrip, { backgroundColor: accentColor }]} />
+      <View style={styles.body}>
+        <View style={styles.headerRow}>
+          <Text style={[styles.course, { color: colors.textSecondary }]} numberOfLines={1}>{task.courseName}</Text>
+          <View style={styles.badgeRow}>
+            {openBadge && <Badge variant={openBadge.variant} label={openBadge.label} />}
+            <Badge variant={statusVariant} label={statusLabel} />
+          </View>
+        </View>
+        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>{task.name}</Text>
+        <View style={styles.activityRow}>
+          <FontAwesome
+            name={task.activityType === 'quiz' ? 'question-circle-o' : 'file-text-o'}
+            size={12}
+            color={colors.accent}
+          />
+          <Text style={[styles.activityType, { color: colors.accent }]}>{activityLabel}</Text>
+        </View>
+        {!!task.intro && (
+          <Text style={[styles.intro, { color: colors.textSecondary }]} numberOfLines={2}>{task.intro}</Text>
+        )}
+        <View style={[styles.timeBlock, { borderTopColor: colors.borderSubtle }]}>
+          {task.openDate != null && task.openDate > 0 && (
+            <TaskMetaRow
+              icon="calendar-o"
+              label="Dibuka"
+              value={formatDateTime(task.openDate)}
+              valueColor={colors.textPrimary}
+            />
+          )}
+          <TaskMetaRow
+            icon="clock-o"
+            label="Deadline"
+            value={formatDateTime(task.dueDate)}
+            valueColor={task.status === 'overdue' ? colors.danger : colors.textPrimary}
+          />
+        </View>
+        {showDetailAction && (
+          <View
+            style={[
+              styles.detailButton,
+              {
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderAccent,
+              },
+            ]}
+          >
+            <View style={styles.detailButtonContent}>
+              <Text style={[styles.detailButtonText, { color: colors.accent }]}>{detailLabel}</Text>
+              <FontAwesome name="angle-right" size={14} color={colors.accent} />
+            </View>
+          </View>
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -181,10 +141,9 @@ function TaskMetaRow({ icon, label, value, valueColor }: TaskMetaRowProps) {
 
 const styles = StyleSheet.create({
   container: { flexDirection: 'row', borderRadius: Radius.md, borderWidth: 1, overflow: 'hidden', ...Shadow.card },
-  pressed: { opacity: 0.82 },
+  pressed: { opacity: 0.85 },
   accentStrip: { width: 4, borderTopLeftRadius: Radius.md, borderBottomLeftRadius: Radius.md },
   body: { flex: 1, padding: 12, gap: 6 },
-  contentPressable: { gap: 6 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 },
   badgeRow: { flexDirection: 'row', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 },
   course: { fontSize: 11, fontWeight: '600', flexShrink: 1, textTransform: 'uppercase', letterSpacing: 0.3 },

@@ -94,15 +94,7 @@ export default function TasksScreen() {
                 key={task.id}
                 task={task}
                 detailLabel="Detail Tugas"
-                onPress={(selectedTask) =>
-                  router.push({
-                    pathname: '/task/[id]',
-                    params: {
-                      id: String(selectedTask.id),
-                      from: 'tasks',
-                    },
-                  })
-                }
+                onPress={(selectedTask) => router.push(`/task/${selectedTask.id}`)}
               />
             ))
           )}

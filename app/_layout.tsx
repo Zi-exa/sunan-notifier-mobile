@@ -1,15 +1,10 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider as NavThemeProvider,
-  Theme as NavigationTheme,
-} from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/components/Redesign';
@@ -176,29 +171,12 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const { mode, colors } = useTheme();
-  const navigationTheme = useMemo<NavigationTheme>(() => {
-    const baseTheme = mode === 'dark' ? DarkTheme : DefaultTheme;
-
-    return {
-      ...baseTheme,
-      colors: {
-        ...baseTheme.colors,
-        primary: colors.accent,
-        background: colors.bgBase,
-        card: colors.bgSurface,
-        text: colors.textPrimary,
-        border: colors.borderSubtle,
-        notification: colors.accentBright,
-      },
-    };
-  }, [colors, mode]);
 
   return (
-    <NavThemeProvider value={navigationTheme}>
+    <NavThemeProvider value={mode === 'dark' ? DarkTheme : DefaultTheme}>
       <AppBootstrap />
       <Stack
         screenOptions={{
-          contentStyle: { backgroundColor: colors.bgBase },
           headerStyle: { backgroundColor: colors.bgCard },
           headerTintColor: colors.textPrimary,
           headerTitleStyle: { fontWeight: '700', color: colors.textPrimary },
@@ -216,14 +194,7 @@ function RootLayoutNav() {
             headerTitle: () => <TabsHeaderTitle />,
           }}
         />
-        <Stack.Screen
-          name="task/[id]"
-          options={{
-            title: 'Detail Tugas',
-            animation: 'none',
-            contentStyle: { backgroundColor: colors.bgBase },
-          }}
-        />
+        <Stack.Screen name="task/[id]" options={{ title: 'Detail Tugas' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </NavThemeProvider>
