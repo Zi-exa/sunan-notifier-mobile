@@ -153,7 +153,7 @@ export default function SettingsScreen() {
       : `${draftMonitoredCourseIds.length} mata kuliah dipantau`;
   const aboutSummary = `v${appVersion} • ${APP_MARK}`;
   const accountName = user?.fullname ?? 'Belum ada sesi login';
-  const contentBottomPadding = getDockContentPadding(insets.bottom) + 8;
+  const contentBottomPadding = getDockContentPadding(insets.bottom);
 
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
