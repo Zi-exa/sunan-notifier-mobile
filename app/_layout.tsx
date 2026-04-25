@@ -220,7 +220,7 @@ function RootLayoutNav() {
           name="task/[id]"
           options={{
             title: 'Detail Tugas',
-            animation: 'fade',
+            animation: 'none',
             contentStyle: { backgroundColor: colors.bgBase },
           }}
         />
