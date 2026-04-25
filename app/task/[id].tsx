@@ -54,76 +54,78 @@ export default function TaskDetailScreen() {
   const statusLabel = STATUS_LABEL[task.status] ?? task.status;
 
   return (
-    <ScrollView
-      style={[styles.screen, { backgroundColor: colors.bgBase }]}
-      contentContainerStyle={styles.content}
-    >
-      <View style={[styles.headerCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
-        <View style={[styles.accentBar, { backgroundColor: statusColor }]} />
-        <View style={styles.headerBody}>
-          <Text style={[styles.course, { color: colors.textSecondary }]}>{task.courseName}</Text>
-          <View style={[styles.activityBadge, { backgroundColor: isQuizTask ? colors.purpleDim : colors.accentDim }]}>
-            <View style={styles.activityBadgeRow}>
-              <FontAwesome
-                name={isQuizTask ? 'question-circle-o' : 'file-text-o'}
-                size={12}
-                color={isQuizTask ? colors.purple : colors.accent}
-              />
-              <Text style={[styles.activityBadgeText, { color: isQuizTask ? colors.purple : colors.accent }]}>
-                {activityLabel}
-              </Text>
-            </View>
-          </View>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>{task.name}</Text>
-          {task.openDate != null && task.openDate > 0 && (
-            <DetailMetaRow icon="calendar-o" label="Dibuka" value={formatDateTime(task.openDate)} />
-          )}
-          <DetailMetaRow icon="clock-o" label="Deadline" value={formatDateTime(task.dueDate)} />
-        </View>
-      </View>
-
-      <View style={[styles.bodyCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
-        <View style={styles.sectionLabelRow}>
-          <FontAwesome name="align-left" size={12} color={colors.textMuted} />
-          <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>DESKRIPSI</Text>
-        </View>
-        <Text style={[styles.description, { color: colors.textSecondary }]}>
-          {task.intro ?? 'Tidak ada deskripsi tambahan dari dosen.'}
-        </Text>
-      </View>
-
-      <View style={[styles.bodyCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
-        <View style={styles.sectionLabelRow}>
-          <FontAwesome name="check-circle-o" size={12} color={colors.textMuted} />
-          <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>STATUS PENGERJAAN</Text>
-        </View>
-        <View style={styles.statusRow}>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-          <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
-        </View>
-        {!isQuizTask && !!task.submissionModifiedAt && (
-          <Text style={[styles.metaMuted, { color: colors.textMuted }]}>
-            Terakhir update: {formatDateTime(task.submissionModifiedAt)}
-          </Text>
-        )}
-      </View>
-
-      <Pressable
-        style={({ pressed }) => [
-          styles.primaryButton,
-          { backgroundColor: colors.accent },
-          pressed && { opacity: 0.82 },
-        ]}
-        onPress={() => Linking.openURL(task.quickLink)}
+    <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
+      <ScrollView
+        style={styles.screenFlex}
+        contentContainerStyle={styles.content}
       >
-        <View style={styles.primaryButtonContent}>
-          <FontAwesome name="external-link" size={14} color="#FFFFFF" />
-          <Text style={styles.primaryButtonText}>
-            {isQuizTask ? 'Buka Quiz di SUNAN' : 'Buka Tugas di SUNAN'}
+        <View style={[styles.headerCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+          <View style={[styles.accentBar, { backgroundColor: statusColor }]} />
+          <View style={styles.headerBody}>
+            <Text style={[styles.course, { color: colors.textSecondary }]}>{task.courseName}</Text>
+            <View style={[styles.activityBadge, { backgroundColor: isQuizTask ? colors.purpleDim : colors.accentDim }]}>
+              <View style={styles.activityBadgeRow}>
+                <FontAwesome
+                  name={isQuizTask ? 'question-circle-o' : 'file-text-o'}
+                  size={12}
+                  color={isQuizTask ? colors.purple : colors.accent}
+                />
+                <Text style={[styles.activityBadgeText, { color: isQuizTask ? colors.purple : colors.accent }]}>
+                  {activityLabel}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{task.name}</Text>
+            {task.openDate != null && task.openDate > 0 && (
+              <DetailMetaRow icon="calendar-o" label="Dibuka" value={formatDateTime(task.openDate)} />
+            )}
+            <DetailMetaRow icon="clock-o" label="Deadline" value={formatDateTime(task.dueDate)} />
+          </View>
+        </View>
+
+        <View style={[styles.bodyCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+          <View style={styles.sectionLabelRow}>
+            <FontAwesome name="align-left" size={12} color={colors.textMuted} />
+            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>DESKRIPSI</Text>
+          </View>
+          <Text style={[styles.description, { color: colors.textSecondary }]}>
+            {task.intro ?? 'Tidak ada deskripsi tambahan dari dosen.'}
           </Text>
         </View>
-      </Pressable>
-    </ScrollView>
+
+        <View style={[styles.bodyCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+          <View style={styles.sectionLabelRow}>
+            <FontAwesome name="check-circle-o" size={12} color={colors.textMuted} />
+            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>STATUS PENGERJAAN</Text>
+          </View>
+          <View style={styles.statusRow}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+            <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+          </View>
+          {!isQuizTask && !!task.submissionModifiedAt && (
+            <Text style={[styles.metaMuted, { color: colors.textMuted }]}>
+              Terakhir update: {formatDateTime(task.submissionModifiedAt)}
+            </Text>
+          )}
+        </View>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.primaryButton,
+            { backgroundColor: colors.accent },
+            pressed && { opacity: 0.82 },
+          ]}
+          onPress={() => Linking.openURL(task.quickLink)}
+        >
+          <View style={styles.primaryButtonContent}>
+            <FontAwesome name="external-link" size={14} color="#FFFFFF" />
+            <Text style={styles.primaryButtonText}>
+              {isQuizTask ? 'Buka Quiz di SUNAN' : 'Buka Tugas di SUNAN'}
+            </Text>
+          </View>
+        </Pressable>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -149,6 +151,7 @@ function DetailMetaRow({ icon, label, value }: DetailMetaRowProps) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  screenFlex: { flex: 1 },
   content: { padding: 16, gap: 12, paddingBottom: 32 },
   errorWrap: { flex: 1, justifyContent: 'center', padding: 16 },
   headerCard: { borderRadius: Radius.lg, borderWidth: 1, overflow: 'hidden', ...Shadow.card },
