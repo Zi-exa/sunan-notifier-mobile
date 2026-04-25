@@ -141,27 +141,9 @@ export function FloatingFilterMenu<T extends string>({
               ]}
             >
               <Text style={[styles.menuTitle, { color: colors.textPrimary }]}>{title}</Text>
-              <View style={styles.menuHeaderMetaRow}>
-                <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
-                  Pilih kategori yang ingin ditampilkan
-                </Text>
-                <View
-                  style={[
-                    styles.menuActiveBadge,
-                    {
-                      backgroundColor: colors.accentDim,
-                      borderColor: colors.borderAccent,
-                    },
-                  ]}
-                >
-                  {selectedOption?.icon ? (
-                    <FontAwesome name={selectedOption.icon} size={11} color={colors.accent} />
-                  ) : null}
-                  <Text style={[styles.menuActiveBadgeText, { color: colors.accentBright }]}>
-                    {selectedLabel}
-                  </Text>
-                </View>
-              </View>
+              <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
+                Aktif: {selectedLabel}
+              </Text>
             </Animated.View>
 
             <View style={styles.optionList}>
@@ -205,49 +187,27 @@ export function FloatingFilterMenu<T extends string>({
                       ]}
                     >
                       <View style={styles.optionMain}>
-                        <View
+                        <FontAwesome
+                          name={option.icon ?? 'tag'}
+                          size={15}
+                          color={active ? colors.accent : colors.textSecondary}
+                          style={styles.optionIcon}
+                        />
+                        <Text
                           style={[
-                            styles.optionIconWrap,
-                            {
-                              backgroundColor: active ? colors.bgSurface : colors.bgBase,
-                              borderColor: active ? colors.borderAccent : colors.borderSubtle,
-                            },
+                            styles.optionLabel,
+                            { color: active ? colors.accent : colors.textPrimary },
                           ]}
                         >
-                          <FontAwesome
-                            name={option.icon ?? 'tag'}
-                            size={14}
-                            color={active ? colors.accent : colors.textSecondary}
-                          />
-                        </View>
-                        <View style={styles.optionTextWrap}>
-                          <Text
-                            style={[
-                              styles.optionLabel,
-                              { color: active ? colors.accent : colors.textPrimary },
-                            ]}
-                          >
-                            {option.label}
-                          </Text>
-                          <Text style={[styles.optionHint, { color: colors.textMuted }]}>
-                            {active ? 'Filter aktif' : 'Tap untuk memilih'}
-                          </Text>
-                        </View>
+                          {option.label}
+                        </Text>
                       </View>
                       <FontAwesome
-                        name={active ? 'check-circle' : 'angle-right'}
-                        size={active ? 18 : 16}
+                        name={active ? 'check-circle' : 'circle-thin'}
+                        size={active ? 18 : 14}
                         color={active ? colors.accent : colors.textMuted}
                       />
                     </Pressable>
-                    {index < options.length - 1 ? (
-                      <View
-                        style={[
-                          styles.optionDivider,
-                          { backgroundColor: colors.borderSubtle },
-                        ]}
-                      />
-                    ) : null}
                   </Animated.View>
                 );
               })}
@@ -311,7 +271,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     bottom: 72,
-    width: 248,
+    width: 232,
     borderWidth: 1,
     borderRadius: Radius.xl,
     padding: Spacing.sm,
@@ -321,49 +281,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     paddingBottom: Spacing.sm,
     borderBottomWidth: 1,
-    gap: 6,
+    gap: 4,
   },
   menuTitle: {
     fontSize: 15,
     fontWeight: '800',
-  },
-  menuHeaderMetaRow: {
-    gap: 8,
   },
   menuSubtitle: {
     fontSize: 12,
     fontWeight: '600',
     lineHeight: 17,
   },
-  menuActiveBadge: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  menuActiveBadgeText: {
-    fontSize: 11.5,
-    fontWeight: '800',
-  },
   optionList: {
-    gap: 0,
+    gap: 8,
   },
   option: {
-    minHeight: 60,
+    minHeight: 48,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.sm,
+    gap: 10,
   },
   optionLabel: {
+    flex: 1,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -371,28 +315,11 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 12,
   },
-  optionIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  optionTextWrap: {
-    flex: 1,
-    gap: 2,
-  },
-  optionHint: {
-    fontSize: 11.5,
-    fontWeight: '600',
-  },
-  optionDivider: {
-    height: 1,
-    marginHorizontal: 14,
-    opacity: 0.65,
+  optionIcon: {
+    width: 18,
+    textAlign: 'center',
   },
   fab: {
     width: 58,
