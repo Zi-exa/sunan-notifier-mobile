@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, LoadingView, useTheme, Radius, Shadow } from '@/components/Redesign';
 import { useAssignmentsQuery } from '@/lib/queries/useMoodleQueries';
 import { formatDateTime } from '@/lib/utils/date';
@@ -16,8 +17,9 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function TaskDetailScreen() {
   const { colors } = useTheme();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; from?: string }>();
   const assignmentsQuery = useAssignmentsQuery();
+  const shouldReturnToTasks = params.from === 'tasks';
 
   const STATUS_COLOR: Record<string, string> = {
     pending: colors.warning,
@@ -25,6 +27,28 @@ export default function TaskDetailScreen() {
     overdue: colors.danger,
     unknown: colors.accent,
   };
+
+  const handleClose = useCallback(() => {
+    if (shouldReturnToTasks) {
+      router.dismissTo('/(tabs)/tasks');
+      return true;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
+      return true;
+    }
+
+    router.replace('/(tabs)/tasks');
+    return true;
+  }, [shouldReturnToTasks]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', handleClose);
+      return () => subscription.remove();
+    }, [handleClose])
+  );
 
   const task = useMemo(() => {
     const taskId = Number(params.id);
@@ -55,6 +79,19 @@ export default function TaskDetailScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
+      <Stack.Screen
+        options={{
+          headerLeft: () => (
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleClose}
+              style={({ pressed }) => [styles.headerBackButton, pressed && styles.headerBackButtonPressed]}
+            >
+              <FontAwesome name="arrow-left" size={20} color={colors.textPrimary} />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.content, { backgroundColor: colors.bgBase }]}
@@ -158,6 +195,8 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { flexGrow: 1, padding: 16, gap: 12, paddingBottom: 32 },
   errorWrap: { flex: 1, justifyContent: 'center', padding: 16 },
+  headerBackButton: { paddingVertical: 6, paddingRight: 14 },
+  headerBackButtonPressed: { opacity: 0.72 },
   // ─ Header card ─────────────────────────────────────────────
   headerCard: { borderRadius: Radius.lg, borderWidth: 1, overflow: 'hidden', ...Shadow.card },
   accentBar: { height: 4, width: '100%' },
