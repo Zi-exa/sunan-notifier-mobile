@@ -58,7 +58,8 @@
             }
           }
         }
-      ]
+      ],
+      "./plugins/withAndroidWindowTheme"
     ],
     "experiments": {
       "typedRoutes": true
