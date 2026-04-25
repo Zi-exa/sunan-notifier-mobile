@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { router } from 'expo-router';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EmptyState, LoadingView, TaskCard, useTheme } from '@/components/Redesign';
+import { EmptyState, TaskCard, useTheme } from '@/components/Redesign';
+import { Radius } from '@/components/Redesign/theme';
 import { FloatingFilterMenu, FloatingFilterOption } from '@/components/app/FloatingFilterMenu';
 import { getFloatingFilterContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
@@ -46,28 +47,6 @@ export default function TasksScreen() {
     return tasks.filter((task) => task.status === filter);
   }, [assignmentsQuery.data, filter]);
 
-  if (assignmentsQuery.isLoading) {
-    return <LoadingView text="Memuat daftar tugas..." />;
-  }
-
-  if (!assignmentsReady) {
-    return <LoadingView text="Menyelaraskan status tugas..." />;
-  }
-
-  if (assignmentsQuery.isError) {
-    return (
-      <View style={styles.screen}>
-        <View style={styles.content}>
-          <EmptyState
-            title="Daftar tugas belum tersedia"
-            description={getReadableErrorMessage(assignmentsQuery.error, 'tasks')}
-            icon="warning"
-          />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
       <ScrollView
@@ -82,7 +61,29 @@ export default function TasksScreen() {
         }
       >
         <View style={styles.taskList}>
-          {visibleTasks.length === 0 ? (
+          {assignmentsQuery.isLoading ? (
+            <View style={[styles.stateCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+              <ActivityIndicator size="large" color={colors.accent} />
+              <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Memuat daftar tugas...</Text>
+              <Text style={[styles.stateDescription, { color: colors.textSecondary }]}>
+                Menyiapkan data tugas dari SUNAN.
+              </Text>
+            </View>
+          ) : !assignmentsReady ? (
+            <View style={[styles.stateCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+              <ActivityIndicator size="large" color={colors.accent} />
+              <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Menyelaraskan status tugas...</Text>
+              <Text style={[styles.stateDescription, { color: colors.textSecondary }]}>
+                Menunggu status submit terakhir agar daftar tetap stabil.
+              </Text>
+            </View>
+          ) : assignmentsQuery.isError ? (
+            <EmptyState
+              title="Daftar tugas belum tersedia"
+              description={getReadableErrorMessage(assignmentsQuery.error, 'tasks')}
+              icon="warning"
+            />
+          ) : visibleTasks.length === 0 ? (
             <EmptyState
               title="Tidak ada tugas"
               description="Filter yang dipilih tidak memiliki tugas saat ini."
@@ -120,5 +121,24 @@ const styles = StyleSheet.create({
   },
   taskList: {
     gap: 10,
+  },
+  stateCard: {
+    minHeight: 260,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 24,
+  },
+  stateTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  stateDescription: {
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });
