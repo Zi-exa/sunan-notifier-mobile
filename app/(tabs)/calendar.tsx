@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AttendanceCard, EmptyState, SectionCard, TaskCard, useTheme, Radius } from '@/components/Redesign';
 import { getDockContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
+import { getCalendarRangeForMonth } from '@/lib/moodle/client';
 import {
   useAssignmentsQuery,
   useAttendanceSessionsQuery,
@@ -29,9 +30,21 @@ export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const today = toDateKey(Math.floor(Date.now() / 1000));
   const [selectedDate, setSelectedDate] = useState(today);
+  const [visibleMonth, setVisibleMonth] = useState(today.slice(0, 7));
   const coursesQuery = useCoursesQuery();
   const assignmentsQuery = useAssignmentsQuery();
-  const calendarQuery = useCalendarEventsQuery();
+  const calendarRange = useMemo(() => {
+    const [yearRaw, monthRaw] = visibleMonth.split('-');
+    const year = Number(yearRaw);
+    const monthIndex = Number(monthRaw) - 1;
+
+    if (!Number.isFinite(year) || !Number.isFinite(monthIndex)) {
+      return getCalendarRangeForMonth(new Date().getFullYear(), new Date().getMonth());
+    }
+
+    return getCalendarRangeForMonth(year, monthIndex);
+  }, [visibleMonth]);
+  const calendarQuery = useCalendarEventsQuery(calendarRange);
   const attendanceQuery = useAttendanceSessionsQuery();
 
   const markedDates = useMemo(() => {
@@ -121,7 +134,11 @@ export default function CalendarScreen() {
           key={mode}
           markingType="multi-dot"
           markedDates={markedDates}
-          onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
+          onDayPress={(day: DateData) => {
+            setSelectedDate(day.dateString);
+            setVisibleMonth(day.dateString.slice(0, 7));
+          }}
+          onMonthChange={(day: DateData) => setVisibleMonth(day.dateString.slice(0, 7))}
           theme={{
             calendarBackground: colors.bgCard,
             backgroundColor: colors.bgCard,

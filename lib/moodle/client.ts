@@ -46,14 +46,18 @@ type MoodleExceptionPayload = {
 };
 
 const CALENDAR_LIMIT_NUM = 50;
-const CALENDAR_LOOKBACK_SECONDS = 2 * 24 * 60 * 60;
-const CALENDAR_LOOKAHEAD_SECONDS = 30 * 24 * 60 * 60;
+const CALENDAR_PADDING_DAYS = 7;
 const MAINTENANCE_PROBE_CACHE_MS = 30 * 1000;
 const QUIZ_TASK_ID_OFFSET = 2_000_000_000;
 
 let maintenanceProbePromise: Promise<boolean> | null = null;
 let lastMaintenanceProbeAt = 0;
 let lastMaintenanceProbeResult = false;
+
+export type CalendarQueryRange = {
+  timeStart: number;
+  timeEnd: number;
+};
 
 function buildTaskId(activityType: 'assignment' | 'quiz', sourceId: number): number {
   if (activityType === 'quiz') {
@@ -463,6 +467,30 @@ function mergeCalendarEvents(
   return [...mergedById.values()].sort((a, b) => a.timestart - b.timestart);
 }
 
+function startOfMonthUnix(year: number, monthIndex: number): number {
+  return Math.floor(new Date(year, monthIndex, 1, 0, 0, 0, 0).getTime() / 1000);
+}
+
+function endOfMonthUnix(year: number, monthIndex: number): number {
+  return Math.floor(new Date(year, monthIndex + 1, 0, 23, 59, 59, 999).getTime() / 1000);
+}
+
+export function getDefaultCalendarRange(nowMs = Date.now()): CalendarQueryRange {
+  const date = new Date(nowMs);
+  return getCalendarRangeForMonth(date.getFullYear(), date.getMonth());
+}
+
+export function getCalendarRangeForMonth(year: number, monthIndex: number): CalendarQueryRange {
+  const monthStart = startOfMonthUnix(year, monthIndex);
+  const monthEnd = endOfMonthUnix(year, monthIndex);
+  const paddingSeconds = CALENDAR_PADDING_DAYS * 24 * 60 * 60;
+
+  return {
+    timeStart: monthStart - paddingSeconds,
+    timeEnd: monthEnd + paddingSeconds,
+  };
+}
+
 export async function requestMoodleToken(nim: string, password: string): Promise<string> {
   if (CONFIG.useMockData) {
     return 'mock-token';
@@ -614,14 +642,15 @@ export async function getAssignments(
   return sortAssignmentsByDeadline([...assignments, ...quizzes]);
 }
 
-export async function getCalendarEvents(token: string, courseIds: number[]): Promise<MoodleCalendarEvent[]> {
+export async function getCalendarEvents(
+  token: string,
+  courseIds: number[],
+  range = getDefaultCalendarRange()
+): Promise<MoodleCalendarEvent[]> {
   if (CONFIG.useMockData) {
     return MOCK_CALENDAR_EVENTS;
   }
-
-  const nowUnixSeconds = Math.floor(Date.now() / 1000);
-  const timeStart = nowUnixSeconds - CALENDAR_LOOKBACK_SECONDS;
-  const timeEnd = nowUnixSeconds + CALENDAR_LOOKAHEAD_SECONDS;
+  const { timeStart, timeEnd } = range;
 
   let actionEvents: MoodleCalendarEvent[] = [];
   try {

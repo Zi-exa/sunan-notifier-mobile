@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { isAuthError, isOfflineError } from '@/lib/moodle/errors';
 import {
+  CalendarQueryRange,
   getAttendanceSessions,
   getAssignments,
   getCalendarEvents,
@@ -168,7 +169,7 @@ export function useAssignmentsQuery() {
   return query;
 }
 
-export function useCalendarEventsQuery() {
+export function useCalendarEventsQuery(range?: CalendarQueryRange) {
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
   const coursesQuery = useCoursesQuery();
@@ -178,13 +179,14 @@ export function useCalendarEventsQuery() {
     [coursesQuery.data]
   );
   const allCourseIdKey = allCourseIds.join(',');
+  const rangeKey = range ? `${range.timeStart}-${range.timeEnd}` : 'default';
 
   const query = useQuery({
-    queryKey: ['calendar-events', user?.id ?? 'anon', allCourseIdKey],
+    queryKey: ['calendar-events', user?.id ?? 'anon', allCourseIdKey, rangeKey],
     enabled: Boolean(token && allCourseIds.length > 0),
     staleTime: STALE_TIME_MS,
     retry: shouldRetryQuery,
-    queryFn: () => getCalendarEvents(token as string, allCourseIds),
+    queryFn: () => getCalendarEvents(token as string, allCourseIds, range),
   });
 
   useSessionExpiryGuard(query.error, query.isError);

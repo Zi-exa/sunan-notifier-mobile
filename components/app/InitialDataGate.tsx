@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppSplashScreen } from '@/components/Redesign';
 import {
+  getDefaultCalendarRange,
   getAttendanceSessions,
   getAssignments,
   getCalendarEvents,
@@ -84,9 +85,15 @@ export function InitialDataGate({ children }: InitialDataGateProps) {
 
         const allCourseIds = courses.map((course) => course.id);
         const allCourseIdKey = allCourseIds.join(',');
+        const defaultCalendarRange = getDefaultCalendarRange();
         const assignmentsQueryKey = ['assignments', userId, allCourseIdKey];
         const attendanceQueryKey = ['attendance-sessions', userId, allCourseIdKey];
-        const calendarQueryKey = ['calendar-events', userId, allCourseIdKey];
+        const calendarQueryKey = [
+          'calendar-events',
+          userId,
+          allCourseIdKey,
+          `${defaultCalendarRange.timeStart}-${defaultCalendarRange.timeEnd}`,
+        ];
 
         if (allCourseIds.length === 0) {
           queryClient.setQueryData(assignmentsQueryKey, []);
@@ -132,7 +139,7 @@ export function InitialDataGate({ children }: InitialDataGateProps) {
 
         void queryClient.prefetchQuery({
           queryKey: calendarQueryKey,
-          queryFn: () => getCalendarEvents(sessionToken, allCourseIds),
+          queryFn: () => getCalendarEvents(sessionToken, allCourseIds, defaultCalendarRange),
           staleTime: STALE_TIME_MS,
         });
       } catch (error) {
