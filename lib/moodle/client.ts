@@ -3,6 +3,7 @@ import {
   AppError,
   isAuthError,
   isAuthErrorCode,
+  isMaintenanceError,
   MAINTENANCE_ERROR_CODE,
   normalizeErrorCode,
   SUNAN_MAINTENANCE_MESSAGE,
@@ -47,7 +48,12 @@ type MoodleExceptionPayload = {
 const CALENDAR_LIMIT_NUM = 50;
 const CALENDAR_LOOKBACK_SECONDS = 2 * 24 * 60 * 60;
 const CALENDAR_LOOKAHEAD_SECONDS = 30 * 24 * 60 * 60;
+const MAINTENANCE_PROBE_CACHE_MS = 30 * 1000;
 const QUIZ_TASK_ID_OFFSET = 2_000_000_000;
+
+let maintenanceProbePromise: Promise<boolean> | null = null;
+let lastMaintenanceProbeAt = 0;
+let lastMaintenanceProbeResult = false;
 
 function buildTaskId(activityType: 'assignment' | 'quiz', sourceId: number): number {
   if (activityType === 'quiz') {
@@ -84,6 +90,55 @@ function appendParam(params: URLSearchParams, key: string, value: unknown): void
   }
 
   params.append(key, String(value));
+}
+
+function isMaintenanceHtml(text: string): boolean {
+  const looksLikeHtml = /<!doctype html|<html|<head|<body/i.test(text);
+
+  return (
+    looksLikeHtml &&
+    /maintenance|maintance|under maintenance|sedang maintenance|dalam perbaikan/i.test(text)
+  );
+}
+
+async function probeSunanMaintenance(): Promise<boolean> {
+  if (CONFIG.useMockData) {
+    return false;
+  }
+
+  const now = Date.now();
+  if (now - lastMaintenanceProbeAt <= MAINTENANCE_PROBE_CACHE_MS) {
+    return lastMaintenanceProbeResult;
+  }
+
+  if (maintenanceProbePromise) {
+    return maintenanceProbePromise;
+  }
+
+  maintenanceProbePromise = (async () => {
+    try {
+      const response = await fetch(CONFIG.moodleBaseUrl, {
+        method: 'GET',
+        headers: {
+          Accept: 'text/html,application/xhtml+xml',
+        },
+      });
+      const text = await response.text();
+      const detected = isMaintenanceHtml(text);
+
+      lastMaintenanceProbeAt = Date.now();
+      lastMaintenanceProbeResult = detected;
+      return detected;
+    } catch {
+      lastMaintenanceProbeAt = Date.now();
+      lastMaintenanceProbeResult = false;
+      return false;
+    } finally {
+      maintenanceProbePromise = null;
+    }
+  })();
+
+  return maintenanceProbePromise;
 }
 
 export function getAuthenticatedMoodleFileUrl(
@@ -134,9 +189,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   } catch {
     const responseSnippet = text.trim().slice(0, 160).replace(/\s+/g, ' ');
     const looksLikeHtml = /<!doctype html|<html|<head|<body/i.test(text);
-    const looksLikeMaintenance =
-      looksLikeHtml &&
-      /maintenance|maintance|under maintenance|sedang maintenance|dalam perbaikan/i.test(text);
+    const looksLikeMaintenance = isMaintenanceHtml(text);
 
     throw new AppError({
       kind: 'server',
@@ -153,6 +206,16 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
   if (!response.ok) {
     const isAuthStatus = response.status === 401;
+
+    if (isAuthStatus && (await probeSunanMaintenance())) {
+      throw new AppError({
+        kind: 'server',
+        code: MAINTENANCE_ERROR_CODE,
+        status: response.status,
+        message: SUNAN_MAINTENANCE_MESSAGE,
+      });
+    }
+
     throw new AppError({
       kind: isAuthStatus ? 'auth' : 'server',
       status: response.status,
@@ -167,6 +230,15 @@ async function parseResponse<T>(response: Response): Promise<T> {
     const normalizedException = normalizeErrorCode(data.exception);
     const isAuthFailure =
       isAuthErrorCode(errorCode) || normalizedException === 'require_login_exception';
+
+    if (isAuthFailure && (await probeSunanMaintenance())) {
+      throw new AppError({
+        kind: 'server',
+        code: MAINTENANCE_ERROR_CODE,
+        message: SUNAN_MAINTENANCE_MESSAGE,
+        details: data.debuginfo,
+      });
+    }
 
     throw new AppError({
       kind: isAuthFailure ? 'auth' : 'server',
@@ -457,6 +529,25 @@ export async function getSiteInfo(token: string): Promise<MoodleSiteInfo> {
   }
 
   return callMoodleFunction<MoodleSiteInfo>(token, 'core_webservice_get_site_info');
+}
+
+export type SessionValidationResult = 'valid' | 'invalid' | 'maintenance' | 'unavailable';
+
+export async function validateMoodleSession(token: string): Promise<SessionValidationResult> {
+  try {
+    await getSiteInfo(token);
+    return 'valid';
+  } catch (error) {
+    if (isAuthError(error)) {
+      return 'invalid';
+    }
+
+    if (isMaintenanceError(error)) {
+      return 'maintenance';
+    }
+
+    return 'unavailable';
+  }
 }
 
 export async function getCourses(token: string, userId: number): Promise<MoodleCourse[]> {

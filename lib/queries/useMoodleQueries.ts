@@ -7,12 +7,20 @@ import {
   getCalendarEvents,
   getCourses,
   hydrateAssignmentsWithSubmissionStatus,
+  validateMoodleSession,
 } from '@/lib/moodle/client';
 import { useAttendanceHistoryStore } from '@/lib/stores/attendanceHistoryStore';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { sortAssignmentsByDeadline } from '@/lib/utils/tasks';
 
 const STALE_TIME_MS = 5 * 60 * 1000;
+const SESSION_VALIDATION_COOLDOWN_MS = 60 * 1000;
+let activeSessionValidation:
+  | {
+      signature: string;
+      promise: Promise<Awaited<ReturnType<typeof validateMoodleSession>>>;
+    }
+  | null = null;
 
 function shouldRetryQuery(failureCount: number, error: unknown): boolean {
   if (isAuthError(error)) {
@@ -26,12 +34,40 @@ function shouldRetryQuery(failureCount: number, error: unknown): boolean {
   return failureCount < 2;
 }
 
+function validateSessionForErrorSignature(token: string, signature: string) {
+  if (activeSessionValidation?.signature === signature) {
+    return activeSessionValidation.promise;
+  }
+
+  const promise = validateMoodleSession(token).finally(() => {
+    if (activeSessionValidation?.signature === signature) {
+      activeSessionValidation = null;
+    }
+  });
+
+  activeSessionValidation = {
+    signature,
+    promise,
+  };
+
+  return promise;
+}
+
 function useSessionExpiryGuard(error: unknown, isError: boolean) {
+  const token = useAuthStore((state) => state.token);
   const expireSession = useAuthStore((state) => state.expireSession);
   const lastHandledErrorRef = useRef<string>('');
+  const lastSkippedErrorRef = useRef<{ signature: string; timestamp: number } | null>(null);
 
   useEffect(() => {
-    if (!isError || !isAuthError(error)) {
+    if (!isError || !isAuthError(error) || !token) {
+      lastHandledErrorRef.current = '';
+      lastSkippedErrorRef.current = null;
+    }
+  }, [error, isError, token]);
+
+  useEffect(() => {
+    if (!isError || !isAuthError(error) || !token) {
       return;
     }
 
@@ -40,9 +76,30 @@ function useSessionExpiryGuard(error: unknown, isError: boolean) {
       return;
     }
 
-    lastHandledErrorRef.current = signature;
-    expireSession();
-  }, [error, expireSession, isError]);
+    const skipped = lastSkippedErrorRef.current;
+    const now = Date.now();
+    if (
+      skipped?.signature === signature &&
+      now - skipped.timestamp < SESSION_VALIDATION_COOLDOWN_MS
+    ) {
+      return;
+    }
+
+    void (async () => {
+      const validation = await validateSessionForErrorSignature(token, signature);
+
+      if (validation === 'invalid') {
+        lastHandledErrorRef.current = signature;
+        await expireSession();
+        return;
+      }
+
+      lastSkippedErrorRef.current = {
+        signature,
+        timestamp: Date.now(),
+      };
+    })();
+  }, [error, expireSession, isError, token]);
 }
 
 export function applyCourseScope(allCourseIds: number[], monitoredCourseIds: number[]): number[] {
