@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { sendImmediateAttendanceNotification } from '@/lib/notifications';
 import { useAttendanceSessionsQuery } from '@/lib/queries/useMoodleQueries';
+import { useNotificationDedupeStore } from '@/lib/stores/notificationDedupeStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 
 /**
@@ -12,17 +13,20 @@ import { useSettingsStore } from '@/lib/stores/settingsStore';
  *                          in the upcoming view). Deduplicates once per calendar day so
  *                          the notification fires whenever the user opens the app while
  *                          a session is open, but not more than once per day per session.
- *  • attendance_closing  — an open session has ≤ 30 min left. Sends once per countdown
- *                          window so it doesn't fire again if the user re-opens the app.
+ *  • attendance_closing  — an open session has ≤ 30 min left. Sends once per window
+ *                          and persists that dedupe across app restarts.
  */
 export function AttendanceNotificationSync() {
   const notifyAttendance = useSettingsStore((state) => state.notifications.notifyAttendance);
   const monitoredCourseIds = useSettingsStore((state) => state.monitoredCourseIds);
   const attendanceQuery = useAttendanceSessionsQuery();
-  const notifiedSetRef = useRef(new Set<string>());
+  const dedupeHydrated = useNotificationDedupeStore((state) => state.hydrated);
+  const hasKey = useNotificationDedupeStore((state) => state.hasKey);
+  const markKey = useNotificationDedupeStore((state) => state.markKey);
+  const pruneOlderThan = useNotificationDedupeStore((state) => state.pruneOlderThan);
 
   useEffect(() => {
-    if (!notifyAttendance) {
+    if (!notifyAttendance || !dedupeHydrated) {
       return;
     }
 
@@ -31,6 +35,8 @@ export function AttendanceNotificationSync() {
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
       now.getDate()
     ).padStart(2, '0')}`;
+    const retentionCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    pruneOlderThan(retentionCutoff);
     // Use local date string (YYYY-MM-DD) as part of the dedup key so the same
     // session can re-notify once on each calendar day (e.g., app opened next morning
     // while attendance is still open).
@@ -50,8 +56,8 @@ export function AttendanceNotificationSync() {
       // upcoming view only surfaces unfinished events). Deduplicate once per day.
       if (attendance.status === 'open' || attendance.status === 'available') {
         const key = `open-${attendance.eventId}-${today}`;
-        if (!notifiedSetRef.current.has(key)) {
-          notifiedSetRef.current.add(key);
+        if (!hasKey(key)) {
+          markKey(key);
           sendImmediateAttendanceNotification({
             title: 'Absensi Dibuka',
             body: `${attendance.title} (${attendance.courseName}) sedang dibuka. Segera isi absensi sekarang!`,
@@ -74,9 +80,9 @@ export function AttendanceNotificationSync() {
           continue;
         }
 
-        const key = `closing-${attendance.eventId}`;
-        if (!notifiedSetRef.current.has(key)) {
-          notifiedSetRef.current.add(key);
+        const key = `closing-${attendance.eventId}-${attendance.closesAt}`;
+        if (!hasKey(key)) {
+          markKey(key);
           sendImmediateAttendanceNotification({
             title: 'Absensi Segera Ditutup!',
             body: `${attendance.title} (${attendance.courseName}) akan ditutup dalam ${Math.ceil(secondsLeft / 60)} menit. Segera isi sebelum terlambat!`,
@@ -86,7 +92,7 @@ export function AttendanceNotificationSync() {
         }
       }
     }
-  }, [attendanceQuery.data, monitoredCourseIds, notifyAttendance]);
+  }, [attendanceQuery.data, dedupeHydrated, hasKey, markKey, monitoredCourseIds, notifyAttendance, pruneOlderThan]);
 
   return null;
 }

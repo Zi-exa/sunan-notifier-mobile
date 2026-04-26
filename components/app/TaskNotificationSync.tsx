@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { sendImmediateTaskNotification } from '@/lib/notifications';
 import { useAssignmentsQuery } from '@/lib/queries/useMoodleQueries';
+import { useNotificationDedupeStore } from '@/lib/stores/notificationDedupeStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 
 /**
@@ -10,23 +11,29 @@ import { useSettingsStore } from '@/lib/stores/settingsStore';
  *  • task_open   — a task's openDate has just passed (within 1 h) and the task is not yet submitted.
  *  • task_closing — a task's dueDate is ≤ 30 min away and the task is not yet submitted.
  *
- * Deduplicates via a per-session Set so the same notification is never sent twice
- * within a single app lifecycle.
+ * Deduplicates via a persisted local key store so the same notification is not
+ * re-fired just because the app is force-closed and reopened in the same window.
  */
 export function TaskNotificationSync() {
   const notifyTaskOpen = useSettingsStore((state) => state.notifications.notifyTaskOpen);
   const monitoredCourseIds = useSettingsStore((state) => state.monitoredCourseIds);
   const assignmentsQuery = useAssignmentsQuery();
-  const notifiedSetRef = useRef(new Set<string>());
+  const dedupeHydrated = useNotificationDedupeStore((state) => state.hydrated);
+  const hasKey = useNotificationDedupeStore((state) => state.hasKey);
+  const markKey = useNotificationDedupeStore((state) => state.markKey);
+  const pruneOlderThan = useNotificationDedupeStore((state) => state.pruneOlderThan);
 
   useEffect(() => {
-    if (!notifyTaskOpen) {
+    if (!notifyTaskOpen || !dedupeHydrated) {
       return;
     }
 
     const nowUnix = Math.floor(Date.now() / 1000);
     const OPEN_WINDOW_SECONDS = 60 * 60; // 1 hour
     const CLOSING_SOON_SECONDS = 30 * 60; // 30 minutes
+    const retentionCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+    pruneOlderThan(retentionCutoff);
 
     for (const task of assignmentsQuery.data ?? []) {
       const withinMonitoredScope =
@@ -52,9 +59,9 @@ export function TaskNotificationSync() {
       if (task.openDate && task.openDate > 0) {
         const secondsSinceOpen = nowUnix - task.openDate;
         if (secondsSinceOpen >= 0 && secondsSinceOpen <= OPEN_WINDOW_SECONDS) {
-          const key = `open-${task.id}`;
-          if (!notifiedSetRef.current.has(key)) {
-            notifiedSetRef.current.add(key);
+          const key = `task-open-${task.id}-${task.openDate}`;
+          if (!hasKey(key)) {
+            markKey(key);
             sendImmediateTaskNotification({
               title: 'Tugas/Quiz Sudah Dibuka',
               body: `${task.name} (${task.courseName}) sudah bisa dikerjakan. Segera kerjakan!`,
@@ -70,9 +77,9 @@ export function TaskNotificationSync() {
       if (task.dueDate > 0) {
         const secondsLeft = task.dueDate - nowUnix;
         if (secondsLeft > 0 && secondsLeft <= CLOSING_SOON_SECONDS) {
-          const key = `closing-${task.id}`;
-          if (!notifiedSetRef.current.has(key)) {
-            notifiedSetRef.current.add(key);
+          const key = `task-closing-${task.id}-${task.dueDate}`;
+          if (!hasKey(key)) {
+            markKey(key);
             const minutesLeft = Math.ceil(secondsLeft / 60);
             sendImmediateTaskNotification({
               title: 'Tugas/Quiz Segera Ditutup',
@@ -84,7 +91,7 @@ export function TaskNotificationSync() {
         }
       }
     }
-  }, [assignmentsQuery.data, monitoredCourseIds, notifyTaskOpen]);
+  }, [assignmentsQuery.data, dedupeHydrated, hasKey, markKey, monitoredCourseIds, notifyTaskOpen, pruneOlderThan]);
 
   return null;
 }
