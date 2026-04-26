@@ -7,7 +7,9 @@ import {
   getCalendarEvents,
   getCourses,
   hydrateAssignmentsWithSubmissionStatus,
+  validateMoodleSession,
 } from '@/lib/moodle/client';
+import { isAuthError } from '@/lib/moodle/errors';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useTabsBootStore } from '@/lib/stores/tabsBootStore';
 import { sortAssignmentsByDeadline } from '@/lib/utils/tasks';
@@ -51,6 +53,7 @@ export function InitialDataGate({ children }: InitialDataGateProps) {
   const queryClient = useQueryClient();
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
+  const expireSession = useAuthStore((state) => state.expireSession);
   const setTabsBootStatus = useTabsBootStore((state) => state.setStatus);
   const [bootStatus, setBootStatus] = useState<BootStatus>('loading');
   const preloadKey = useMemo(() => `${user?.id ?? 'anon'}`, [user?.id]);
@@ -132,10 +135,20 @@ export function InitialDataGate({ children }: InitialDataGateProps) {
           queryFn: () => getCalendarEvents(sessionToken, allCourseIds),
           staleTime: STALE_TIME_MS,
         });
-      } catch {
-        if (!cancelled) {
-          setBootStatus('failed');
+      } catch (error) {
+        if (cancelled) {
+          return;
         }
+
+        if (isAuthError(error)) {
+          const validation = await validateMoodleSession(sessionToken);
+          if (validation === 'invalid') {
+            await expireSession();
+            return;
+          }
+        }
+
+        setBootStatus('failed');
       }
     }
 
@@ -144,7 +157,7 @@ export function InitialDataGate({ children }: InitialDataGateProps) {
     return () => {
       cancelled = true;
     };
-  }, [queryClient, token, user?.id]);
+  }, [expireSession, queryClient, token, user?.id]);
 
   if (bootStatus === 'loading') {
     return <AppSplashScreen text="SUNAN Notifier" subtext={subtext} />;

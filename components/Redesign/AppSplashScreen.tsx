@@ -19,8 +19,11 @@ export function AppSplashScreen({ text = 'SUNAN Notifier', subtext = 'Menyiapkan
   const dot3 = useRef(new Animated.Value(0.3)).current;
   // Animasi teks
   const textOpacity = useRef(new Animated.Value(0)).current;
+  const dotsCancelledRef = useRef(false);
 
   useEffect(() => {
+    dotsCancelledRef.current = false;
+
     // Logo muncul
     Animated.parallel([
       Animated.spring(logoScale, {
@@ -44,6 +47,10 @@ export function AppSplashScreen({ text = 'SUNAN Notifier', subtext = 'Menyiapkan
 
     // Animasi dots berulang
     const animateDots = () => {
+      if (dotsCancelledRef.current) {
+        return;
+      }
+
       Animated.sequence([
         Animated.timing(dot1, { toValue: 1, duration: 300, useNativeDriver: true }),
         Animated.timing(dot2, { toValue: 1, duration: 300, useNativeDriver: true }),
@@ -54,11 +61,24 @@ export function AppSplashScreen({ text = 'SUNAN Notifier', subtext = 'Menyiapkan
           Animated.timing(dot2, { toValue: 0.3, duration: 300, useNativeDriver: true }),
           Animated.timing(dot3, { toValue: 0.3, duration: 300, useNativeDriver: true }),
         ]),
-      ]).start(() => animateDots());
+      ]).start(({ finished }) => {
+        if (finished && !dotsCancelledRef.current) {
+          animateDots();
+        }
+      });
     };
 
     const dotsTimer = setTimeout(animateDots, 600);
-    return () => clearTimeout(dotsTimer);
+    return () => {
+      dotsCancelledRef.current = true;
+      clearTimeout(dotsTimer);
+      logoScale.stopAnimation();
+      logoOpacity.stopAnimation();
+      textOpacity.stopAnimation();
+      dot1.stopAnimation();
+      dot2.stopAnimation();
+      dot3.stopAnimation();
+    };
   }, [dot1, dot2, dot3, logoOpacity, logoScale, textOpacity]);
 
   return (

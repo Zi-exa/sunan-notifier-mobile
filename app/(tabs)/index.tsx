@@ -58,21 +58,40 @@ export default function DashboardScreen() {
   const submittedCount = assignmentsReady ? assignments.filter((item) => item.status === 'submitted').length : '...';
   const displayName = user?.fullname?.trim()?.split(/\s+/)[0] ?? 'Mahasiswa';
   const contentBottomPadding = getDockContentPadding(insets.bottom);
+  const dashboardError = coursesQuery.error ?? assignmentsQuery.error ?? attendanceQuery.error;
 
   if (coursesQuery.isLoading || assignmentsQuery.isLoading || attendanceQuery.isLoading) {
     return <LoadingView text="Memuat dashboard SUNAN..." />;
   }
 
   if (coursesQuery.isError || assignmentsQuery.isError || attendanceQuery.isError) {
-    const dashboardError = coursesQuery.error ?? assignmentsQuery.error ?? attendanceQuery.error;
     return (
-      <View style={[styles.errorContainer, { backgroundColor: colors.bgBase }]}>
+      <ScrollView
+        style={[styles.screen, { backgroundColor: colors.bgBase }]}
+        contentContainerStyle={[styles.errorContainer, { paddingBottom: contentBottomPadding }]}
+        scrollIndicatorInsets={{ bottom: contentBottomPadding }}
+        refreshControl={
+          <RefreshControl
+            refreshing={
+              coursesQuery.isRefetching ||
+              assignmentsQuery.isRefetching ||
+              attendanceQuery.isRefetching
+            }
+            onRefresh={() => {
+              coursesQuery.refetch();
+              assignmentsQuery.refetch();
+              attendanceQuery.refetch();
+            }}
+            tintColor={colors.accent}
+          />
+        }
+      >
         <EmptyState
           title="Gagal memuat dashboard"
           description={getReadableErrorMessage(dashboardError, 'dashboard')}
           icon="warning"
         />
-      </View>
+      </ScrollView>
     );
   }
 

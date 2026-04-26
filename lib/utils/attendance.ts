@@ -18,6 +18,14 @@ type AttendanceWindow = {
   closesAt?: number;
 };
 
+function toLocalDateKey(unixSeconds: number): string {
+  const date = new Date(unixSeconds * 1000);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function normalizeText(value: string | undefined): string {
   return (value ?? '').trim().toLowerCase();
 }
@@ -129,7 +137,7 @@ export function resolveAttendanceStatus(
   const closesAt = event.timeduration > 0 ? startsAt + event.timeduration : undefined;
 
   if (startsAt && !closesAt && nowUnixSeconds >= startsAt) {
-    return 'available';
+    return toLocalDateKey(nowUnixSeconds) === toLocalDateKey(startsAt) ? 'available' : 'closed';
   }
 
   return resolveAttendanceWindowStatus({ startsAt, closesAt }, nowUnixSeconds, closingSoonMinutes);

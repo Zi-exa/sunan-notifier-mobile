@@ -7,7 +7,7 @@ import { Radius } from '@/components/Redesign/theme';
 import { FloatingFilterMenu, FloatingFilterOption } from '@/components/app/FloatingFilterMenu';
 import { getFloatingFilterContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
-import { useAssignmentsQuery } from '@/lib/queries/useMoodleQueries';
+import { useAssignmentsQuery, useCoursesQuery } from '@/lib/queries/useMoodleQueries';
 import { AssignmentStatus } from '@/types/moodle';
 import { areAssignmentStatusesResolved } from '@/lib/utils/tasks';
 
@@ -25,6 +25,7 @@ export default function TasksScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<FilterKey>('all');
+  const coursesQuery = useCoursesQuery();
   const assignmentsQuery = useAssignmentsQuery();
   const assignmentsReady = areAssignmentStatusesResolved(assignmentsQuery.data ?? []);
   const contentBottomPadding = getFloatingFilterContentPadding(insets.bottom);
@@ -61,7 +62,7 @@ export default function TasksScreen() {
         }
       >
         <View style={styles.taskList}>
-          {assignmentsQuery.isLoading ? (
+          {coursesQuery.isLoading || assignmentsQuery.isLoading ? (
             <View style={[styles.stateCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
               <ActivityIndicator size="large" color={colors.accent} />
               <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Memuat daftar tugas...</Text>
@@ -69,6 +70,12 @@ export default function TasksScreen() {
                 Menyiapkan data tugas dari SUNAN.
               </Text>
             </View>
+          ) : coursesQuery.isError ? (
+            <EmptyState
+              title="Daftar tugas belum tersedia"
+              description={getReadableErrorMessage(coursesQuery.error, 'tasks')}
+              icon="warning"
+            />
           ) : !assignmentsReady ? (
             <View style={[styles.stateCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
               <ActivityIndicator size="large" color={colors.accent} />

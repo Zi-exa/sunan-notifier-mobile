@@ -1,12 +1,13 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AttendanceCard, EmptyState, LoadingView, useTheme } from '@/components/Redesign';
+import { AttendanceCard, EmptyState, useTheme } from '@/components/Redesign';
+import { Radius } from '@/components/Redesign/theme';
 import { FloatingFilterMenu, FloatingFilterOption } from '@/components/app/FloatingFilterMenu';
 import { getFloatingFilterContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
-import { useAttendanceSessionsQuery } from '@/lib/queries/useMoodleQueries';
+import { useAttendanceSessionsQuery, useCoursesQuery } from '@/lib/queries/useMoodleQueries';
 import { AttendanceStatus } from '@/types/moodle';
 
 type FilterKey = 'all' | AttendanceStatus;
@@ -39,6 +40,7 @@ export default function AttendanceScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ filter?: string | string[]; eventId?: string | string[] }>();
   const [filter, setFilter] = useState<FilterKey>(() => normalizeFilterParam(params.filter));
+  const coursesQuery = useCoursesQuery();
   const attendanceQuery = useAttendanceSessionsQuery();
   const targetEventId = useMemo(() => parseEventIdParam(params.eventId), [params.eventId]);
   const contentBottomPadding = getFloatingFilterContentPadding(insets.bottom);
@@ -71,24 +73,6 @@ export default function AttendanceScreen() {
       ? 'Riwayat menampilkan sesi absensi yang pernah terdeteksi di aplikasi lalu sudah lewat waktunya.'
       : 'Belum ada sesi absensi untuk filter yang dipilih.';
 
-  if (attendanceQuery.isLoading) {
-    return <LoadingView text="Memuat absensi SUNAN..." />;
-  }
-
-  if (attendanceQuery.isError) {
-    return (
-      <View style={styles.screen}>
-        <View style={styles.content}>
-          <EmptyState
-            title="Absensi belum tersedia"
-            description={getReadableErrorMessage(attendanceQuery.error, 'attendance')}
-            icon="warning"
-          />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
       <ScrollView
@@ -103,7 +87,27 @@ export default function AttendanceScreen() {
         }
       >
         <View style={styles.list}>
-          {visibleSessions.length === 0 ? (
+          {coursesQuery.isLoading || attendanceQuery.isLoading ? (
+            <View style={[styles.stateCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+              <ActivityIndicator size="large" color={colors.accent} />
+              <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Memuat absensi SUNAN...</Text>
+              <Text style={[styles.stateDescription, { color: colors.textSecondary }]}>
+                Menyiapkan sesi absensi dari SUNAN.
+              </Text>
+            </View>
+          ) : coursesQuery.isError ? (
+            <EmptyState
+              title="Absensi belum tersedia"
+              description={getReadableErrorMessage(coursesQuery.error, 'attendance')}
+              icon="warning"
+            />
+          ) : attendanceQuery.isError ? (
+            <EmptyState
+              title="Absensi belum tersedia"
+              description={getReadableErrorMessage(attendanceQuery.error, 'attendance')}
+              icon="warning"
+            />
+          ) : visibleSessions.length === 0 ? (
             <EmptyState
               title={emptyStateTitle}
               description={emptyStateDescription}
@@ -140,5 +144,24 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 10,
+  },
+  stateCard: {
+    minHeight: 260,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 24,
+  },
+  stateTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  stateDescription: {
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });

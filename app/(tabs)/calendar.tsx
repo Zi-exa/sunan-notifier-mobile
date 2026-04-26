@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react';
+import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AttendanceCard, EmptyState, LoadingView, SectionCard, TaskCard, useTheme, Radius } from '@/components/Redesign';
+import { AttendanceCard, EmptyState, SectionCard, TaskCard, useTheme, Radius } from '@/components/Redesign';
 import { getDockContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import {
   useAssignmentsQuery,
   useAttendanceSessionsQuery,
   useCalendarEventsQuery,
+  useCoursesQuery,
 } from '@/lib/queries/useMoodleQueries';
 import { isSameDate, toDateKey } from '@/lib/utils/date';
 
@@ -27,6 +29,7 @@ export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const today = toDateKey(Math.floor(Date.now() / 1000));
   const [selectedDate, setSelectedDate] = useState(today);
+  const coursesQuery = useCoursesQuery();
   const assignmentsQuery = useAssignmentsQuery();
   const calendarQuery = useCalendarEventsQuery();
   const attendanceQuery = useAttendanceSessionsQuery();
@@ -83,24 +86,17 @@ export default function CalendarScreen() {
     [calendarQuery.data, selectedDate]
   );
 
-  const isLoading = assignmentsQuery.isLoading || calendarQuery.isLoading || attendanceQuery.isLoading;
-  const isError = assignmentsQuery.isError || calendarQuery.isError || attendanceQuery.isError;
+  const isLoading =
+    coursesQuery.isLoading ||
+    assignmentsQuery.isLoading ||
+    calendarQuery.isLoading ||
+    attendanceQuery.isLoading;
+  const isError =
+    coursesQuery.isError ||
+    assignmentsQuery.isError ||
+    calendarQuery.isError ||
+    attendanceQuery.isError;
   const contentBottomPadding = getDockContentPadding(insets.bottom);
-
-  if (isLoading) {
-    return <LoadingView text="Menyusun kalender deadline..." />;
-  }
-
-  if (isError) {
-    const err = assignmentsQuery.error ?? calendarQuery.error ?? attendanceQuery.error;
-    return (
-      <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
-        <View style={styles.content}>
-          <EmptyState title="Kalender belum tersedia" description={getReadableErrorMessage(err, 'calendar')} icon="warning" />
-        </View>
-      </View>
-    );
-  }
 
   return (
     <ScrollView
@@ -162,17 +158,40 @@ export default function CalendarScreen() {
 
       <SectionCard title="Deadline" icon="graduation-cap" subtitle={selectedDate}>
         <View style={styles.sectionList}>
-          {dueTasksOnDate.length === 0 ? (
+          {isLoading ? (
+            <View style={[styles.stateCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+              <ActivityIndicator size="large" color={colors.accent} />
+              <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Menyusun kalender deadline...</Text>
+              <Text style={[styles.stateDescription, { color: colors.textSecondary }]}>
+                Menyiapkan tugas, absensi, dan event kalender.
+              </Text>
+            </View>
+          ) : isError ? (
+            <EmptyState
+              title="Kalender belum tersedia"
+              description={getReadableErrorMessage(
+                coursesQuery.error ?? assignmentsQuery.error ?? calendarQuery.error ?? attendanceQuery.error,
+                'calendar'
+              )}
+              icon="warning"
+            />
+          ) : dueTasksOnDate.length === 0 ? (
             <EmptyState title="Tidak ada deadline" description="Belum ada tugas dengan deadline pada tanggal ini." icon="check-circle-o" />
           ) : (
-            dueTasksOnDate.map((task) => <TaskCard key={task.id} task={task} />)
+            dueTasksOnDate.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onPress={(selectedTask) => router.push(`/task/${selectedTask.id}`)}
+              />
+            ))
           )}
         </View>
       </SectionCard>
 
       <SectionCard title="Absensi" icon="check-square-o" subtitle={selectedDate}>
         <View style={styles.sectionList}>
-          {attendanceOnDate.length === 0 ? (
+          {isLoading || isError ? null : attendanceOnDate.length === 0 ? (
             <EmptyState title="Tidak ada absensi" description="Tidak ada sesi absensi pada tanggal ini." icon="check-square-o" />
           ) : (
             attendanceOnDate.map((session) => (
@@ -219,6 +238,9 @@ const styles = StyleSheet.create({
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendText: { fontSize: 11, fontWeight: '600' },
   sectionList: { gap: 10 },
+  stateCard: { minHeight: 220, borderRadius: Radius.md, borderWidth: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingHorizontal: 24 },
+  stateTitle: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  stateDescription: { fontSize: 13, lineHeight: 20, textAlign: 'center' },
   eventItem: { borderRadius: Radius.md, borderWidth: 1, padding: 12, gap: 4 },
   eventTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   eventTitle: { fontSize: 14, fontWeight: '700' },

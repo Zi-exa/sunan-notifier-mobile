@@ -19,6 +19,7 @@ import { TabsHeaderTitle } from '@/components/app/TabsHeaderTitle';
 
 import {
   attachNotificationNavigationListener,
+  getLastNotificationNavigationPayloadAsync,
   registerForPushNotificationsAsync,
 } from '@/lib/notifications';
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -48,6 +49,10 @@ function AppBootstrap() {
   const resetTabsBootStatus = useTabsBootStore((state) => state.reset);
   const unauthClearedRef = useRef(false);
   const previousUserIdRef = useRef<number | null>(null);
+  const pendingNotificationPayloadRef = useRef<Awaited<
+    ReturnType<typeof getLastNotificationNavigationPayloadAsync>
+  > | null>(null);
+  const handledNotificationKeysRef = useRef(new Set<string>());
 
   useEffect(() => {
     hydrateSession();
@@ -88,7 +93,27 @@ function AppBootstrap() {
   }, [queryClient, status, user?.id]);
 
   useEffect(() => {
-    const unsubscribe = attachNotificationNavigationListener((payload) => {
+    const buildPayloadKey = (
+      payload: NonNullable<Awaited<ReturnType<typeof getLastNotificationNavigationPayloadAsync>>>
+    ) =>
+      `${payload.kind ?? 'unknown'}:${payload.taskId ?? 'na'}:${payload.attendanceEventId ?? 'na'}`;
+
+    const routeFromNotification = (
+      payload: NonNullable<Awaited<ReturnType<typeof getLastNotificationNavigationPayloadAsync>>>
+    ) => {
+      const key = buildPayloadKey(payload);
+      if (handledNotificationKeysRef.current.has(key)) {
+        return;
+      }
+
+      if (status !== 'authenticated') {
+        pendingNotificationPayloadRef.current = payload;
+        router.replace('/login');
+        return;
+      }
+
+      handledNotificationKeysRef.current.add(key);
+
       if (
         payload.kind === 'attendance_open' ||
         payload.kind === 'attendance_closing' ||
@@ -111,10 +136,58 @@ function AppBootstrap() {
       if (typeof payload.taskId === 'number') {
         router.push(`/task/${payload.taskId}`);
       }
-    });
+    };
 
-    return unsubscribe;
-  }, [router]);
+    const unsubscribe = attachNotificationNavigationListener(routeFromNotification);
+
+    let cancelled = false;
+
+    if (hydrated && status !== 'loading') {
+      void (async () => {
+        const payload = await getLastNotificationNavigationPayloadAsync();
+        if (!cancelled && payload) {
+          routeFromNotification(payload);
+        }
+      })();
+    }
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [hydrated, router, status]);
+
+  useEffect(() => {
+    if (status !== 'authenticated' || !pendingNotificationPayloadRef.current) {
+      return;
+    }
+
+    const payload = pendingNotificationPayloadRef.current;
+    pendingNotificationPayloadRef.current = null;
+
+    if (
+      payload.kind === 'attendance_open' ||
+      payload.kind === 'attendance_closing' ||
+      typeof payload.attendanceEventId === 'number'
+    ) {
+      const filter = payload.kind === 'attendance_closing' ? 'closing_soon' : 'open';
+
+      router.push({
+        pathname: '/(tabs)/attendance',
+        params: {
+          filter,
+          ...(typeof payload.attendanceEventId === 'number'
+            ? { eventId: String(payload.attendanceEventId) }
+            : {}),
+        },
+      });
+      return;
+    }
+
+    if (typeof payload.taskId === 'number') {
+      router.push(`/task/${payload.taskId}`);
+    }
+  }, [router, status]);
 
   useEffect(() => {
     let isMounted = true;

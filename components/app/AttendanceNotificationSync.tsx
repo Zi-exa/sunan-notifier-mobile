@@ -27,10 +27,13 @@ export function AttendanceNotificationSync() {
     }
 
     const nowUnix = Math.floor(Date.now() / 1000);
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+      now.getDate()
+    ).padStart(2, '0')}`;
     // Use local date string (YYYY-MM-DD) as part of the dedup key so the same
     // session can re-notify once on each calendar day (e.g., app opened next morning
     // while attendance is still open).
-    const today = new Date().toISOString().slice(0, 10);
 
     for (const attendance of attendanceQuery.data ?? []) {
       const withinMonitoredScope =

@@ -38,6 +38,10 @@ export function TaskNotificationSync() {
         continue;
       }
 
+      if (task.statusResolved === false) {
+        continue;
+      }
+
       // Skip already-submitted tasks — no action needed.
       if (task.status === 'submitted') {
         continue;

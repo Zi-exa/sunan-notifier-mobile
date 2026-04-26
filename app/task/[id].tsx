@@ -1,11 +1,13 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, useTheme, Radius, Shadow } from '@/components/Redesign';
+import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { useAssignmentsQuery } from '@/lib/queries/useMoodleQueries';
+import { useAuthStore } from '@/lib/stores/authStore';
 import { formatDateTime } from '@/lib/utils/date';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -18,8 +20,11 @@ const STATUS_LABEL: Record<string, string> = {
 export default function TaskDetailScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
+  const authHydrated = useAuthStore((state) => state.hydrated);
+  const authStatus = useAuthStore((state) => state.status);
   const assignmentsQuery = useAssignmentsQuery();
 
   const STATUS_COLOR: Record<string, string> = {
@@ -35,7 +40,13 @@ export default function TaskDetailScreen() {
     return (assignmentsQuery.data ?? []).find((item) => item.id === taskId) ?? null;
   }, [assignmentsQuery.data, params.id]);
 
-  const cardMaxHeight = Math.max(420, 760 - insets.top - insets.bottom);
+  const cardMaxHeight = Math.max(420, windowHeight - insets.top - insets.bottom - 48);
+
+  useEffect(() => {
+    if (authHydrated && authStatus !== 'authenticated') {
+      router.replace('/login');
+    }
+  }, [authHydrated, authStatus, router]);
 
   const renderBody = () => {
     if (assignmentsQuery.isLoading) {
@@ -46,6 +57,28 @@ export default function TaskDetailScreen() {
           <Text style={[styles.stateText, { color: colors.textSecondary }]}>
             Menyiapkan data tugas dari SUNAN.
           </Text>
+        </View>
+      );
+    }
+
+    if (assignmentsQuery.isError) {
+      return (
+        <View style={styles.stateWrap}>
+          <EmptyState
+            title="Detail tugas belum tersedia"
+            description={getReadableErrorMessage(assignmentsQuery.error, 'tasks')}
+            icon="warning"
+          />
+          <Pressable
+            style={({ pressed }) => [
+              styles.retryButton,
+              { backgroundColor: colors.accent },
+              pressed && { opacity: 0.82 },
+            ]}
+            onPress={() => assignmentsQuery.refetch()}
+          >
+            <Text style={styles.retryButtonText}>Coba Lagi</Text>
+          </Pressable>
         </View>
       );
     }
@@ -141,6 +174,10 @@ export default function TaskDetailScreen() {
       </ScrollView>
     );
   };
+
+  if (!authHydrated || authStatus === 'loading' || authStatus !== 'authenticated') {
+    return null;
+  }
 
   return (
     <View style={styles.overlayRoot}>
@@ -268,6 +305,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  retryButton: {
+    borderRadius: Radius.md,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   headerCard: { borderRadius: Radius.lg, borderWidth: 1, overflow: 'hidden', ...Shadow.card },
   accentBar: { height: 4, width: '100%' },

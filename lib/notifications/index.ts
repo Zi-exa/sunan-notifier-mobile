@@ -46,7 +46,7 @@ function ensureNotificationHandlerConfigured(): NotificationsModule {
   return Notifications;
 }
 
-type TaskNotificationData = {
+export type NotificationNavigationPayload = {
   taskId?: number;
   attendanceEventId?: number;
   kind?: NotificationKind;
@@ -67,7 +67,7 @@ function parseNumericField(value: unknown): number | undefined {
   return undefined;
 }
 
-function parseNotificationData(data: unknown): TaskNotificationData {
+function parseNotificationData(data: unknown): NotificationNavigationPayload {
   if (!data || typeof data !== 'object') {
     return {};
   }
@@ -77,7 +77,7 @@ function parseNotificationData(data: unknown): TaskNotificationData {
 
   return {
     taskId: parseNumericField(payload.taskId),
-    attendanceEventId: parseNumericField(payload.attendanceEventId),
+    attendanceEventId: parseNumericField(payload.attendanceEventId ?? payload.eventId),
     kind,
   };
 }
@@ -246,7 +246,7 @@ export async function scheduleTaskLocalNotification(
       data: {
         taskId: task.id,
         kind,
-      } satisfies TaskNotificationData,
+      } satisfies NotificationNavigationPayload,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -256,7 +256,7 @@ export async function scheduleTaskLocalNotification(
 }
 
 export function attachNotificationNavigationListener(
-  onNotificationOpen: (payload: TaskNotificationData) => void
+  onNotificationOpen: (payload: NotificationNavigationPayload) => void
 ): () => void {
   const Notifications = ensureNotificationHandlerConfigured();
   const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
@@ -276,6 +276,31 @@ export function attachNotificationNavigationListener(
   return () => {
     responseSubscription.remove();
   };
+}
+
+export async function getLastNotificationNavigationPayloadAsync(): Promise<NotificationNavigationPayload | null> {
+  const Notifications = ensureNotificationHandlerConfigured();
+  const response = await Notifications.getLastNotificationResponseAsync();
+
+  if (!response) {
+    return null;
+  }
+
+  const payload = parseNotificationData(response.notification.request.content.data);
+
+  if (
+    payload.taskId === undefined &&
+    payload.attendanceEventId === undefined &&
+    payload.kind === undefined
+  ) {
+    return null;
+  }
+
+  if (typeof Notifications.clearLastNotificationResponseAsync === 'function') {
+    await Notifications.clearLastNotificationResponseAsync();
+  }
+
+  return payload;
 }
 
 export async function setAppBadgeCount(count: number): Promise<void> {
@@ -308,7 +333,7 @@ export async function sendImmediateAttendanceNotification(params: {
         data: {
           kind: params.kind,
           attendanceEventId: params.eventId,
-        },
+        } satisfies NotificationNavigationPayload,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -336,7 +361,7 @@ export async function sendImmediateTaskNotification(params: {
         data: {
           taskId: params.taskId,
           kind: params.kind,
-        } satisfies TaskNotificationData,
+        } satisfies NotificationNavigationPayload,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
