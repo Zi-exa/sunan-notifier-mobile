@@ -9,6 +9,7 @@ import {
   hydrateAssignmentsWithSubmissionStatus,
 } from '@/lib/moodle/client';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useTabsBootStore } from '@/lib/stores/tabsBootStore';
 import { sortAssignmentsByDeadline } from '@/lib/utils/tasks';
 
 const STALE_TIME_MS = 5 * 60 * 1000;
@@ -50,9 +51,14 @@ export function InitialDataGate({ children }: InitialDataGateProps) {
   const queryClient = useQueryClient();
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
+  const setTabsBootStatus = useTabsBootStore((state) => state.setStatus);
   const [bootStatus, setBootStatus] = useState<BootStatus>('loading');
   const preloadKey = useMemo(() => `${user?.id ?? 'anon'}`, [user?.id]);
   const subtext = useLoadingStep(bootStatus === 'loading', preloadKey);
+
+  useEffect(() => {
+    setTabsBootStatus(bootStatus);
+  }, [bootStatus, setTabsBootStatus]);
 
   useEffect(() => {
     if (!token || !user?.id) {

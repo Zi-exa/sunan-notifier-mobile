@@ -23,6 +23,7 @@ import {
 } from '@/lib/notifications';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
+import { useTabsBootStore } from '@/lib/stores/tabsBootStore';
 import { upsertDevicePushToken } from '@/lib/supabase/repositories';
 
 export {
@@ -44,12 +45,17 @@ function AppBootstrap() {
   const status = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
   const hydrateSession = useAuthStore((state) => state.hydrateSession);
+  const resetTabsBootStatus = useTabsBootStore((state) => state.reset);
   const unauthClearedRef = useRef(false);
   const previousUserIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     hydrateSession();
   }, [hydrateSession]);
+
+  useEffect(() => {
+    resetTabsBootStatus();
+  }, [resetTabsBootStatus, status, user?.id]);
 
   useEffect(() => {
     if (hydrated && status !== 'loading') {
@@ -190,6 +196,7 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const { mode, colors } = useTheme();
+  const tabsBootStatus = useTabsBootStore((state) => state.status);
   const navigationTheme = useMemo<NavigationTheme>(() => {
     const baseTheme = mode === 'dark' ? DarkTheme : DefaultTheme;
 
@@ -224,7 +231,7 @@ function RootLayoutNav() {
         <Stack.Screen
           name="(tabs)"
           options={{
-            headerShown: true,
+            headerShown: tabsBootStatus !== 'loading',
             contentStyle: { backgroundColor: colors.bgBase },
             freezeOnBlur: false,
             headerStyle: { backgroundColor: colors.bgSurface },
