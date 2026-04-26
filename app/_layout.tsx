@@ -25,7 +25,7 @@ import {
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 import { useTabsBootStore } from '@/lib/stores/tabsBootStore';
-import { upsertDevicePushToken } from '@/lib/supabase/repositories';
+import { loadUserSettings, upsertDevicePushToken } from '@/lib/supabase/repositories';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -47,8 +47,10 @@ function AppBootstrap() {
   const user = useAuthStore((state) => state.user);
   const hydrateSession = useAuthStore((state) => state.hydrateSession);
   const resetTabsBootStatus = useTabsBootStore((state) => state.reset);
+  const applyRemoteSettings = useSettingsStore((state) => state.applyRemoteSettings);
   const unauthClearedRef = useRef(false);
   const previousUserIdRef = useRef<number | null>(null);
+  const remoteSettingsUserIdRef = useRef<string | null>(null);
   const pendingNotificationPayloadRef = useRef<Awaited<
     ReturnType<typeof getLastNotificationNavigationPayloadAsync>
   > | null>(null);
@@ -76,6 +78,7 @@ function AppBootstrap() {
       }
 
       previousUserIdRef.current = null;
+      remoteSettingsUserIdRef.current = null;
       return;
     }
 
@@ -91,6 +94,40 @@ function AppBootstrap() {
 
     previousUserIdRef.current = user.id;
   }, [queryClient, status, user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncRemoteSettings() {
+      if (status !== 'authenticated' || !user?.appUserId) {
+        remoteSettingsUserIdRef.current = null;
+        return;
+      }
+
+      if (remoteSettingsUserIdRef.current === user.appUserId) {
+        return;
+      }
+
+      try {
+        const remoteSettings = await loadUserSettings(user.appUserId);
+        if (!cancelled && remoteSettings) {
+          applyRemoteSettings(remoteSettings);
+        }
+      } catch {
+        // Remote settings sync should not block app startup.
+      } finally {
+        if (!cancelled) {
+          remoteSettingsUserIdRef.current = user.appUserId;
+        }
+      }
+    }
+
+    void syncRemoteSettings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyRemoteSettings, status, user?.appUserId]);
 
   useEffect(() => {
     const buildPayloadKey = (

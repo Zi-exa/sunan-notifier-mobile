@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { PollingInterval } from '@/lib/config';
 import { ThemeMode } from '@/components/Redesign/theme';
+import type { RemoteUserSettings } from '@/lib/supabase/repositories';
 
 export type NotificationSettings = {
   notifyNewTask: boolean;
@@ -27,6 +28,7 @@ type SettingsState = {
   toggleCourse: (courseId: number) => void;
   setMonitoredCourseIds: (courseIds: number[]) => void;
   setThemeMode: (mode: ThemeMode) => void;
+  applyRemoteSettings: (settings: RemoteUserSettings) => void;
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -75,6 +77,20 @@ export const useSettingsStore = create<SettingsState>()(
         }),
       setMonitoredCourseIds: (courseIds) => set({ monitoredCourseIds: courseIds }),
       setThemeMode: (mode) => set({ themeMode: mode }),
+      applyRemoteSettings: (settings) =>
+        set({
+          notifications: {
+            notifyNewTask: settings.notifyNewTask,
+            notifyDeadlineH1: settings.notifyDeadlineH1,
+            notifyDeadlineToday: settings.notifyDeadlineToday,
+            notifyTaskOpen: settings.notifyTaskOpen,
+            notifyAttendance: settings.notifyAttendance,
+          },
+          pollingInterval: settings.pollIntervalMinutes,
+          dndStart: settings.dndStart,
+          dndEnd: settings.dndEnd,
+          monitoredCourseIds: settings.monitoredCourseIds,
+        }),
     }),
     {
       name: 'sunan.settings',

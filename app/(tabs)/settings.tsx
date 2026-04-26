@@ -285,6 +285,7 @@ export default function SettingsScreen() {
           notifyNewTask: draftNotifications.notifyNewTask,
           notifyDeadlineH1: draftNotifications.notifyDeadlineH1,
           notifyDeadlineToday: draftNotifications.notifyDeadlineToday,
+          notifyTaskOpen: draftNotifications.notifyTaskOpen,
           notifyAttendance: draftNotifications.notifyAttendance,
           pollIntervalMinutes: draftPollingInterval,
           dndStart: startInput,
