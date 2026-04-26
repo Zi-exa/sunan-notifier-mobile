@@ -1,0 +1,7 @@
+{
+  "version": "1.0.1",
+  "apkUrl": "https://example.com/downloads/sunan-notifier-1.0.1.apk",
+  "title": "Update aplikasi tersedia",
+  "notes": "Perbaikan bug login dan optimasi notifikasi.",
+  "mandatory": false
+}
