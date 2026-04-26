@@ -12,6 +12,10 @@ type AppAlertDialogProps = {
   title: string;
   message: string;
   confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm?: () => void | Promise<void>;
+  confirmDisabled?: boolean;
+  dismissDisabled?: boolean;
   onClose: () => void;
 };
 
@@ -27,9 +31,14 @@ export function AppAlertDialog({
   title,
   message,
   confirmLabel = 'Tutup',
+  cancelLabel,
+  onConfirm,
+  confirmDisabled = false,
+  dismissDisabled = false,
   onClose,
 }: AppAlertDialogProps) {
   const { colors, mode } = useTheme();
+  const handleDismiss = dismissDisabled ? () => undefined : onClose;
 
   const toneColor =
     tone === 'success' ? colors.success : tone === 'warning' ? colors.warning : colors.accent;
@@ -46,7 +55,7 @@ export function AppAlertDialog({
       visible={visible}
       animationType="fade"
       statusBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={handleDismiss}
     >
       <Pressable
         style={[
@@ -56,7 +65,7 @@ export function AppAlertDialog({
               mode === 'dark' ? 'rgba(2, 6, 23, 0.74)' : 'rgba(14, 26, 48, 0.24)',
           },
         ]}
-        onPress={onClose}
+        onPress={handleDismiss}
       >
         <Pressable
           style={[
@@ -77,9 +86,34 @@ export function AppAlertDialog({
             <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
           </View>
 
-          <Pressable style={[styles.button, { backgroundColor: colors.accent }]} onPress={onClose}>
-            <Text style={[styles.buttonText, { color: colors.textInverse }]}>{confirmLabel}</Text>
-          </Pressable>
+          <View style={styles.buttonRow}>
+            {cancelLabel ? (
+              <Pressable
+                style={[
+                  styles.button,
+                  styles.secondaryButton,
+                  { backgroundColor: colors.bgCardHover, borderColor: colors.borderSubtle },
+                ]}
+                onPress={onClose}
+              >
+                <Text style={[styles.secondaryButtonText, { color: colors.textPrimary }]}>
+                  {cancelLabel}
+                </Text>
+              </Pressable>
+            ) : null}
+            <Pressable
+              style={[
+                styles.button,
+                styles.primaryButton,
+                { backgroundColor: colors.accent },
+                confirmDisabled && styles.buttonDisabled,
+              ]}
+              onPress={onConfirm ?? onClose}
+              disabled={confirmDisabled}
+            >
+              <Text style={[styles.buttonText, { color: colors.textInverse }]}>{confirmLabel}</Text>
+            </Pressable>
+          </View>
         </Pressable>
       </Pressable>
     </Modal>
@@ -132,6 +166,24 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingVertical: 13,
     alignItems: 'center',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  secondaryButton: {
+    flex: 1,
+    borderWidth: 1,
+  },
+  primaryButton: {
+    flex: 1,
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     fontSize: 14,

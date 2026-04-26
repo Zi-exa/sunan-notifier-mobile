@@ -3,6 +3,9 @@
     "name": "SUNAN Notifier",
     "slug": "sunan-notifier",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/sunan-notifier-mark.png",
     "scheme": "sunan-notifier",
@@ -35,6 +38,11 @@
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/sunan-notifier-mark.png"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/eb508cc1-ec67-415f-a234-bb2cdf068286",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     },
     "plugins": [
       "expo-router",

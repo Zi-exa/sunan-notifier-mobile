@@ -14,6 +14,7 @@ import 'react-native-reanimated';
 import { Appearance } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/components/Redesign';
+import { AppUpdateCoordinator } from '@/components/app/AppUpdateCoordinator';
 import { TabsHeaderTitle } from '@/components/app/TabsHeaderTitle';
 
 
@@ -327,6 +328,7 @@ function RootLayoutNav() {
   return (
     <NavThemeProvider value={navigationTheme}>
       <AppBootstrap />
+      <AppUpdateCoordinator />
       <Stack
         screenOptions={{
           contentStyle: { backgroundColor: colors.bgBase },

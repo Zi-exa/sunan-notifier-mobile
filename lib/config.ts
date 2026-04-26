@@ -24,6 +24,7 @@ export const CONFIG = {
   moodleService: process.env.EXPO_PUBLIC_MOODLE_SERVICE ?? 'moodle_mobile_app',
   supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
   supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+  updateManifestUrl: process.env.EXPO_PUBLIC_UPDATE_MANIFEST_URL ?? '',
   useMockData: parseBooleanEnv(rawUseMockData, false),
   useMockDataRaw: rawUseMockData ?? '',
   expoProjectId: process.env.EXPO_PUBLIC_EXPO_PROJECT_ID ?? '',
