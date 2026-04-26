@@ -29,13 +29,10 @@ export class AppError extends Error {
   }
 }
 
-const AUTH_ERROR_CODES = new Set([
+const SESSION_INVALID_ERROR_CODES = new Set([
   'invalidtoken',
-  'accessexception',
   'requireloginerror',
   'require_login_exception',
-  'usernotfullysetup',
-  'servicerequireslogin',
 ]);
 
 const OFFLINE_ERROR_KEYWORDS = [
@@ -56,7 +53,7 @@ export function isAppError(error: unknown): error is AppError {
 }
 
 export function isAuthErrorCode(code: string | undefined): boolean {
-  return AUTH_ERROR_CODES.has(normalizeErrorCode(code));
+  return SESSION_INVALID_ERROR_CODES.has(normalizeErrorCode(code));
 }
 
 export function isAuthError(error: unknown): error is AppError {

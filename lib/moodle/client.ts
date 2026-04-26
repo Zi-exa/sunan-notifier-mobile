@@ -152,7 +152,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   }
 
   if (!response.ok) {
-    const isAuthStatus = response.status === 401 || response.status === 403;
+    const isAuthStatus = response.status === 401;
     throw new AppError({
       kind: isAuthStatus ? 'auth' : 'server',
       status: response.status,
@@ -164,7 +164,9 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
   if (isMoodleExceptionPayload(data)) {
     const errorCode = normalizeErrorCode(data.errorcode);
-    const isAuthFailure = isAuthErrorCode(errorCode);
+    const normalizedException = normalizeErrorCode(data.exception);
+    const isAuthFailure =
+      isAuthErrorCode(errorCode) || normalizedException === 'require_login_exception';
 
     throw new AppError({
       kind: isAuthFailure ? 'auth' : 'server',
