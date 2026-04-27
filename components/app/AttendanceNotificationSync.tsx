@@ -60,7 +60,7 @@ export function AttendanceNotificationSync() {
           markKey(key);
           sendImmediateAttendanceNotification({
             title: 'Absensi Dibuka',
-            body: `${attendance.title} (${attendance.courseName}) sedang dibuka. Segera isi absensi sekarang!`,
+            body: `${attendance.title} (${attendance.courseName}) sudah dibuka. Segera isi sekarang.`,
             kind: 'attendance_open',
             eventId: attendance.eventId,
           });
@@ -84,8 +84,8 @@ export function AttendanceNotificationSync() {
         if (!hasKey(key)) {
           markKey(key);
           sendImmediateAttendanceNotification({
-            title: 'Absensi Segera Ditutup!',
-            body: `${attendance.title} (${attendance.courseName}) akan ditutup dalam ${Math.ceil(secondsLeft / 60)} menit. Segera isi sebelum terlambat!`,
+            title: 'Absensi Segera Ditutup',
+            body: `${attendance.title} (${attendance.courseName}) akan ditutup dalam ${Math.ceil(secondsLeft / 60)} menit. Segera isi sekarang.`,
             kind: 'attendance_closing',
             eventId: attendance.eventId,
           });

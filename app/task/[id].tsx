@@ -196,8 +196,8 @@ export default function TaskDetailScreen() {
       >
         <View style={[styles.modalHeader, { borderBottomColor: colors.borderSubtle }]}>
           <View style={styles.headerCopy}>
-            <Text style={[styles.modalEyebrow, { color: colors.textMuted }]}>DETAIL TUGAS</Text>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Ringkasan Tugas</Text>
+            <Text style={[styles.modalEyebrow, { color: colors.textMuted }]}>RINGKASAN</Text>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Detail Tugas</Text>
           </View>
           <Pressable
             onPress={() => router.back()}

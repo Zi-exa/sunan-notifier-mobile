@@ -63,8 +63,8 @@ export function TaskNotificationSync() {
           if (!hasKey(key)) {
             markKey(key);
             sendImmediateTaskNotification({
-              title: 'Tugas/Quiz Sudah Dibuka',
-              body: `${task.name} (${task.courseName}) sudah bisa dikerjakan. Segera kerjakan!`,
+              title: 'Tugas Sudah Dibuka',
+              body: `${task.name} (${task.courseName}) sudah bisa dikerjakan.`,
               kind: 'task_open',
               taskId: task.id,
             });
@@ -82,8 +82,8 @@ export function TaskNotificationSync() {
             markKey(key);
             const minutesLeft = Math.ceil(secondsLeft / 60);
             sendImmediateTaskNotification({
-              title: 'Tugas/Quiz Segera Ditutup',
-              body: `${task.name} (${task.courseName}) akan ditutup dalam ${minutesLeft} menit. Segera submit!`,
+              title: 'Tugas Segera Ditutup',
+              body: `${task.name} (${task.courseName}) akan ditutup dalam ${minutesLeft} menit. Segera kirim tugas Anda.`,
               kind: 'task_closing',
               taskId: task.id,
             });

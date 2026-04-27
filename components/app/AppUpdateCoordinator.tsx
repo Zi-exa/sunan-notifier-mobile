@@ -25,7 +25,7 @@ type UpdateDialogState =
     };
 
 function buildRemoteApkMessage(manifest: RemoteApkUpdateManifest): string {
-  const base = `Versi ${manifest.version} sudah tersedia. Aplikasi akan membuka halaman update agar Anda bisa memasang versi terbaru.`;
+  const base = `Versi ${manifest.version} sudah tersedia. Aplikasi akan membuka halaman update.`;
   const notes = manifest.notes?.trim();
 
   return notes ? `${base}\n\n${notes}` : base;
@@ -91,13 +91,13 @@ export function AppUpdateCoordinator() {
     }
 
     if (dialog.kind === 'apk') {
-      const title = dialog.manifest.title?.trim() || 'Update aplikasi tersedia';
+      const title = dialog.manifest.title?.trim() || 'Versi baru tersedia';
 
       return {
         tone: 'info' as const,
         title,
         message: buildRemoteApkMessage(dialog.manifest),
-        confirmLabel: dialog.manifest.mandatory ? 'Unduh update' : 'Update sekarang',
+        confirmLabel: 'Buka update',
         cancelLabel: dialog.manifest.mandatory ? undefined : 'Nanti',
         dismissDisabled: dialog.manifest.mandatory ?? false,
       };
@@ -106,9 +106,9 @@ export function AppUpdateCoordinator() {
     if (dialog.kind === 'eas') {
       return {
         tone: 'info' as const,
-        title: 'Pembaruan siap dipasang',
+        title: 'Versi baru siap dipakai',
         message:
-          'Ada pembaruan kecil yang siap dipakai. Tekan update untuk memakai versi terbaru.',
+          'Ada versi baru yang siap dipakai. Tekan update untuk memakai versi terbaru.',
         confirmLabel: 'Update sekarang',
         cancelLabel: 'Nanti',
         dismissDisabled: false,
@@ -148,7 +148,7 @@ export function AppUpdateCoordinator() {
     } catch {
       setDialog({
         kind: 'error',
-        title: 'Update tidak bisa dibuka',
+        title: 'Belum bisa dibuka',
         message:
           dialog.kind === 'apk'
             ? 'Halaman update belum bisa dibuka sekarang. Coba lagi beberapa saat.'

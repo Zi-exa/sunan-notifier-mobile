@@ -183,48 +183,48 @@ function buildNotificationContent(kind: NotificationKind, taskName: string) {
   if (kind === 'deadline_h1') {
     return {
       title: 'Pengingat Deadline H-1',
-      body: `${taskName} akan deadline besok.`,
+      body: `${taskName} berakhir besok.`,
     };
   }
 
   if (kind === 'deadline_today') {
     return {
       title: 'Pengingat Deadline Hari Ini',
-      body: `${taskName} deadline hari ini jam 07.00.`,
+      body: `${taskName} berakhir hari ini.`,
     };
   }
 
   if (kind === 'attendance_open') {
     return {
       title: 'Absensi Dibuka',
-      body: 'Absensi perkuliahan sudah dibuka. Jangan lupa isi sekarang.',
+      body: 'Absensi sudah dibuka. Segera isi sekarang.',
     };
   }
 
   if (kind === 'attendance_closing') {
     return {
-      title: 'Absensi Akan Ditutup',
-      body: 'Absensi segera ditutup. Segera isi sebelum terlambat.',
+      title: 'Absensi Segera Ditutup',
+      body: 'Absensi akan segera ditutup. Segera isi sekarang.',
     };
   }
 
   if (kind === 'task_open') {
     return {
-      title: 'Tugas/Quiz Sudah Dibuka',
-      body: `${taskName} sudah bisa dikerjakan. Segera kerjakan!`,
+      title: 'Tugas Sudah Dibuka',
+      body: `${taskName} sudah bisa dikerjakan.`,
     };
   }
 
   if (kind === 'task_closing') {
     return {
-      title: 'Tugas/Quiz Segera Ditutup',
-      body: `${taskName} akan segera ditutup. Segera submit sebelum terlambat!`,
+      title: 'Tugas Segera Ditutup',
+      body: `${taskName} akan segera ditutup. Segera kirim tugas Anda.`,
     };
   }
 
   return {
-    title: 'Tugas Baru SUNAN',
-    body: `${taskName} baru dipost dosen.`,
+    title: 'Tugas Baru',
+    body: `${taskName} baru ditambahkan.`,
   };
 }
 
