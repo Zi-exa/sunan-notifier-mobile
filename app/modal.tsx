@@ -8,14 +8,14 @@ export default function ModalScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Tentang SUNAN Notifier</Text>
       <Text style={styles.body}>
-        Aplikasi ini membantu mahasiswa menerima notifikasi tugas baru, reminder deadline, dan update
-        absensi dari SUNAN UMK.
+        Aplikasi ini membantu mahasiswa melihat tugas, absensi, dan pengingat penting dari SUNAN
+        UMK dengan lebih mudah.
       </Text>
       <View style={styles.separator} lightColor="#E4E9F7" darkColor="rgba(255,255,255,0.2)" />
-      <Text style={styles.list}>Sprint 1: Login, token Moodle, dan daftar matkul</Text>
-      <Text style={styles.list}>Sprint 2: Daftar tugas, status submit, dan dashboard</Text>
-      <Text style={styles.list}>Sprint 3: Kalender deadline dan fondasi reminder</Text>
-      <Text style={styles.list}>Sprint 4: Settings notifikasi, polling, jam diam</Text>
+      <Text style={styles.list}>• Login ke akun SUNAN</Text>
+      <Text style={styles.list}>• Lihat tugas dan statusnya</Text>
+      <Text style={styles.list}>• Lihat kalender tugas dan absensi</Text>
+      <Text style={styles.list}>• Atur notifikasi sesuai kebutuhan</Text>
 
       {/* Use a light status bar on iOS to account for the black space above the modal */}
       <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />

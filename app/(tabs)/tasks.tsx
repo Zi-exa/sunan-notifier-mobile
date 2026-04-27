@@ -16,9 +16,9 @@ type FilterKey = 'all' | AssignmentStatus;
 const FILTER_OPTIONS: FloatingFilterOption<FilterKey>[] = [
   { key: 'all', label: 'Semua', icon: 'th-large' },
   { key: 'pending', label: 'Belum Dikerjakan', icon: 'edit' },
-  { key: 'submitted', label: 'Sudah Submit', icon: 'check-circle' },
+  { key: 'submitted', label: 'Sudah Dikumpulkan', icon: 'check-circle' },
   { key: 'overdue', label: 'Terlambat', icon: 'warning' },
-  { key: 'unknown', label: 'Belum Terverifikasi', icon: 'question-circle-o' },
+  { key: 'unknown', label: 'Masih Dicek', icon: 'question-circle-o' },
 ];
 
 export default function TasksScreen() {
@@ -92,8 +92,8 @@ export default function TasksScreen() {
             />
           ) : visibleTasks.length === 0 ? (
             <EmptyState
-              title="Tidak ada tugas"
-              description="Filter yang dipilih tidak memiliki tugas saat ini."
+              title="Belum ada tugas"
+              description="Belum ada tugas untuk filter ini."
               icon="inbox"
             />
           ) : (

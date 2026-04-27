@@ -15,7 +15,7 @@ const STATUS_THEME = {
     border: '#F2DD83',
   },
   submitted: {
-    label: 'Sudah Submit',
+    label: 'Sudah Dikumpulkan',
     badgeBackground: '#DCF8E9',
     badgeText: '#11623A',
     border: '#9BE6BE',
@@ -27,7 +27,7 @@ const STATUS_THEME = {
     border: '#FFBCBC',
   },
   unknown: {
-    label: 'Belum Terverifikasi',
+    label: 'Masih Dicek',
     badgeBackground: '#E9EDFA',
     badgeText: '#2F4A8C',
     border: '#CCDAFF',
@@ -61,7 +61,7 @@ function getAvailabilityInfo(openDate?: number): {
 
 export function TaskCard({ task, onPress }: TaskCardProps) {
   const statusTheme = STATUS_THEME[task.status] ?? STATUS_THEME.unknown;
-  const activityLabel = task.activityType === 'quiz' ? 'Quiz' : 'Tugas';
+  const activityLabel = task.activityType === 'quiz' ? 'Kuis' : 'Tugas';
   const availability = getAvailabilityInfo(task.openDate);
 
   return (

@@ -22,9 +22,9 @@ const STATUS_BADGE_VARIANT: Record<AssignmentItem['status'], React.ComponentProp
 
 const STATUS_BADGE_LABEL: Record<AssignmentItem['status'], string> = {
   pending: 'Belum Dikerjakan',
-  submitted: 'Sudah Submit',
+  submitted: 'Sudah Dikumpulkan',
   overdue: 'Terlambat',
-  unknown: 'Belum Terverifikasi',
+  unknown: 'Masih Dicek',
 };
 
 const STATUS_ACCENT: Record<AssignmentItem['status'], string> = {
@@ -46,7 +46,7 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
   const statusVariant = STATUS_BADGE_VARIANT[task.status];
   const statusLabel = STATUS_BADGE_LABEL[task.status];
   const accentColor = STATUS_ACCENT[task.status];
-  const activityLabel = task.activityType === 'quiz' ? 'Quiz' : 'Tugas';
+  const activityLabel = task.activityType === 'quiz' ? 'Kuis' : 'Tugas';
   const openBadge = getOpenBadge(task.openDate);
   const showDetailAction = Boolean(detailLabel);
 

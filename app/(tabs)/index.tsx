@@ -152,7 +152,7 @@ export default function DashboardScreen() {
                 </View>
               </View>
               <Text style={[styles.heroEyebrow, { color: HERO_PALETTE.textSecondary }]}>
-                Dashboard akademik UMK
+                Ringkasan kuliah Anda
               </Text>
             </View>
             {user?.pictureUrl ? (
@@ -184,7 +184,7 @@ export default function DashboardScreen() {
               Halo, {displayName}
             </Text>
             <Text style={[styles.heroSubtitle, { color: HERO_PALETTE.textSecondary }]}>
-              Pantau deadline tugas dan sesi absensi SUNAN dari satu layar.
+              Pantau tugas dan absensi dari satu layar.
             </Text>
           </View>
         </View>
@@ -223,7 +223,7 @@ export default function DashboardScreen() {
                 : colors.textPrimary,
           },
           {
-            label: 'Sudah Submit',
+            label: 'Sudah Dikumpulkan',
             value: submittedCount,
             icon: 'check-circle',
             iconColor: colors.success,

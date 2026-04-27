@@ -12,9 +12,9 @@ import { formatDateTime } from '@/lib/utils/date';
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Belum Dikerjakan',
-  submitted: 'Sudah Submit',
+  submitted: 'Sudah Dikumpulkan',
   overdue: 'Terlambat',
-  unknown: 'Belum Terverifikasi',
+  unknown: 'Masih Dicek',
 };
 
 export default function TaskDetailScreen() {
@@ -96,7 +96,7 @@ export default function TaskDetailScreen() {
     }
 
     const isQuizTask = task.activityType === 'quiz';
-    const activityLabel = isQuizTask ? 'Quiz' : 'Tugas';
+    const activityLabel = isQuizTask ? 'Kuis' : 'Tugas';
     const statusColor = STATUS_COLOR[task.status] ?? colors.accent;
     const statusLabel = STATUS_LABEL[task.status] ?? task.status;
 
@@ -133,7 +133,7 @@ export default function TaskDetailScreen() {
         <View style={[styles.bodyCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
           <View style={styles.sectionLabelRow}>
             <FontAwesome name="align-left" size={12} color={colors.textMuted} />
-            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>DESKRIPSI</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>ISI TUGAS</Text>
           </View>
           <Text style={[styles.description, { color: colors.textSecondary }]}>
             {task.intro ?? 'Belum ada deskripsi tambahan.'}
@@ -143,7 +143,7 @@ export default function TaskDetailScreen() {
         <View style={[styles.bodyCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
           <View style={styles.sectionLabelRow}>
             <FontAwesome name="check-circle-o" size={12} color={colors.textMuted} />
-            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>STATUS PENGERJAAN</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>STATUS TUGAS</Text>
           </View>
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
@@ -167,7 +167,7 @@ export default function TaskDetailScreen() {
           <View style={styles.primaryButtonContent}>
             <FontAwesome name="external-link" size={14} color="#FFFFFF" />
             <Text style={styles.primaryButtonText}>
-              {isQuizTask ? 'Buka Quiz di SUNAN' : 'Buka Tugas di SUNAN'}
+              {isQuizTask ? 'Buka Kuis di SUNAN' : 'Buka Tugas di SUNAN'}
             </Text>
           </View>
         </Pressable>

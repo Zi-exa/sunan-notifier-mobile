@@ -160,9 +160,9 @@ export default function CalendarScreen() {
         {/* Legend */}
         <View style={[styles.legendRow, { borderTopColor: colors.borderSubtle }]}>
           {[
-            { key: 'pending', label: 'Pending', color: STATUS_DOT_COLOR.pending },
-            { key: 'submit', label: 'Submit', color: STATUS_DOT_COLOR.submitted },
-            { key: 'overdue', label: 'Overdue', color: STATUS_DOT_COLOR.overdue },
+            { key: 'pending', label: 'Belum Dikerjakan', color: STATUS_DOT_COLOR.pending },
+            { key: 'submit', label: 'Sudah Dikumpulkan', color: STATUS_DOT_COLOR.submitted },
+            { key: 'overdue', label: 'Terlambat', color: STATUS_DOT_COLOR.overdue },
             { key: 'absensi', label: 'Absensi', color: ATTENDANCE_DOT_COLOR },
           ].map((item) => (
             <View key={item.key} style={styles.legendItem}>
