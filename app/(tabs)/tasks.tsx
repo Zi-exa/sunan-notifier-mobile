@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, TaskCard, useTheme } from '@/components/Redesign';
 import { Radius } from '@/components/Redesign/theme';
 import { FloatingFilterMenu, FloatingFilterOption } from '@/components/app/FloatingFilterMenu';
+import { TabScreenHeader } from '@/components/app/TabScreenHeader';
 import { getFloatingFilterContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { useAssignmentsQuery, useCoursesQuery } from '@/lib/queries/useMoodleQueries';
@@ -50,6 +51,7 @@ export default function TasksScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
+      <TabScreenHeader routeKey="tasks" />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
         scrollIndicatorInsets={{ bottom: contentBottomPadding }}

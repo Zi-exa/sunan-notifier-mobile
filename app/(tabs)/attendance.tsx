@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AttendanceCard, EmptyState, useTheme } from '@/components/Redesign';
 import { Radius } from '@/components/Redesign/theme';
 import { FloatingFilterMenu, FloatingFilterOption } from '@/components/app/FloatingFilterMenu';
+import { TabScreenHeader } from '@/components/app/TabScreenHeader';
 import { getFloatingFilterContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { useAttendanceSessionsQuery, useCoursesQuery } from '@/lib/queries/useMoodleQueries';
@@ -75,6 +76,7 @@ export default function AttendanceScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
+      <TabScreenHeader routeKey="attendance" />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
         scrollIndicatorInsets={{ bottom: contentBottomPadding }}

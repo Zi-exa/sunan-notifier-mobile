@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppAlertDialog, Radius, Spacing, ThemeMode, useTheme } from '@/components/Redesign';
 import { getDockContentPadding } from '@/components/app/floatingLayout';
+import { TabScreenHeader } from '@/components/app/TabScreenHeader';
 import { POLLING_INTERVAL_OPTIONS } from '@/lib/config';
 import { useCoursesQuery } from '@/lib/queries/useMoodleQueries';
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -366,12 +367,13 @@ export default function SettingsScreen() {
 
   return (
     <>
-      <ScrollView
-        style={[styles.screen, { backgroundColor: colors.bgBase }]}
-        contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
-        scrollIndicatorInsets={{ bottom: contentBottomPadding }}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
+        <TabScreenHeader routeKey="settings" />
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
+          scrollIndicatorInsets={{ bottom: contentBottomPadding }}
+          showsVerticalScrollIndicator={false}
+        >
         <View
           style={[
             styles.accountCard,
@@ -877,7 +879,8 @@ export default function SettingsScreen() {
             </View>
           </Pressable>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       <AppAlertDialog
         visible={dialogState !== null}

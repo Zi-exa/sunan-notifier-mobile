@@ -15,7 +15,6 @@ import { Appearance } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/components/Redesign';
 import { AppUpdateCoordinator } from '@/components/app/AppUpdateCoordinator';
-import { TabsHeaderTitle } from '@/components/app/TabsHeaderTitle';
 
 
 import {
@@ -307,7 +306,6 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const { mode, colors } = useTheme();
-  const tabsBootStatus = useTabsBootStore((state) => state.status);
   const navigationTheme = useMemo<NavigationTheme>(() => {
     const baseTheme = mode === 'dark' ? DarkTheme : DefaultTheme;
 
@@ -344,12 +342,9 @@ function RootLayoutNav() {
         <Stack.Screen
           name="(tabs)"
           options={{
-            headerShown: tabsBootStatus !== 'loading',
+            headerShown: false,
             contentStyle: { backgroundColor: colors.bgBase },
             freezeOnBlur: false,
-            headerStyle: { backgroundColor: colors.bgSurface },
-            headerShadowVisible: false,
-            headerTitle: () => <TabsHeaderTitle />,
           }}
         />
         <Stack.Screen

@@ -5,6 +5,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { Calendar, DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AttendanceCard, EmptyState, SectionCard, TaskCard, useTheme, Radius } from '@/components/Redesign';
+import { TabScreenHeader } from '@/components/app/TabScreenHeader';
 import { getDockContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { getCalendarRangeForMonth } from '@/lib/moodle/client';
@@ -112,13 +113,14 @@ export default function CalendarScreen() {
   const contentBottomPadding = getDockContentPadding(insets.bottom);
 
   return (
-    <ScrollView
-      style={[styles.screen, { backgroundColor: colors.bgBase }]}
-      contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
-      scrollIndicatorInsets={{ bottom: contentBottomPadding }}
-    >
-      {/* Calendar card */}
-      <View style={[styles.calendarCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+    <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
+      <TabScreenHeader routeKey="calendar" />
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
+        scrollIndicatorInsets={{ bottom: contentBottomPadding }}
+      >
+        {/* Calendar card */}
+        <View style={[styles.calendarCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
         <View style={[styles.calendarHeader, { borderBottomColor: colors.borderSubtle }]}>
           <View style={styles.calendarHeaderRow}>
             <View style={[styles.calendarHeaderIcon, { backgroundColor: colors.accentDim }]}>
@@ -218,25 +220,26 @@ export default function CalendarScreen() {
         </View>
       </SectionCard>
 
-      {/* Calendar events */}
-      {eventsOnDate.length > 0 && (
-        <SectionCard title="Event Kalender SUNAN" icon="calendar-o">
-          <View style={styles.sectionList}>
-            {eventsOnDate.map((event) => (
-              <View key={event.id} style={[styles.eventItem, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
-                <View style={styles.eventTitleRow}>
-                  <FontAwesome name="calendar-check-o" size={13} color={colors.accent} />
-                  <Text style={[styles.eventTitle, { color: colors.textPrimary }]}>{event.name}</Text>
+        {/* Calendar events */}
+        {eventsOnDate.length > 0 && (
+          <SectionCard title="Event Kalender SUNAN" icon="calendar-o">
+            <View style={styles.sectionList}>
+              {eventsOnDate.map((event) => (
+                <View key={event.id} style={[styles.eventItem, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+                  <View style={styles.eventTitleRow}>
+                    <FontAwesome name="calendar-check-o" size={13} color={colors.accent} />
+                    <Text style={[styles.eventTitle, { color: colors.textPrimary }]}>{event.name}</Text>
+                  </View>
+                  {!!event.description && (
+                    <Text style={[styles.eventDescription, { color: colors.textSecondary }]}>{event.description}</Text>
+                  )}
                 </View>
-                {!!event.description && (
-                  <Text style={[styles.eventDescription, { color: colors.textSecondary }]}>{event.description}</Text>
-                )}
-              </View>
-            ))}
-          </View>
-        </SectionCard>
-      )}
-    </ScrollView>
+              ))}
+            </View>
+          </SectionCard>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 

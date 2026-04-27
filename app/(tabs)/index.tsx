@@ -12,6 +12,7 @@ import {
   useTheme,
 } from '@/components/Redesign';
 import { getDockContentPadding } from '@/components/app/floatingLayout';
+import { TabScreenHeader } from '@/components/app/TabScreenHeader';
 import {
   useAssignmentsQuery,
   useAttendanceSessionsQuery,
@@ -66,9 +67,42 @@ export default function DashboardScreen() {
 
   if (coursesQuery.isError || assignmentsQuery.isError || attendanceQuery.isError) {
     return (
+      <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
+        <TabScreenHeader routeKey="index" />
+        <ScrollView
+          contentContainerStyle={[styles.errorContainer, { paddingBottom: contentBottomPadding }]}
+          scrollIndicatorInsets={{ bottom: contentBottomPadding }}
+          refreshControl={
+            <RefreshControl
+              refreshing={
+                coursesQuery.isRefetching ||
+                assignmentsQuery.isRefetching ||
+                attendanceQuery.isRefetching
+              }
+              onRefresh={() => {
+                coursesQuery.refetch();
+                assignmentsQuery.refetch();
+                attendanceQuery.refetch();
+              }}
+              tintColor={colors.accent}
+            />
+          }
+        >
+          <EmptyState
+            title="Dashboard belum bisa ditampilkan"
+            description={getReadableErrorMessage(dashboardError, 'dashboard')}
+            icon="warning"
+          />
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
+      <TabScreenHeader routeKey="index" />
       <ScrollView
-        style={[styles.screen, { backgroundColor: colors.bgBase }]}
-        contentContainerStyle={[styles.errorContainer, { paddingBottom: contentBottomPadding }]}
+        contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
         scrollIndicatorInsets={{ bottom: contentBottomPadding }}
         refreshControl={
           <RefreshControl
@@ -86,43 +120,13 @@ export default function DashboardScreen() {
           />
         }
       >
-        <EmptyState
-          title="Dashboard belum bisa ditampilkan"
-          description={getReadableErrorMessage(dashboardError, 'dashboard')}
-          icon="warning"
-        />
-      </ScrollView>
-    );
-  }
-
-  return (
-    <ScrollView
-      style={[styles.screen, { backgroundColor: colors.bgBase }]}
-      contentContainerStyle={[styles.content, { paddingBottom: contentBottomPadding }]}
-      scrollIndicatorInsets={{ bottom: contentBottomPadding }}
-      refreshControl={
-        <RefreshControl
-          refreshing={
-            coursesQuery.isRefetching ||
-            assignmentsQuery.isRefetching ||
-            attendanceQuery.isRefetching
-          }
-          onRefresh={() => {
-            coursesQuery.refetch();
-            assignmentsQuery.refetch();
-            attendanceQuery.refetch();
-          }}
-          tintColor={colors.accent}
-        />
-      }
-    >
-      {/* Hero header */}
-      <View
-        style={[
-          styles.hero,
-          { backgroundColor: HERO_PALETTE.background, borderColor: HERO_PALETTE.border },
-        ]}
-      >
+        {/* Hero header */}
+        <View
+          style={[
+            styles.hero,
+            { backgroundColor: HERO_PALETTE.background, borderColor: HERO_PALETTE.border },
+          ]}
+        >
         <View
           style={[
             styles.heroGlow,
@@ -256,35 +260,36 @@ export default function DashboardScreen() {
       </SectionCard>
 
       {/* Deadline terdekat */}
-      <SectionCard
-        title="Deadline Terdekat"
-        icon="graduation-cap"
-        subtitle={assignmentsReady ? '4 tugas dengan deadline paling dekat' : 'Menyiapkan daftar tugas...'}
-      >
-        {!assignmentsReady ? (
-          <View style={styles.inlineLoading}>
-            <ActivityIndicator color={colors.accent} />
-            <Text style={[styles.inlineLoadingText, { color: colors.textSecondary }]}>
-              Sebentar, tugas sedang diperbarui.
-            </Text>
-          </View>
-        ) : upcoming.length === 0 ? (
-          <EmptyState
-            title="Belum ada tugas"
-            description="Tidak ada tugas aktif saat ini."
-            icon="inbox"
-          />
-        ) : (
-          upcoming.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onPress={(selectedTask) => router.push(`/task/${selectedTask.id}`)}
+        <SectionCard
+          title="Deadline Terdekat"
+          icon="graduation-cap"
+          subtitle={assignmentsReady ? '4 tugas dengan deadline paling dekat' : 'Menyiapkan daftar tugas...'}
+        >
+          {!assignmentsReady ? (
+            <View style={styles.inlineLoading}>
+              <ActivityIndicator color={colors.accent} />
+              <Text style={[styles.inlineLoadingText, { color: colors.textSecondary }]}>
+                Sebentar, tugas sedang diperbarui.
+              </Text>
+            </View>
+          ) : upcoming.length === 0 ? (
+            <EmptyState
+              title="Belum ada tugas"
+              description="Tidak ada tugas aktif saat ini."
+              icon="inbox"
             />
-          ))
-        )}
-      </SectionCard>
-    </ScrollView>
+          ) : (
+            upcoming.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onPress={(selectedTask) => router.push(`/task/${selectedTask.id}`)}
+              />
+            ))
+          )}
+        </SectionCard>
+      </ScrollView>
+    </View>
   );
 }
 
