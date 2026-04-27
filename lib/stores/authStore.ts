@@ -212,7 +212,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     set({ user: nextUser });
   },
-  expireSession: async (reason = 'Sesi SUNAN berakhir. Silakan login ulang.') => {
+  expireSession: async (reason = 'Silakan login lagi untuk melanjutkan.') => {
     await removeSecureItem(SECURE_KEYS.authSession);
 
     set({

@@ -248,7 +248,7 @@ export default function LoginScreen() {
 
             {CONFIG.useMockData && !error && (
               <Text style={[styles.mockHint, { color: colors.textSecondary }]}>
-                Mode demo aktif. Data tugas menggunakan mock agar bisa diuji tanpa kredensial production.
+                Mode demo aktif. Aplikasi memakai data contoh agar bisa dicoba tanpa login akun asli.
               </Text>
             )}
           </View>
@@ -258,8 +258,8 @@ export default function LoginScreen() {
       <AppAlertDialog
         visible={maintenanceAlertVisible}
         tone="warning"
-        title="SUNAN Maintenance"
-        message="Server SUNAN sedang maintenance. Coba login lagi beberapa menit setelah maintenance selesai."
+        title="SUNAN sedang diperbarui"
+        message="SUNAN belum bisa dipakai sementara waktu. Coba login lagi beberapa menit lagi."
         confirmLabel="Mengerti"
         onClose={() => setMaintenanceAlertVisible(false)}
       />

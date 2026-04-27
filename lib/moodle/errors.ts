@@ -1,7 +1,7 @@
 export type AppErrorKind = 'auth' | 'offline' | 'validation' | 'server' | 'unknown';
 export const MAINTENANCE_ERROR_CODE = 'maintenance_page';
 export const SUNAN_MAINTENANCE_MESSAGE =
-  'SUNAN sedang maintenance. Coba login lagi beberapa menit.';
+  'SUNAN sedang diperbarui. Coba lagi beberapa menit.';
 
 type AppErrorInput = {
   kind: AppErrorKind;
@@ -91,7 +91,7 @@ export function toNetworkAwareError(error: unknown, fallbackMessage: string): Ap
 
     return new AppError({
       kind: 'unknown',
-      message: error.message || 'Terjadi kesalahan saat menghubungi SUNAN.',
+      message: error.message || 'Terjadi gangguan. Coba lagi beberapa saat.',
       cause: error,
     });
   }
@@ -109,22 +109,22 @@ export function getReadableErrorMessage(
 ): string {
   if (!isAppError(error)) {
     return context === 'login'
-      ? 'Login gagal. Periksa koneksi atau kredensial SUNAN.'
-      : 'Terjadi gangguan saat mengambil data SUNAN. Coba lagi beberapa saat.';
+      ? 'Login belum berhasil. Periksa NIM, password, dan koneksi internet.'
+      : 'Data belum bisa dimuat. Coba lagi beberapa saat.';
   }
 
   const appError = error;
 
   if (appError.kind === 'auth') {
-    return 'Sesi SUNAN berakhir. Silakan login ulang.';
+    return 'Silakan login lagi untuk melanjutkan.';
   }
 
   if (appError.kind === 'offline') {
     if (context === 'login') {
-      return 'Tidak bisa login karena perangkat sedang offline. Periksa koneksi internet.';
+      return 'Login belum bisa dilakukan. Periksa koneksi internet lalu coba lagi.';
     }
 
-    return 'Perangkat sedang offline atau koneksi tidak stabil. Tarik layar ke bawah untuk mencoba lagi.';
+    return 'Koneksi internet sedang bermasalah. Coba lagi sebentar lagi.';
   }
 
   if (isMaintenanceError(appError)) {
@@ -135,5 +135,5 @@ export function getReadableErrorMessage(
     return appError.message;
   }
 
-  return appError.message || 'Terjadi gangguan saat mengambil data SUNAN. Coba lagi beberapa saat.';
+  return appError.message || 'Terjadi gangguan. Coba lagi beberapa saat.';
 }

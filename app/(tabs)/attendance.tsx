@@ -70,7 +70,7 @@ export default function AttendanceScreen() {
   const emptyStateTitle = filter === 'closed' ? 'Belum ada riwayat absensi' : 'Tidak ada absensi';
   const emptyStateDescription =
     filter === 'closed'
-      ? 'Riwayat menampilkan sesi absensi yang pernah terdeteksi di aplikasi lalu sudah lewat waktunya.'
+      ? 'Riwayat menampilkan absensi yang waktunya sudah lewat.'
       : 'Belum ada sesi absensi untuk filter yang dipilih.';
 
   return (
@@ -92,7 +92,7 @@ export default function AttendanceScreen() {
               <ActivityIndicator size="large" color={colors.accent} />
               <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Memuat absensi SUNAN...</Text>
               <Text style={[styles.stateDescription, { color: colors.textSecondary }]}>
-                Menyiapkan sesi absensi dari SUNAN.
+                Menyiapkan data absensi.
               </Text>
             </View>
           ) : coursesQuery.isError ? (

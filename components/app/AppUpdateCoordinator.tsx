@@ -25,7 +25,7 @@ type UpdateDialogState =
     };
 
 function buildRemoteApkMessage(manifest: RemoteApkUpdateManifest): string {
-  const base = `Versi ${manifest.version} tersedia. Aplikasi akan membuka file APK baru agar Anda bisa mengunduh lalu memasangnya dari Android.`;
+  const base = `Versi ${manifest.version} sudah tersedia. Aplikasi akan membuka halaman update agar Anda bisa memasang versi terbaru.`;
   const notes = manifest.notes?.trim();
 
   return notes ? `${base}\n\n${notes}` : base;
@@ -108,7 +108,7 @@ export function AppUpdateCoordinator() {
         tone: 'info' as const,
         title: 'Pembaruan siap dipasang',
         message:
-          'Ada pembaruan kecil aplikasi yang siap dipakai. Tekan update untuk memuat ulang aplikasi dengan versi terbaru.',
+          'Ada pembaruan kecil yang siap dipakai. Tekan update untuk memakai versi terbaru.',
         confirmLabel: 'Update sekarang',
         cancelLabel: 'Nanti',
         dismissDisabled: false,
@@ -151,8 +151,8 @@ export function AppUpdateCoordinator() {
         title: 'Update tidak bisa dibuka',
         message:
           dialog.kind === 'apk'
-            ? 'APK baru tidak bisa dibuka dari perangkat ini. Coba buka tautan update lagi atau unduh manual dari sumber yang sama.'
-            : 'Pembaruan sudah ditemukan, tetapi aplikasi gagal memuat ulang. Coba tutup lalu buka lagi aplikasi ini.',
+            ? 'Halaman update belum bisa dibuka sekarang. Coba lagi beberapa saat.'
+            : 'Pembaruan belum bisa dipasang sekarang. Tutup lalu buka lagi aplikasi ini, lalu coba lagi.',
       });
     } finally {
       setSubmitting(false);
