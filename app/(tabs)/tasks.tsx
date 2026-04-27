@@ -103,7 +103,7 @@ export default function TasksScreen() {
               <TaskCard
                 key={task.id}
                 task={task}
-                detailLabel="Detail Tugas"
+                detailLabel="Detail"
                 onPress={(selectedTask) => router.push(`/task/${selectedTask.id}`)}
               />
             ))

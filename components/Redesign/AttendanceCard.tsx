@@ -17,11 +17,11 @@ const STATUS_CONFIG: Record<
   AttendanceItem['status'],
   { label: string; variant: React.ComponentProps<typeof Badge>['variant']; strip: string }
 > = {
-  open:         { label: 'Sedang Dibuka', variant: 'open',         strip: '#2ECC71' },
-  closing_soon: { label: 'Segera Ditutup', variant: 'closing_soon', strip: '#FFB347' },
-  upcoming:     { label: 'Akan Dibuka',   variant: 'upcoming',     strip: '#4F8EF7' },
-  available:    { label: 'Tersedia',       variant: 'available',    strip: '#A78BFA' },
-  closed:       { label: 'Sudah Ditutup', variant: 'closed',       strip: '#4A5A78' },
+  open:         { label: 'Dibuka',        variant: 'open',          strip: '#2ECC71' },
+  closing_soon: { label: 'Segera tutup',  variant: 'closing_soon',  strip: '#FFB347' },
+  upcoming:     { label: 'Akan dibuka',   variant: 'upcoming',      strip: '#4F8EF7' },
+  available:    { label: 'Tersedia',      variant: 'available',     strip: '#A78BFA' },
+  closed:       { label: 'Ditutup',       variant: 'closed',        strip: '#4A5A78' },
 };
 
 export function AttendanceCard({ attendance, highlight = false }: AttendanceCardProps) {
@@ -34,6 +34,32 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
           variant: attendance.attendanceMarkVariant ?? 'submitted',
         }
       : null;
+  const compactMetaItems: {
+    key: string;
+    icon: React.ComponentProps<typeof FontAwesome>['name'];
+    label: string;
+    warning?: boolean;
+  }[] = [
+    ...(attendance.startsAt
+      ? [
+          {
+            key: 'start',
+            icon: 'clock-o' as const,
+            label: `Mulai ${formatDateTime(attendance.startsAt)}`,
+          },
+        ]
+      : []),
+    ...(attendance.closesAt
+      ? [
+          {
+            key: 'close',
+            icon: 'hourglass-end' as const,
+            label: `Tutup ${formatDateTime(attendance.closesAt)}`,
+            warning: attendance.status === 'closing_soon',
+          },
+        ]
+      : []),
+  ];
 
   return (
     <View
@@ -65,32 +91,45 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
           </View>
         </View>
 
-        <Text style={[styles.title, { color: colors.textPrimary }]}>{attendance.title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
+          {attendance.title}
+        </Text>
 
         {!!attendance.description && (
-          <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={2}>
+          <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={1}>
             {attendance.description}
           </Text>
         )}
 
-        {(attendance.startsAt || attendance.closesAt) && (
-          <View style={[styles.timeBlock, { borderTopColor: colors.borderSubtle }]}>
-            {attendance.startsAt ? (
-              <AttendanceMetaRow
-                icon="clock-o"
-                label="Mulai"
-                value={formatDateTime(attendance.startsAt)}
-                valueColor={colors.textPrimary}
-              />
-            ) : null}
-            {attendance.closesAt ? (
-              <AttendanceMetaRow
-                icon="hourglass-end"
-                label="Tutup"
-                value={formatDateTime(attendance.closesAt)}
-                valueColor={attendance.status === 'closing_soon' ? colors.warning : colors.textPrimary}
-              />
-            ) : null}
+        {compactMetaItems.length > 0 && (
+          <View style={[styles.metaRow, { borderTopColor: colors.borderSubtle }]}>
+            {compactMetaItems.map((item) => (
+              <View
+                key={item.key}
+                style={[
+                  styles.metaChip,
+                  {
+                    backgroundColor: item.warning ? colors.warningDim : colors.bgCardHover,
+                    borderColor: item.warning ? colors.warningDim : colors.borderSubtle,
+                  },
+                ]}
+              >
+                <FontAwesome
+                  name={item.icon}
+                  size={11}
+                  color={item.warning ? colors.warning : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.metaChipText,
+                    { color: item.warning ? colors.warning : colors.textSecondary },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.label}
+                </Text>
+              </View>
+            ))}
           </View>
         )}
 
@@ -101,32 +140,11 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
           >
             <View style={styles.linkButtonContent}>
               <FontAwesome name="external-link" size={12} color={colors.accent} />
-              <Text style={[styles.linkButtonText, { color: colors.accent }]}>Buka Absensi di SUNAN</Text>
+              <Text style={[styles.linkButtonText, { color: colors.accent }]}>Buka di SUNAN</Text>
             </View>
           </Pressable>
         ) : null}
       </View>
-    </View>
-  );
-}
-
-type AttendanceMetaRowProps = {
-  icon: React.ComponentProps<typeof FontAwesome>['name'];
-  label: string;
-  value: string;
-  valueColor: string;
-};
-
-function AttendanceMetaRow({ icon, label, value, valueColor }: AttendanceMetaRowProps) {
-  const { colors } = useTheme();
-
-  return (
-    <View style={styles.timeRow}>
-      <View style={styles.timeLabelRow}>
-        <FontAwesome name={icon} size={11} color={colors.textMuted} />
-        <Text style={[styles.timeLabel, { color: colors.textMuted }]}>{label}</Text>
-      </View>
-      <Text style={[styles.timeValue, { color: valueColor }]}>{value}</Text>
     </View>
   );
 }
@@ -154,11 +172,29 @@ const styles = StyleSheet.create({
   course: { fontSize: 11, fontWeight: '600', flex: 1, textTransform: 'uppercase', letterSpacing: 0.3 },
   title: { fontSize: 15, fontWeight: '700', lineHeight: 21 },
   description: { fontSize: 12, lineHeight: 18 },
-  timeBlock: { marginTop: 4, gap: 3, paddingTop: 8, borderTopWidth: 1 },
-  timeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  timeLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  timeLabel: { fontSize: 11, fontWeight: '500' },
-  timeValue: { fontSize: 11, fontWeight: '700' },
+  metaRow: {
+    marginTop: 2,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    maxWidth: '100%',
+  },
+  metaChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
   linkButton: { marginTop: 4, borderRadius: Radius.sm, paddingVertical: 9, alignItems: 'center', borderWidth: 1 },
   linkButtonContent: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   linkButtonText: { fontSize: 12, fontWeight: '700' },

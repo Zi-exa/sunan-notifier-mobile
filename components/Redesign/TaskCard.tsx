@@ -22,9 +22,9 @@ const STATUS_BADGE_VARIANT: Record<AssignmentItem['status'], React.ComponentProp
 
 const STATUS_BADGE_LABEL: Record<AssignmentItem['status'], string> = {
   pending: 'Belum Dikerjakan',
-  submitted: 'Sudah Dikumpulkan',
+  submitted: 'Dikumpulkan',
   overdue: 'Terlambat',
-  unknown: 'Masih Dicek',
+  unknown: 'Dicek',
 };
 
 const STATUS_ACCENT: Record<AssignmentItem['status'], string> = {
@@ -37,8 +37,8 @@ const STATUS_ACCENT: Record<AssignmentItem['status'], string> = {
 function getOpenBadge(openDate: number | undefined): { label: string; variant: React.ComponentProps<typeof Badge>['variant'] } | null {
   if (!openDate || openDate <= 0) return null;
   const now = Math.floor(Date.now() / 1000);
-  if (now >= openDate) return { label: 'Sudah Dibuka', variant: 'accent' };
-  return { label: 'Belum Dibuka', variant: 'available' };
+  if (now >= openDate) return { label: 'Dibuka', variant: 'accent' };
+  return { label: 'Akan Dibuka', variant: 'available' };
 }
 
 export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
@@ -49,6 +49,35 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
   const activityLabel = task.activityType === 'quiz' ? 'Kuis' : 'Tugas';
   const openBadge = getOpenBadge(task.openDate);
   const showDetailAction = Boolean(detailLabel);
+  const compactMetaItems: {
+    key: string;
+    icon: React.ComponentProps<typeof FontAwesome>['name'];
+    label: string;
+    accent?: boolean;
+    danger?: boolean;
+  }[] = [
+    {
+      key: 'activity',
+      icon: task.activityType === 'quiz' ? 'question-circle-o' : 'file-text-o',
+      label: activityLabel,
+      accent: true,
+    },
+    ...(task.openDate != null && task.openDate > 0
+      ? [
+          {
+            key: 'open',
+            icon: 'calendar-o' as const,
+            label: `Buka ${formatDateTime(task.openDate)}`,
+          },
+        ]
+      : []),
+    {
+      key: 'deadline',
+      icon: 'clock-o' as const,
+      label: `Deadline ${formatDateTime(task.dueDate)}`,
+      danger: task.status === 'overdue',
+    },
+  ];
 
   return (
     <Pressable
@@ -78,56 +107,50 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
           </View>
         </View>
         <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>{task.name}</Text>
-        <View style={styles.activityRow}>
-          <FontAwesome
-            name={task.activityType === 'quiz' ? 'question-circle-o' : 'file-text-o'}
-            size={12}
-            color={colors.accent}
-          />
-          <Text style={[styles.activityType, { color: colors.accent }]}>{activityLabel}</Text>
-        </View>
         {!!task.intro && (
-          <Text style={[styles.intro, { color: colors.textSecondary }]} numberOfLines={2}>{task.intro}</Text>
+          <Text style={[styles.intro, { color: colors.textSecondary }]} numberOfLines={1}>{task.intro}</Text>
         )}
-        <View style={[styles.timeBlock, { borderTopColor: colors.borderSubtle }]}>
-          {task.openDate != null && task.openDate > 0 && (
-            <TaskMetaRow
-              icon="calendar-o"
-              label="Dibuka"
-              value={formatDateTime(task.openDate)}
-              valueColor={colors.textPrimary}
-            />
-          )}
-          <TaskMetaRow
-            icon="clock-o"
-            label="Deadline"
-            value={formatDateTime(task.dueDate)}
-            valueColor={task.status === 'overdue' ? colors.danger : colors.textPrimary}
-          />
+        <View style={[styles.metaRow, { borderTopColor: colors.borderSubtle }]}>
+          {compactMetaItems.map((item) => (
+            <View
+              key={item.key}
+              style={[
+                styles.metaChip,
+                {
+                  backgroundColor: item.accent ? colors.accentDim : colors.bgCardHover,
+                  borderColor: item.accent
+                    ? colors.borderAccent
+                    : item.danger
+                      ? colors.dangerDim
+                      : colors.borderSubtle,
+                },
+              ]}
+            >
+              <FontAwesome
+                name={item.icon}
+                size={11}
+                color={item.danger ? colors.danger : item.accent ? colors.accent : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.metaChipText,
+                  {
+                    color: item.danger
+                      ? colors.danger
+                      : item.accent
+                        ? colors.accent
+                        : colors.textSecondary,
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {item.label}
+              </Text>
+            </View>
+          ))}
         </View>
       </View>
     </Pressable>
-  );
-}
-
-type TaskMetaRowProps = {
-  icon: React.ComponentProps<typeof FontAwesome>['name'];
-  label: string;
-  value: string;
-  valueColor: string;
-};
-
-function TaskMetaRow({ icon, label, value, valueColor }: TaskMetaRowProps) {
-  const { colors } = useTheme();
-
-  return (
-    <View style={styles.timeRow}>
-      <View style={styles.timeLabelRow}>
-        <FontAwesome name={icon} size={11} color={colors.textMuted} />
-        <Text style={[styles.timeLabel, { color: colors.textMuted }]}>{label}</Text>
-      </View>
-      <Text style={[styles.timeValue, { color: valueColor }]}>{value}</Text>
-    </View>
   );
 }
 
@@ -135,7 +158,7 @@ const styles = StyleSheet.create({
   container: { flexDirection: 'row', borderRadius: Radius.md, borderWidth: 1, overflow: 'hidden', ...Shadow.card },
   pressed: { opacity: 0.85 },
   accentStrip: { width: 4, borderTopLeftRadius: Radius.md, borderBottomLeftRadius: Radius.md },
-  body: { flex: 1, padding: 12, gap: 6 },
+  body: { flex: 1, padding: 12, gap: 7 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 },
   headerMeta: { alignItems: 'flex-end', gap: 6, flexShrink: 0 },
   badgeRow: { flexDirection: 'row', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 },
@@ -143,12 +166,28 @@ const styles = StyleSheet.create({
   detailLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   detailLinkText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
   title: { fontSize: 15, fontWeight: '700', lineHeight: 21 },
-  activityRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  activityType: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   intro: { fontSize: 12, lineHeight: 18 },
-  timeBlock: { marginTop: 4, gap: 3, paddingTop: 8, borderTopWidth: 1 },
-  timeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  timeLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  timeLabel: { fontSize: 11, fontWeight: '500' },
-  timeValue: { fontSize: 11, fontWeight: '700' },
+  metaRow: {
+    marginTop: 2,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: Radius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    maxWidth: '100%',
+  },
+  metaChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
 });
