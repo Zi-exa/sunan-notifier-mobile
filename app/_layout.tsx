@@ -332,6 +332,7 @@ function RootLayoutNav() {
       <Stack
         screenOptions={{
           contentStyle: { backgroundColor: colors.bgBase },
+          statusBarTranslucent: true,
           headerStyle: { backgroundColor: colors.bgCard },
           headerTintColor: colors.textPrimary,
           headerTitleStyle: { fontWeight: '700', color: colors.textPrimary },
