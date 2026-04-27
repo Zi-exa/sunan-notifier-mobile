@@ -102,6 +102,8 @@ function mergeAttendanceItem(base: AttendanceItem | undefined, preferred: Attend
     startsAt: preferred.startsAt ?? base.startsAt,
     closesAt: preferred.closesAt ?? base.closesAt,
     isMarked: preferred.isMarked ?? base.isMarked,
+    attendanceMarkLabel: preferred.attendanceMarkLabel ?? base.attendanceMarkLabel,
+    attendanceMarkVariant: preferred.attendanceMarkVariant ?? base.attendanceMarkVariant,
     quickLink: preferred.quickLink ?? base.quickLink,
     source: preferred.source,
   };

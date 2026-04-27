@@ -112,6 +112,7 @@ export type AssignmentStatus = 'pending' | 'submitted' | 'overdue' | 'unknown';
 export type TaskActivityType = 'assignment' | 'quiz';
 
 export type AttendanceStatus = 'upcoming' | 'open' | 'closing_soon' | 'closed' | 'available';
+export type AttendanceMarkVariant = 'submitted' | 'pending' | 'overdue' | 'accent';
 
 export type AssignmentItem = {
   id: number;
@@ -142,6 +143,8 @@ export type AttendanceItem = {
   closesAt?: number;
   status: AttendanceStatus;
   isMarked?: boolean;
+  attendanceMarkLabel?: string;
+  attendanceMarkVariant?: AttendanceMarkVariant;
   quickLink?: string;
   source: 'calendar';
 };

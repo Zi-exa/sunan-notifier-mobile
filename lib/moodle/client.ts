@@ -1,4 +1,4 @@
-import { CONFIG } from '@/lib/config';
+import { CONFIG, SECURE_KEYS } from '@/lib/config';
 import {
   AppError,
   isAuthError,
@@ -9,6 +9,7 @@ import {
   SUNAN_MAINTENANCE_MESSAGE,
   toNetworkAwareError,
 } from '@/lib/moodle/errors';
+import { getSecureItem } from '@/lib/storage/secureStore';
 import {
   extractAttendanceFromCalendar,
   mergeAttendanceSources,
@@ -16,6 +17,7 @@ import {
 import { mapSubmissionToStatus, sortAssignmentsByDeadline } from '@/lib/utils/tasks';
 import { sanitizeRichText } from '@/lib/utils/text';
 import {
+  AttendanceMarkVariant,
   AttendanceItem,
   AssignmentItem,
   MoodleAssignment,
@@ -50,12 +52,20 @@ type MoodleAttendanceLogEntry = {
   statusid?: number | string;
 };
 
+type MoodleAttendanceStatusEntry = {
+  id?: number;
+  acronym?: string;
+  description?: string;
+  grade?: number;
+};
+
 type RawMoodleAttendanceSessionPayload = {
   id?: number;
   attendanceid?: number;
   sessdate?: number;
   duration?: number;
   attendance_log?: MoodleAttendanceLogEntry[] | Record<string, MoodleAttendanceLogEntry>;
+  statuses?: MoodleAttendanceStatusEntry[] | Record<string, MoodleAttendanceStatusEntry>;
 };
 
 type MoodleAttendanceSessionPayload = {
@@ -64,12 +74,27 @@ type MoodleAttendanceSessionPayload = {
   sessdate: number;
   duration: number;
   attendance_log: MoodleAttendanceLogEntry[];
+  statuses: MoodleAttendanceStatusEntry[];
+};
+
+type SavedCredentials = {
+  nim: string;
+  password: string;
+};
+
+type ParsedAttendanceReportEntry = {
+  startsAt: number;
+  closesAt?: number;
+  attendanceMarkLabel: string;
+  attendanceMarkVariant: AttendanceMarkVariant;
 };
 
 const CALENDAR_LIMIT_NUM = 50;
 const CALENDAR_PADDING_DAYS = 7;
 const MAINTENANCE_PROBE_CACHE_MS = 30 * 1000;
 const QUIZ_TASK_ID_OFFSET = 2_000_000_000;
+const ATTENDANCE_REPORT_VIEW = 5;
+const ATTENDANCE_MATCH_TOLERANCE_SECONDS = 5 * 60;
 
 let maintenanceProbePromise: Promise<boolean> | null = null;
 let lastMaintenanceProbeAt = 0;
@@ -115,6 +140,428 @@ function appendParam(params: URLSearchParams, key: string, value: unknown): void
   }
 
   params.append(key, String(value));
+}
+
+function parseSavedCredentials(raw: string | null): SavedCredentials | null {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<SavedCredentials>;
+    if (typeof parsed.nim !== 'string' || typeof parsed.password !== 'string') {
+      return null;
+    }
+
+    return {
+      nim: parsed.nim.trim(),
+      password: parsed.password,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#(\d+);/g, (_, codePoint) => {
+      const parsed = Number(codePoint);
+      return Number.isFinite(parsed) ? String.fromCharCode(parsed) : '';
+    });
+}
+
+function stripHtml(value: string): string {
+  return decodeHtmlEntities(
+    value
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+  )
+    .replace(/\s+\n/g, '\n')
+    .replace(/\n\s+/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+}
+
+function normalizeAttendanceQuickLink(quickLink?: string): string | null {
+  if (!quickLink) {
+    return null;
+  }
+
+  try {
+    const url = new URL(quickLink, CONFIG.moodleBaseUrl);
+    url.hash = '';
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function extractAttendanceModuleIdFromQuickLink(quickLink?: string): number | null {
+  if (!quickLink) {
+    return null;
+  }
+
+  try {
+    const url = new URL(quickLink, CONFIG.moodleBaseUrl);
+    const isAttendanceView = /\/mod\/attendance\/view\.php$/i.test(url.pathname);
+    const courseModuleId = Number(url.searchParams.get('id'));
+
+    if (!isAttendanceView || !Number.isFinite(courseModuleId) || courseModuleId <= 0) {
+      return null;
+    }
+
+    return courseModuleId;
+  } catch {
+    return null;
+  }
+}
+
+function toLocalDateKey(unixSeconds: number): string {
+  const date = new Date(unixSeconds * 1000);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function resolveAttendanceMarkMeta(
+  label: string | undefined,
+  fallbackAcronym?: string | undefined
+): Pick<AttendanceItem, 'attendanceMarkLabel' | 'attendanceMarkVariant'> | null {
+  const rawLabel = (label ?? '').trim();
+  const rawAcronym = (fallbackAcronym ?? '').trim();
+  const normalized = (rawLabel || rawAcronym).toLowerCase();
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (
+    ['present', 'hadir', 'ontime', 'on time', 'tepat waktu', 'p'].includes(normalized)
+  ) {
+    return {
+      attendanceMarkLabel: 'Hadir',
+      attendanceMarkVariant: 'submitted',
+    };
+  }
+
+  if (['late', 'terlambat', 'l'].includes(normalized)) {
+    return {
+      attendanceMarkLabel: 'Terlambat',
+      attendanceMarkVariant: 'pending',
+    };
+  }
+
+  if (
+    ['excused', 'izin', 'dispensasi', 'exc', 'i'].includes(normalized) ||
+    normalized.includes('izin')
+  ) {
+    return {
+      attendanceMarkLabel: 'Izin',
+      attendanceMarkVariant: 'accent',
+    };
+  }
+
+  if (['sick', 'sakit', 's'].includes(normalized) || normalized.includes('sakit')) {
+    return {
+      attendanceMarkLabel: 'Sakit',
+      attendanceMarkVariant: 'accent',
+    };
+  }
+
+  if (
+    ['absent', 'tidak hadir', 'alpa', 'a', 'alpha'].includes(normalized) ||
+    normalized.includes('absent') ||
+    normalized.includes('tidak hadir')
+  ) {
+    return {
+      attendanceMarkLabel: 'Tidak Hadir',
+      attendanceMarkVariant: 'overdue',
+    };
+  }
+
+  return {
+    attendanceMarkLabel: rawLabel || rawAcronym || 'Sudah Absen',
+    attendanceMarkVariant: 'accent',
+  };
+}
+
+function buildAttendanceReportUrl(courseModuleId: number): string {
+  return `${CONFIG.moodleBaseUrl}/mod/attendance/view.php?id=${courseModuleId}&view=${ATTENDANCE_REPORT_VIEW}`;
+}
+
+function looksLikeLoginPage(html: string): boolean {
+  const normalized = html.toLowerCase();
+  return (
+    normalized.includes('/login/index.php') &&
+    (normalized.includes('name="username"') || normalized.includes("name='username'"))
+  );
+}
+
+function extractLoginToken(html: string): string | null {
+  const match =
+    html.match(/name=["']logintoken["'][^>]*value=["']([^"']+)["']/i) ??
+    html.match(/value=["']([^"']+)["'][^>]*name=["']logintoken["']/i);
+
+  return match?.[1] ?? null;
+}
+
+function tryCreateTimestampFromParts(
+  year: number,
+  monthIndex: number,
+  day: number,
+  hours = 0,
+  minutes = 0
+): number | null {
+  const date = new Date(year, monthIndex, day, hours, minutes, 0, 0);
+  const timestamp = Math.floor(date.getTime() / 1000);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function parseAttendanceReportTime(timeText: string): { hours: number; minutes: number } | null {
+  const match = timeText.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if (!match) {
+    return null;
+  }
+
+  let hours = Number(match[1]);
+  const minutes = match[2] ? Number(match[2]) : 0;
+  const period = match[3]?.toLowerCase();
+
+  if (period === 'pm' && hours < 12) {
+    hours += 12;
+  } else if (period === 'am' && hours === 12) {
+    hours = 0;
+  }
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+
+  return { hours, minutes };
+}
+
+function parseAttendanceReportDateCell(cellText: string): { startsAt: number; closesAt?: number } | null {
+  const normalized = cellText.replace(/\u2013/g, '-').replace(/\s+/g, ' ').trim();
+  const monthMap: Record<string, number> = {
+    jan: 0,
+    january: 0,
+    feb: 1,
+    february: 1,
+    mar: 2,
+    march: 2,
+    apr: 3,
+    april: 3,
+    mei: 4,
+    may: 4,
+    jun: 5,
+    june: 5,
+    jul: 6,
+    july: 6,
+    agu: 7,
+    august: 7,
+    agustus: 7,
+    aug: 7,
+    sep: 8,
+    sept: 8,
+    september: 8,
+    okt: 9,
+    october: 9,
+    oktober: 9,
+    oct: 9,
+    nov: 10,
+    november: 10,
+    des: 11,
+    december: 11,
+    desember: 11,
+    dec: 11,
+  };
+
+  const dateMatch = normalized.match(
+    /(?:[A-Za-z]{2,9}\s+)?(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})(?:\s+(.+))?/i
+  );
+
+  if (!dateMatch) {
+    return null;
+  }
+
+  const day = Number(dateMatch[1]);
+  const monthIndex = monthMap[dateMatch[2].toLowerCase()];
+  const year = Number(dateMatch[3]);
+
+  if (!Number.isFinite(day) || monthIndex === undefined || !Number.isFinite(year)) {
+    return null;
+  }
+
+  const remainder = dateMatch[4]?.trim();
+  if (!remainder) {
+    const startsAt = tryCreateTimestampFromParts(year, monthIndex, day);
+    return startsAt ? { startsAt } : null;
+  }
+
+  const [startTimeText, endTimeText] = remainder.split(/\s*-\s*/, 2);
+  const startTime = parseAttendanceReportTime(startTimeText ?? '');
+
+  if (!startTime) {
+    const startsAt = tryCreateTimestampFromParts(year, monthIndex, day);
+    return startsAt ? { startsAt } : null;
+  }
+
+  const startsAt = tryCreateTimestampFromParts(
+    year,
+    monthIndex,
+    day,
+    startTime.hours,
+    startTime.minutes
+  );
+
+  const endTime = endTimeText ? parseAttendanceReportTime(endTimeText) : null;
+  const closesAt =
+    startsAt && endTime
+      ? tryCreateTimestampFromParts(year, monthIndex, day, endTime.hours, endTime.minutes) ?? undefined
+      : undefined;
+
+  return startsAt ? { startsAt, closesAt } : null;
+}
+
+function parseAttendanceReportEntries(html: string): ParsedAttendanceReportEntry[] {
+  const rows = html.match(/<tr\b[\s\S]*?<\/tr>/gi) ?? [];
+  const entries: ParsedAttendanceReportEntry[] = [];
+
+  rows.forEach((row) => {
+    const cells = [...row.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((match) =>
+      stripHtml(match[1] ?? '')
+    );
+
+    if (cells.length < 2) {
+      return;
+    }
+
+    const dateCell = cells[0];
+    const statusCell = cells[1];
+    const dateInfo = parseAttendanceReportDateCell(dateCell);
+    const markMeta = resolveAttendanceMarkMeta(statusCell);
+
+    if (!dateInfo || !markMeta) {
+      return;
+    }
+
+    entries.push({
+      startsAt: dateInfo.startsAt,
+      closesAt: dateInfo.closesAt,
+      attendanceMarkLabel: markMeta.attendanceMarkLabel ?? 'Sudah Absen',
+      attendanceMarkVariant: markMeta.attendanceMarkVariant ?? 'submitted',
+    });
+  });
+
+  return entries;
+}
+
+async function readSavedCredentials(): Promise<SavedCredentials | null> {
+  return parseSavedCredentials(await getSecureItem(SECURE_KEYS.savedCredentials));
+}
+
+async function establishSunanWebSession(credentials: SavedCredentials): Promise<boolean> {
+  try {
+    const loginPageResponse = await fetch(`${CONFIG.moodleBaseUrl}/login/index.php`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'text/html,application/xhtml+xml',
+      },
+    });
+    const loginPageHtml = await loginPageResponse.text();
+
+    if (isMaintenanceHtml(loginPageHtml) || !loginPageResponse.ok) {
+      return false;
+    }
+
+    const body = new URLSearchParams();
+    body.append('username', credentials.nim);
+    body.append('password', credentials.password);
+
+    const loginToken = extractLoginToken(loginPageHtml);
+    if (loginToken) {
+      body.append('logintoken', loginToken);
+    }
+
+    const loginResponse = await fetch(`${CONFIG.moodleBaseUrl}/login/index.php`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        Accept: 'text/html,application/xhtml+xml',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    });
+    const loginHtml = await loginResponse.text();
+
+    if (isMaintenanceHtml(loginHtml)) {
+      return false;
+    }
+
+    return !looksLikeLoginPage(loginHtml);
+  } catch {
+    return false;
+  }
+}
+
+async function fetchAttendanceReportEntriesByQuickLink(
+  quickLinks: string[]
+): Promise<Map<string, ParsedAttendanceReportEntry[]>> {
+  const credentials = await readSavedCredentials();
+  if (!credentials) {
+    return new Map();
+  }
+
+  const hasSession = await establishSunanWebSession(credentials);
+  if (!hasSession) {
+    return new Map();
+  }
+
+  const reports = new Map<string, ParsedAttendanceReportEntry[]>();
+
+  for (const quickLink of quickLinks) {
+    const normalizedQuickLink = normalizeAttendanceQuickLink(quickLink);
+    const courseModuleId = extractAttendanceModuleIdFromQuickLink(quickLink);
+
+    if (!normalizedQuickLink || !courseModuleId) {
+      continue;
+    }
+
+    try {
+      const response = await fetch(buildAttendanceReportUrl(courseModuleId), {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          Accept: 'text/html,application/xhtml+xml',
+        },
+      });
+      const html = await response.text();
+
+      if (!response.ok || looksLikeLoginPage(html) || isMaintenanceHtml(html)) {
+        continue;
+      }
+
+      const entries = parseAttendanceReportEntries(html);
+      if (entries.length > 0) {
+        reports.set(normalizedQuickLink, entries);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return reports;
 }
 
 function isMaintenanceHtml(text: string): boolean {
@@ -443,6 +890,36 @@ function toAttendanceLogEntryArray(value: unknown): MoodleAttendanceLogEntry[] {
   });
 }
 
+function toAttendanceStatusArray(value: unknown): MoodleAttendanceStatusEntry[] {
+  const rawStatuses = Array.isArray(value)
+    ? value
+    : value && typeof value === 'object'
+      ? Object.values(value as Record<string, unknown>)
+      : [];
+
+  return rawStatuses.flatMap((status) => {
+    if (!status || typeof status !== 'object') {
+      return [];
+    }
+
+    const raw = status as Partial<MoodleAttendanceStatusEntry> & { id?: unknown; grade?: unknown };
+    const statusId = typeof raw.id === 'number' ? raw.id : Number(raw.id);
+
+    if (!Number.isFinite(statusId)) {
+      return [];
+    }
+
+    return [
+      {
+        id: statusId,
+        acronym: typeof raw.acronym === 'string' ? raw.acronym : undefined,
+        description: typeof raw.description === 'string' ? raw.description : undefined,
+        grade: typeof raw.grade === 'number' ? raw.grade : Number(raw.grade ?? 0),
+      },
+    ];
+  });
+}
+
 function toAttendanceSessionArray(value: unknown): MoodleAttendanceSessionPayload[] {
   const rawSessions = Array.isArray(value)
     ? value
@@ -483,6 +960,7 @@ function toAttendanceSessionArray(value: unknown): MoodleAttendanceSessionPayloa
         sessdate: startsAt,
         duration,
         attendance_log: toAttendanceLogEntryArray(normalizedRaw.attendance_log),
+        statuses: toAttendanceStatusArray(normalizedRaw.statuses),
       },
     ];
   });
@@ -839,6 +1317,24 @@ async function getAttendanceSessionsForInstance(
   return toAttendanceSessionArray(payload);
 }
 
+function findMatchedAttendanceSession(
+  session: AttendanceItem,
+  candidateSessions: MoodleAttendanceSessionPayload[]
+): MoodleAttendanceSessionPayload | undefined {
+  const targetDuration =
+    typeof session.startsAt === 'number' && typeof session.closesAt === 'number'
+      ? Math.max(0, session.closesAt - session.startsAt)
+      : undefined;
+
+  return (
+    candidateSessions.find(
+      (candidate) =>
+        candidate.sessdate === session.startsAt &&
+        (targetDuration === undefined || (candidate.duration ?? 0) === targetDuration)
+    ) ?? candidateSessions.find((candidate) => candidate.sessdate === session.startsAt)
+  );
+}
+
 function markAttendanceCompletion(
   sessions: AttendanceItem[],
   attendanceLogsByInstance: Map<number, MoodleAttendanceSessionPayload[]>,
@@ -854,31 +1350,85 @@ function markAttendanceCompletion(
       return session;
     }
 
-    const targetDuration =
-      typeof session.startsAt === 'number' && typeof session.closesAt === 'number'
-        ? Math.max(0, session.closesAt - session.startsAt)
-        : undefined;
-
-    const matchedSession =
-      candidateSessions.find(
-        (candidate) =>
-          candidate.sessdate === session.startsAt &&
-          (targetDuration === undefined || (candidate.duration ?? 0) === targetDuration)
-      ) ??
-      candidateSessions.find((candidate) => candidate.sessdate === session.startsAt);
-
+    const matchedSession = findMatchedAttendanceSession(session, candidateSessions);
     if (!matchedSession) {
       return session;
     }
 
-    const isMarked = (matchedSession.attendance_log ?? []).some((entry) => {
+    const matchedLog = (matchedSession.attendance_log ?? []).find((entry) => {
       const studentId = typeof entry.studentid === 'number' ? entry.studentid : Number(entry.studentid);
       return Number.isFinite(studentId) && studentId === userId;
     });
 
+    if (!matchedLog) {
+      return session;
+    }
+
+    const matchedStatusId =
+      typeof matchedLog.statusid === 'number' ? matchedLog.statusid : Number(matchedLog.statusid);
+    const matchedStatus = Number.isFinite(matchedStatusId)
+      ? matchedSession.statuses.find((status) => status.id === matchedStatusId)
+      : undefined;
+    const markMeta = resolveAttendanceMarkMeta(
+      matchedStatus?.description,
+      matchedStatus?.acronym
+    );
+
     return {
       ...session,
-      isMarked,
+      isMarked: true,
+      attendanceMarkLabel: markMeta?.attendanceMarkLabel ?? session.attendanceMarkLabel,
+      attendanceMarkVariant: markMeta?.attendanceMarkVariant ?? session.attendanceMarkVariant,
+    };
+  });
+}
+
+function matchesAttendanceReportEntry(
+  session: AttendanceItem,
+  reportEntry: ParsedAttendanceReportEntry
+): boolean {
+  if (!session.startsAt) {
+    return false;
+  }
+
+  const sameDate = toLocalDateKey(session.startsAt) === toLocalDateKey(reportEntry.startsAt);
+  const startDiff = Math.abs(reportEntry.startsAt - session.startsAt);
+  const closeDiff =
+    typeof session.closesAt === 'number' && typeof reportEntry.closesAt === 'number'
+      ? Math.abs(reportEntry.closesAt - session.closesAt)
+      : 0;
+
+  return (
+    sameDate &&
+    startDiff <= ATTENDANCE_MATCH_TOLERANCE_SECONDS &&
+    closeDiff <= ATTENDANCE_MATCH_TOLERANCE_SECONDS
+  );
+}
+
+function markAttendanceFromWebReports(
+  sessions: AttendanceItem[],
+  reportsByQuickLink: Map<string, ParsedAttendanceReportEntry[]>
+): AttendanceItem[] {
+  return sessions.map((session) => {
+    if (session.isMarked || !session.quickLink || !session.startsAt) {
+      return session;
+    }
+
+    const reportEntries = reportsByQuickLink.get(normalizeAttendanceQuickLink(session.quickLink) ?? '');
+    if (!reportEntries || reportEntries.length === 0) {
+      return session;
+    }
+
+    const matchedEntry = reportEntries.find((entry) => matchesAttendanceReportEntry(session, entry));
+    if (!matchedEntry) {
+      return session;
+    }
+
+    return {
+      ...session,
+      isMarked: true,
+      attendanceMarkLabel: matchedEntry.attendanceMarkLabel,
+      attendanceMarkVariant: matchedEntry.attendanceMarkVariant,
     };
   });
 }
@@ -913,25 +1463,42 @@ export async function getAttendanceSessions(
       .filter((attendanceId): attendanceId is number => typeof attendanceId === 'number' && Number.isFinite(attendanceId))
   )];
 
-  if (attendanceInstanceIds.length === 0) {
-    return mergedAttendances;
+  const attendanceLogsByInstance = new Map<number, MoodleAttendanceSessionPayload[]>();
+  if (attendanceInstanceIds.length > 0) {
+    const attendanceLogResults = await Promise.allSettled(
+      attendanceInstanceIds.map(async (attendanceId) => {
+        const sessions = await getAttendanceSessionsForInstance(token, attendanceId);
+        return { attendanceId, sessions };
+      })
+    );
+
+    attendanceLogResults.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        attendanceLogsByInstance.set(result.value.attendanceId, result.value.sessions);
+      }
+    });
   }
 
-  const attendanceLogsByInstance = new Map<number, MoodleAttendanceSessionPayload[]>();
-  const attendanceLogResults = await Promise.allSettled(
-    attendanceInstanceIds.map(async (attendanceId) => {
-      const sessions = await getAttendanceSessionsForInstance(token, attendanceId);
-      return { attendanceId, sessions };
-    })
-  );
+  const apiMarkedAttendances =
+    attendanceLogsByInstance.size > 0
+      ? markAttendanceCompletion(mergedAttendances, attendanceLogsByInstance, userId)
+      : mergedAttendances;
+  const unresolvedQuickLinks = [...new Set(
+    apiMarkedAttendances
+      .filter((item) => !item.isMarked && typeof item.quickLink === 'string' && item.quickLink.length > 0)
+      .map((item) => item.quickLink as string)
+  )];
 
-  attendanceLogResults.forEach((result) => {
-    if (result.status === 'fulfilled') {
-      attendanceLogsByInstance.set(result.value.attendanceId, result.value.sessions);
-    }
-  });
+  if (unresolvedQuickLinks.length === 0) {
+    return apiMarkedAttendances;
+  }
 
-  return markAttendanceCompletion(mergedAttendances, attendanceLogsByInstance, userId);
+  const attendanceReportsByQuickLink = await fetchAttendanceReportEntriesByQuickLink(unresolvedQuickLinks);
+  if (attendanceReportsByQuickLink.size === 0) {
+    return apiMarkedAttendances;
+  }
+
+  return markAttendanceFromWebReports(apiMarkedAttendances, attendanceReportsByQuickLink);
 }
 
 export async function getSubmissionStatus(

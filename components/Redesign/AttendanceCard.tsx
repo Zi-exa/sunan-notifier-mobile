@@ -27,6 +27,13 @@ const STATUS_CONFIG: Record<
 export function AttendanceCard({ attendance, highlight = false }: AttendanceCardProps) {
   const { colors } = useTheme();
   const config = STATUS_CONFIG[attendance.status];
+  const markBadge =
+    attendance.isMarked
+      ? {
+          label: attendance.attendanceMarkLabel ?? 'Sudah Absen',
+          variant: attendance.attendanceMarkVariant ?? 'submitted',
+        }
+      : null;
 
   return (
     <View
@@ -53,7 +60,7 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
             {attendance.courseName}
           </Text>
           <View style={styles.badgeRow}>
-            {attendance.isMarked ? <Badge variant="submitted" label="Sudah Absen" /> : null}
+            {markBadge ? <Badge variant={markBadge.variant} label={markBadge.label} /> : null}
             <Badge variant={config.variant} label={config.label} />
           </View>
         </View>
