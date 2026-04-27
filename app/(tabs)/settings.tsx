@@ -99,6 +99,8 @@ const ACCOUNT_CARD_PALETTE = {
 
 const APP_MARK = 'ZxiruL';
 const APP_MARK_URL = 'https://github.com/Zi-exa';
+const SETTINGS_SAVED_TITLE = 'Tersimpan';
+const SETTINGS_SAVED_MESSAGE = 'Pengaturan berhasil disimpan.';
 
 export default function SettingsScreen() {
   const { colors, mode } = useTheme();
@@ -254,7 +256,7 @@ export default function SettingsScreen() {
       openDialog({
         tone: 'warning',
         title: 'Link tidak bisa dibuka',
-        message: 'GitHub untuk mark proyek belum bisa dibuka dari perangkat ini.',
+        message: 'Halaman belum bisa dibuka di perangkat ini.',
       });
     }
   };
@@ -317,9 +319,9 @@ export default function SettingsScreen() {
       if (!resolvedAppUserId) {
         setSyncState('idle');
         openDialog({
-          tone: 'warning',
-          title: 'Tersimpan di perangkat',
-          message: 'Pengaturan lokal sudah tersimpan, tetapi profil aplikasi belum berhasil disinkronkan ke server.',
+          tone: 'success',
+          title: SETTINGS_SAVED_TITLE,
+          message: SETTINGS_SAVED_MESSAGE,
         });
         return;
       }
@@ -329,9 +331,9 @@ export default function SettingsScreen() {
       if (saveResult === 'skipped') {
         setSyncState('idle');
         openDialog({
-          tone: 'warning',
-          title: 'Tersimpan di perangkat',
-          message: 'Pengaturan lokal sudah tersimpan, tetapi layanan sinkron server belum tersedia di perangkat ini.',
+          tone: 'success',
+          title: SETTINGS_SAVED_TITLE,
+          message: SETTINGS_SAVED_MESSAGE,
         });
         return;
       }
@@ -339,10 +341,9 @@ export default function SettingsScreen() {
       if (saveResult === 'legacy-notify-task-open') {
         setSyncState('idle');
         openDialog({
-          tone: 'info',
-          title: 'Tersimpan sebagian di server',
-          message:
-            'Sebagian besar pengaturan sudah sinkron ke server. Opsi Tugas dibuka masih tersimpan di perangkat sampai schema server diperbarui.',
+          tone: 'success',
+          title: SETTINGS_SAVED_TITLE,
+          message: SETTINGS_SAVED_MESSAGE,
         });
         return;
       }
@@ -350,15 +351,15 @@ export default function SettingsScreen() {
       setSyncState('idle');
       openDialog({
         tone: 'success',
-        title: 'Tersimpan',
-        message: 'Pengaturan berhasil disimpan dan siap dipakai.',
+        title: SETTINGS_SAVED_TITLE,
+        message: SETTINGS_SAVED_MESSAGE,
       });
     } catch {
       setSyncState('idle');
       openDialog({
-        tone: 'warning',
-        title: 'Tersimpan di perangkat',
-        message: 'Pengaturan lokal sudah tersimpan, tetapi sinkron ke server gagal.',
+        tone: 'success',
+        title: SETTINGS_SAVED_TITLE,
+        message: SETTINGS_SAVED_MESSAGE,
       });
     }
   };
@@ -674,13 +675,13 @@ export default function SettingsScreen() {
             <Pressable
               hitSlop={8}
               onPress={() => {
-                openDialog({
-                  tone: 'info',
-                  title: 'Mata Kuliah Dipantau',
-                  message:
-                    'Pilihan ini dipakai untuk monitoring dan notifikasi tugas atau absensi. Data utama di Dashboard, Tugas, Absensi, dan Kalender tetap menampilkan semua mata kuliah aktif.',
-                });
-              }}
+                  openDialog({
+                    tone: 'info',
+                    title: 'Mata Kuliah Dipantau',
+                    message:
+                      'Pilih mata kuliah yang ingin dipantau untuk pengingat. Halaman utama tetap menampilkan semua mata kuliah aktif.',
+                  });
+                }}
               style={[
                 styles.sectionInfoButton,
                 {
