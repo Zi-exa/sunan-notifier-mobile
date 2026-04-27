@@ -52,7 +52,10 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
           <Text style={[styles.course, { color: colors.textSecondary }]} numberOfLines={1}>
             {attendance.courseName}
           </Text>
-          <Badge variant={config.variant} label={config.label} />
+          <View style={styles.badgeRow}>
+            {attendance.isMarked ? <Badge variant="submitted" label="Sudah Absen" /> : null}
+            <Badge variant={config.variant} label={config.label} />
+          </View>
         </View>
 
         <Text style={[styles.title, { color: colors.textPrimary }]}>{attendance.title}</Text>
@@ -140,6 +143,7 @@ const styles = StyleSheet.create({
   highlightBannerRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   highlightBannerText: { fontSize: 11, fontWeight: '700' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' },
   course: { fontSize: 11, fontWeight: '600', flex: 1, textTransform: 'uppercase', letterSpacing: 0.3 },
   title: { fontSize: 15, fontWeight: '700', lineHeight: 21 },
   description: { fontSize: 12, lineHeight: 18 },

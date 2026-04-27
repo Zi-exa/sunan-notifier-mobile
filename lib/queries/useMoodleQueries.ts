@@ -210,7 +210,7 @@ export function useAttendanceSessionsQuery() {
     staleTime: STALE_TIME_MS,
     retry: shouldRetryQuery,
     queryFn: async () => {
-      const sessions = await getAttendanceSessions(token as string, allCourseIds);
+      const sessions = await getAttendanceSessions(token as string, allCourseIds, user?.id);
 
       if (!user?.id) {
         return sessions;

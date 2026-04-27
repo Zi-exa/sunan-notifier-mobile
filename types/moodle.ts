@@ -134,12 +134,14 @@ export type AssignmentItem = {
 export type AttendanceItem = {
   eventId: number;
   courseId?: number;
+  attendanceInstanceId?: number;
   courseName: string;
   title: string;
   description?: string;
   startsAt?: number;
   closesAt?: number;
   status: AttendanceStatus;
+  isMarked?: boolean;
   quickLink?: string;
   source: 'calendar';
 };

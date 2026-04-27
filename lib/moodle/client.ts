@@ -45,6 +45,27 @@ type MoodleExceptionPayload = {
   debuginfo?: string;
 };
 
+type MoodleAttendanceLogEntry = {
+  studentid?: number;
+  statusid?: number | string;
+};
+
+type RawMoodleAttendanceSessionPayload = {
+  id?: number;
+  attendanceid?: number;
+  sessdate?: number;
+  duration?: number;
+  attendance_log?: MoodleAttendanceLogEntry[] | Record<string, MoodleAttendanceLogEntry>;
+};
+
+type MoodleAttendanceSessionPayload = {
+  id: number;
+  attendanceid: number;
+  sessdate: number;
+  duration: number;
+  attendance_log: MoodleAttendanceLogEntry[];
+};
+
 const CALENDAR_LIMIT_NUM = 50;
 const CALENDAR_PADDING_DAYS = 7;
 const MAINTENANCE_PROBE_CACHE_MS = 30 * 1000;
@@ -394,6 +415,79 @@ function toCalendarEventArray(value: unknown): MoodleCalendarEvent[] {
   });
 }
 
+function toAttendanceLogEntryArray(value: unknown): MoodleAttendanceLogEntry[] {
+  const rawEntries = Array.isArray(value)
+    ? value
+    : value && typeof value === 'object'
+      ? Object.values(value as Record<string, unknown>)
+      : [];
+
+  return rawEntries.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') {
+      return [];
+    }
+
+    const raw = entry as Partial<MoodleAttendanceLogEntry>;
+    const studentId = typeof raw.studentid === 'number' ? raw.studentid : Number(raw.studentid);
+
+    if (!Number.isFinite(studentId)) {
+      return [];
+    }
+
+    return [
+      {
+        studentid: studentId,
+        statusid: raw.statusid,
+      },
+    ];
+  });
+}
+
+function toAttendanceSessionArray(value: unknown): MoodleAttendanceSessionPayload[] {
+  const rawSessions = Array.isArray(value)
+    ? value
+    : value && typeof value === 'object'
+      ? Object.values(value as Record<string, unknown>)
+      : [];
+
+  return rawSessions.flatMap((session) => {
+    if (!session || typeof session !== 'object') {
+      return [];
+    }
+
+    const raw = session as Partial<MoodleAttendanceSessionPayload>;
+    const normalizedRaw = session as Partial<RawMoodleAttendanceSessionPayload>;
+    const sessionId =
+      typeof normalizedRaw.id === 'number' ? normalizedRaw.id : Number(normalizedRaw.id);
+    const attendanceId =
+      typeof normalizedRaw.attendanceid === 'number'
+        ? normalizedRaw.attendanceid
+        : Number(normalizedRaw.attendanceid);
+    const startsAt =
+      typeof normalizedRaw.sessdate === 'number'
+        ? normalizedRaw.sessdate
+        : Number(normalizedRaw.sessdate);
+    const duration =
+      typeof normalizedRaw.duration === 'number'
+        ? normalizedRaw.duration
+        : Number(normalizedRaw.duration ?? 0);
+
+    if (!Number.isFinite(sessionId) || !Number.isFinite(attendanceId) || !Number.isFinite(startsAt)) {
+      return [];
+    }
+
+    return [
+      {
+        id: sessionId,
+        attendanceid: attendanceId,
+        sessdate: startsAt,
+        duration,
+        attendance_log: toAttendanceLogEntryArray(normalizedRaw.attendance_log),
+      },
+    ];
+  });
+}
+
 function extractActionEventsFromPayload(payload: unknown): MoodleCalendarEvent[] {
   if (!payload || typeof payload !== 'object') {
     return [];
@@ -734,9 +828,65 @@ async function getUpcomingCalendarEvents(
   }
 }
 
+async function getAttendanceSessionsForInstance(
+  token: string,
+  attendanceId: number
+): Promise<MoodleAttendanceSessionPayload[]> {
+  const payload = await callMoodleFunction<unknown>(token, 'mod_attendance_get_sessions', {
+    attendanceid: attendanceId,
+  });
+
+  return toAttendanceSessionArray(payload);
+}
+
+function markAttendanceCompletion(
+  sessions: AttendanceItem[],
+  attendanceLogsByInstance: Map<number, MoodleAttendanceSessionPayload[]>,
+  userId: number
+): AttendanceItem[] {
+  return sessions.map((session) => {
+    if (!session.attendanceInstanceId || !session.startsAt) {
+      return session;
+    }
+
+    const candidateSessions = attendanceLogsByInstance.get(session.attendanceInstanceId) ?? [];
+    if (candidateSessions.length === 0) {
+      return session;
+    }
+
+    const targetDuration =
+      typeof session.startsAt === 'number' && typeof session.closesAt === 'number'
+        ? Math.max(0, session.closesAt - session.startsAt)
+        : undefined;
+
+    const matchedSession =
+      candidateSessions.find(
+        (candidate) =>
+          candidate.sessdate === session.startsAt &&
+          (targetDuration === undefined || (candidate.duration ?? 0) === targetDuration)
+      ) ??
+      candidateSessions.find((candidate) => candidate.sessdate === session.startsAt);
+
+    if (!matchedSession) {
+      return session;
+    }
+
+    const isMarked = (matchedSession.attendance_log ?? []).some((entry) => {
+      const studentId = typeof entry.studentid === 'number' ? entry.studentid : Number(entry.studentid);
+      return Number.isFinite(studentId) && studentId === userId;
+    });
+
+    return {
+      ...session,
+      isMarked,
+    };
+  });
+}
+
 export async function getAttendanceSessions(
   token: string,
-  courseIds: number[]
+  courseIds: number[],
+  userId?: number
 ): Promise<AttendanceItem[]> {
   const nowUnixSeconds = Math.floor(Date.now() / 1000);
 
@@ -751,8 +901,37 @@ export async function getAttendanceSessions(
 
   const calendarAttendances = extractAttendanceFromCalendar(calendarEvents, nowUnixSeconds);
   const upcomingAttendances = extractAttendanceFromCalendar(upcomingEvents, nowUnixSeconds);
+  const mergedAttendances = mergeAttendanceSources(upcomingAttendances, calendarAttendances);
 
-  return mergeAttendanceSources(upcomingAttendances, calendarAttendances);
+  if (!userId) {
+    return mergedAttendances;
+  }
+
+  const attendanceInstanceIds = [...new Set(
+    mergedAttendances
+      .map((item) => item.attendanceInstanceId)
+      .filter((attendanceId): attendanceId is number => typeof attendanceId === 'number' && Number.isFinite(attendanceId))
+  )];
+
+  if (attendanceInstanceIds.length === 0) {
+    return mergedAttendances;
+  }
+
+  const attendanceLogsByInstance = new Map<number, MoodleAttendanceSessionPayload[]>();
+  const attendanceLogResults = await Promise.allSettled(
+    attendanceInstanceIds.map(async (attendanceId) => {
+      const sessions = await getAttendanceSessionsForInstance(token, attendanceId);
+      return { attendanceId, sessions };
+    })
+  );
+
+  attendanceLogResults.forEach((result) => {
+    if (result.status === 'fulfilled') {
+      attendanceLogsByInstance.set(result.value.attendanceId, result.value.sessions);
+    }
+  });
+
+  return markAttendanceCompletion(mergedAttendances, attendanceLogsByInstance, userId);
 }
 
 export async function getSubmissionStatus(

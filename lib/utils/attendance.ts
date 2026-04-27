@@ -96,10 +96,12 @@ function mergeAttendanceItem(base: AttendanceItem | undefined, preferred: Attend
   return {
     ...base,
     ...preferred,
+    attendanceInstanceId: preferred.attendanceInstanceId ?? base.attendanceInstanceId,
     courseName: preferred.courseName || base.courseName,
     description: preferred.description ?? base.description,
     startsAt: preferred.startsAt ?? base.startsAt,
     closesAt: preferred.closesAt ?? base.closesAt,
+    isMarked: preferred.isMarked ?? base.isMarked,
     quickLink: preferred.quickLink ?? base.quickLink,
     source: preferred.source,
   };
@@ -160,12 +162,14 @@ export function mapCalendarEventToAttendance(
   return {
     eventId: event.id,
     courseId: event.courseid,
+    attendanceInstanceId: event.instance,
     courseName,
     title,
     description,
     startsAt,
     closesAt,
     status: resolveAttendanceStatus(event, nowUnixSeconds),
+    isMarked: false,
     quickLink: event.url,
     source: 'calendar',
   };
