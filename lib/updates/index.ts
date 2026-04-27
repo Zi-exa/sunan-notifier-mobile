@@ -19,7 +19,18 @@ export type AvailableAppUpdate =
     }
   | {
       kind: 'eas';
+      notes?: string | null;
     };
+
+export type PostUpdateNotice = {
+  kind: 'apk' | 'eas';
+  title: string;
+  message: string;
+  preparedAt: number;
+  targetVersion?: string;
+  targetUpdateId?: string;
+  targetCreatedAt?: string;
+};
 
 type RemoteApkUpdateEnvelope =
   | RemoteApkUpdateManifest
@@ -29,6 +40,82 @@ type RemoteApkUpdateEnvelope =
 
 export function getCurrentAppVersion(): string {
   return Constants.expoConfig?.version ?? '0.0.0';
+}
+
+function readNestedString(
+  source: unknown,
+  path: readonly string[]
+): string | null {
+  let current: unknown = source;
+
+  for (const segment of path) {
+    if (!current || typeof current !== 'object' || !(segment in current)) {
+      return null;
+    }
+
+    current = (current as Record<string, unknown>)[segment];
+  }
+
+  return typeof current === 'string' && current.trim() ? current.trim() : null;
+}
+
+export function extractUpdateNotesFromManifest(manifest: unknown): string | null {
+  if (!manifest || typeof manifest !== 'object') {
+    return null;
+  }
+
+  const candidate =
+    readNestedString(manifest, ['metadata', 'updateMessage']) ??
+    readNestedString(manifest, ['metadata', 'message']) ??
+    readNestedString(manifest, ['metadata', 'notes']) ??
+    readNestedString(manifest, ['extra', 'updateMessage']) ??
+    readNestedString(manifest, ['extra', 'message']) ??
+    readNestedString(manifest, ['extra', 'notes']) ??
+    readNestedString(manifest, ['extra', 'eas', 'message']) ??
+    readNestedString(manifest, ['extra', 'expoClient', 'message']) ??
+    readNestedString(manifest, ['description']);
+
+  return candidate?.trim() || null;
+}
+
+function buildPostUpdateMessage(intro: string, notes?: string | null): string {
+  const normalizedNotes = notes?.trim();
+
+  if (!normalizedNotes) {
+    return `${intro}\n\nCatatan update:\nPerubahan terbaru sudah aktif di aplikasi ini.`;
+  }
+
+  return `${intro}\n\nCatatan update:\n${normalizedNotes}`;
+}
+
+export function buildPostUpdateNoticeForApk(
+  manifest: RemoteApkUpdateManifest
+): PostUpdateNotice {
+  return {
+    kind: 'apk',
+    title: 'Update selesai',
+    message: buildPostUpdateMessage(
+      `Versi ${manifest.version} sudah dipakai.`,
+      manifest.notes
+    ),
+    preparedAt: Date.now(),
+    targetVersion: manifest.version,
+  };
+}
+
+export function buildPostUpdateNoticeForEas(options: {
+  targetUpdateId?: string;
+  targetCreatedAt?: string;
+  notes?: string | null;
+}): PostUpdateNotice {
+  return {
+    kind: 'eas',
+    title: 'Update selesai',
+    message: buildPostUpdateMessage('Versi baru sudah dipakai.', options.notes),
+    preparedAt: Date.now(),
+    targetUpdateId: options.targetUpdateId,
+    targetCreatedAt: options.targetCreatedAt,
+  };
 }
 
 function normalizeVersionParts(version: string): number[] {
@@ -120,18 +207,22 @@ function isExpoGoRuntime(): boolean {
   return Constants.appOwnership === 'expo';
 }
 
-export async function fetchAvailableEasUpdateAsync(): Promise<boolean> {
+export async function fetchAvailableEasUpdateAsync(): Promise<AvailableAppUpdate | null> {
   if (__DEV__ || Platform.OS === 'web' || isExpoGoRuntime() || !Updates.isEnabled) {
-    return false;
+    return null;
   }
 
   const update = await Updates.checkForUpdateAsync();
   if (!update.isAvailable) {
-    return false;
+    return null;
   }
 
   await Updates.fetchUpdateAsync();
-  return true;
+
+  return {
+    kind: 'eas',
+    notes: extractUpdateNotesFromManifest(update.manifest),
+  };
 }
 
 export async function checkForAvailableAppUpdateAsync(): Promise<AvailableAppUpdate | null> {
@@ -151,10 +242,10 @@ export async function checkForAvailableAppUpdateAsync(): Promise<AvailableAppUpd
   }
 
   try {
-    const hasEasUpdate = await fetchAvailableEasUpdateAsync();
+    const easUpdate = await fetchAvailableEasUpdateAsync();
     easCheckSucceeded = true;
-    if (hasEasUpdate) {
-      return { kind: 'eas' };
+    if (easUpdate) {
+      return easUpdate;
     }
   } catch (error) {
     easError = error;

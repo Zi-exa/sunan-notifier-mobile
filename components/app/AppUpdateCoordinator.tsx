@@ -3,7 +3,11 @@ import * as Updates from 'expo-updates';
 import { AppAlertDialog } from '@/components/Redesign';
 import {
   applyAvailableAppUpdateAsync,
+  buildPostUpdateNoticeForApk,
+  buildPostUpdateNoticeForEas,
   checkForAvailableAppUpdateAsync,
+  extractUpdateNotesFromManifest,
+  getCurrentAppVersion,
   type RemoteApkUpdateManifest,
 } from '@/lib/updates';
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -24,17 +28,33 @@ function buildRemoteApkMessage(manifest: RemoteApkUpdateManifest): string {
 }
 
 export function AppUpdateCoordinator() {
-  const { isUpdatePending } = Updates.useUpdates();
+  const {
+    isUpdatePending,
+    downloadedUpdate,
+    availableUpdate: nativeAvailableUpdate,
+    currentlyRunning,
+  } = Updates.useUpdates();
   const authHydrated = useAuthStore((state) => state.hydrated);
   const authStatus = useAuthStore((state) => state.status);
   const tabsBootStatus = useTabsBootStore((state) => state.status);
   const availableUpdate = useAppUpdateStore((state) => state.availableUpdate);
   const dialogVisible = useAppUpdateStore((state) => state.dialogVisible);
+  const pendingPostUpdateNotice = useAppUpdateStore((state) => state.pendingPostUpdateNotice);
+  const activePostUpdateNotice = useAppUpdateStore((state) => state.activePostUpdateNotice);
   const setAvailableUpdate = useAppUpdateStore((state) => state.setAvailableUpdate);
   const hideDialog = useAppUpdateStore((state) => state.hideDialog);
+  const queuePostUpdateNotice = useAppUpdateStore((state) => state.queuePostUpdateNotice);
+  const clearPendingPostUpdateNotice = useAppUpdateStore(
+    (state) => state.clearPendingPostUpdateNotice
+  );
+  const activatePendingPostUpdateNotice = useAppUpdateStore(
+    (state) => state.activatePendingPostUpdateNotice
+  );
+  const dismissPostUpdateNotice = useAppUpdateStore((state) => state.dismissPostUpdateNotice);
   const hasCheckedRef = useRef(false);
   const [errorDialog, setErrorDialog] = useState<UpdateDialogErrorState | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const currentAppVersion = getCurrentAppVersion();
 
   const bootReady =
     authHydrated &&
@@ -76,8 +96,45 @@ export function AppUpdateCoordinator() {
       return;
     }
 
-    setAvailableUpdate({ kind: 'eas' });
-  }, [isUpdatePending, setAvailableUpdate]);
+    setAvailableUpdate({
+      kind: 'eas',
+      notes:
+        (availableUpdate?.kind === 'eas' ? availableUpdate.notes : null) ??
+        extractUpdateNotesFromManifest(downloadedUpdate?.manifest) ??
+        extractUpdateNotesFromManifest(nativeAvailableUpdate?.manifest),
+    });
+  }, [
+    availableUpdate,
+    downloadedUpdate?.manifest,
+    isUpdatePending,
+    nativeAvailableUpdate?.manifest,
+    setAvailableUpdate,
+  ]);
+
+  useEffect(() => {
+    if (!pendingPostUpdateNotice || activePostUpdateNotice) {
+      return;
+    }
+
+    const matchesCurrentRuntime =
+      pendingPostUpdateNotice.kind === 'apk'
+        ? pendingPostUpdateNotice.targetVersion === currentAppVersion
+        : (pendingPostUpdateNotice.targetUpdateId &&
+            currentlyRunning.updateId === pendingPostUpdateNotice.targetUpdateId) ||
+          (pendingPostUpdateNotice.targetCreatedAt &&
+            currentlyRunning.createdAt?.toISOString() === pendingPostUpdateNotice.targetCreatedAt);
+
+    if (matchesCurrentRuntime) {
+      activatePendingPostUpdateNotice();
+    }
+  }, [
+    activatePendingPostUpdateNotice,
+    activePostUpdateNotice,
+    currentAppVersion,
+    currentlyRunning.createdAt,
+    currentlyRunning.updateId,
+    pendingPostUpdateNotice,
+  ]);
 
   const dialogCopy = useMemo(() => {
     if (errorDialog) {
@@ -85,6 +142,17 @@ export function AppUpdateCoordinator() {
         tone: 'warning' as const,
         title: errorDialog.title,
         message: errorDialog.message,
+        confirmLabel: 'Tutup',
+        cancelLabel: undefined,
+        dismissDisabled: false,
+      };
+    }
+
+    if (activePostUpdateNotice) {
+      return {
+        tone: 'success' as const,
+        title: activePostUpdateNotice.title,
+        message: activePostUpdateNotice.message,
         confirmLabel: 'Tutup',
         cancelLabel: undefined,
         dismissDisabled: false,
@@ -121,11 +189,16 @@ export function AppUpdateCoordinator() {
     }
 
     return null;
-  }, [availableUpdate, dialogVisible, errorDialog]);
+  }, [activePostUpdateNotice, availableUpdate, dialogVisible, errorDialog]);
 
   async function handleConfirm() {
     if (errorDialog) {
       setErrorDialog(null);
+      return;
+    }
+
+    if (activePostUpdateNotice) {
+      dismissPostUpdateNotice();
       return;
     }
 
@@ -136,9 +209,27 @@ export function AppUpdateCoordinator() {
     setSubmitting(true);
 
     try {
+      if (availableUpdate.kind === 'apk') {
+        queuePostUpdateNotice(buildPostUpdateNoticeForApk(availableUpdate.manifest));
+      } else {
+        queuePostUpdateNotice(
+          buildPostUpdateNoticeForEas({
+            targetUpdateId: downloadedUpdate?.updateId ?? nativeAvailableUpdate?.updateId,
+            targetCreatedAt:
+              downloadedUpdate?.createdAt?.toISOString() ??
+              nativeAvailableUpdate?.createdAt?.toISOString(),
+            notes:
+              availableUpdate.notes ??
+              extractUpdateNotesFromManifest(downloadedUpdate?.manifest) ??
+              extractUpdateNotesFromManifest(nativeAvailableUpdate?.manifest),
+          })
+        );
+      }
+
       await applyAvailableAppUpdateAsync(availableUpdate);
       hideDialog();
     } catch {
+      clearPendingPostUpdateNotice();
       setErrorDialog({
         kind: 'error',
         title: 'Belum bisa dibuka',
@@ -167,6 +258,11 @@ export function AppUpdateCoordinator() {
         if (!submitting) {
           if (errorDialog) {
             setErrorDialog(null);
+            return;
+          }
+
+          if (activePostUpdateNotice) {
+            dismissPostUpdateNotice();
             return;
           }
 

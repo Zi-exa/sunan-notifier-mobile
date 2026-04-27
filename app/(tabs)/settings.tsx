@@ -171,6 +171,10 @@ export default function SettingsScreen() {
       : availableUpdate?.kind === 'eas'
         ? 'Versi baru siap dipakai'
         : 'Cek versi aplikasi';
+  const updateButtonLabel = availableUpdate ? 'Lihat Update' : 'Cek Update';
+  const updateButtonIcon: React.ComponentProps<typeof FontAwesome>['name'] = availableUpdate
+    ? 'info-circle'
+    : 'refresh';
   const accountName = user?.fullname ?? 'Belum ada sesi login';
   const contentBottomPadding = getDockContentPadding(insets.bottom);
 
@@ -309,10 +313,6 @@ export default function SettingsScreen() {
     } finally {
       setUpdateActionState('idle');
     }
-  };
-
-  const handleOpenUpdateDialog = () => {
-    showUpdateDialog();
   };
 
   const handleSync = async () => {
@@ -859,64 +859,49 @@ export default function SettingsScreen() {
                 </Text>
                 <Text style={[styles.aboutUpdateText, { color: colors.textSecondary }]}>
                   {availableUpdate?.kind === 'apk'
-                    ? `Versi ${availableUpdate.manifest.version} sudah siap. Anda bisa lanjutkan update kapan saja dari sini.`
+                    ? `Versi ${availableUpdate.manifest.version} sudah siap. Buka detail update dari sini.`
                     : availableUpdate?.kind === 'eas'
-                      ? 'Versi baru sudah siap dipakai. Anda bisa lanjutkan update kapan saja dari sini.'
+                      ? 'Versi baru sudah siap dipakai. Buka detail update dari sini.'
                       : 'Cek pembaruan kapan saja dari sini.'}
                 </Text>
               </View>
 
               <View style={styles.aboutUpdateActions}>
-                {availableUpdate ? (
-                  <Pressable
-                    onPress={handleOpenUpdateDialog}
-                    disabled={updateActionState === 'checking'}
-                    style={[
-                      styles.aboutUpdatePrimaryButton,
-                      {
-                        backgroundColor: colors.accent,
-                      },
-                      updateActionState === 'checking' && styles.primaryButtonDisabled,
-                    ]}
-                  >
-                    <View style={styles.buttonContent}>
-                      <FontAwesome name="download" size={13} color={colors.textInverse} />
-                      <Text
-                        style={[
-                          styles.aboutUpdatePrimaryButtonText,
-                          { color: colors.textInverse },
-                        ]}
-                      >
-                        Update Sekarang
-                      </Text>
-                    </View>
-                  </Pressable>
-                ) : null}
-
                 <Pressable
                   onPress={handleCheckUpdate}
                   disabled={updateActionState === 'checking'}
                   style={[
-                    styles.aboutUpdateSecondaryButton,
+                    styles.aboutUpdatePrimaryButton,
                     {
-                      backgroundColor: colors.bgCard,
-                      borderColor: colors.borderSubtle,
+                      backgroundColor: availableUpdate ? colors.accent : colors.bgCard,
+                      borderColor: availableUpdate ? colors.accent : colors.borderSubtle,
                     },
                     updateActionState === 'checking' && styles.primaryButtonDisabled,
                   ]}
                 >
                   {updateActionState === 'checking' ? (
-                    <ActivityIndicator size="small" color={colors.accent} />
+                    <ActivityIndicator
+                      size="small"
+                      color={availableUpdate ? colors.textInverse : colors.accent}
+                    />
                   ) : (
                     <View style={styles.buttonContent}>
-                      <FontAwesome name="refresh" size={13} color={colors.textPrimary} />
+                      <FontAwesome
+                        name={updateButtonIcon}
+                        size={13}
+                        color={availableUpdate ? colors.textInverse : colors.textPrimary}
+                      />
                       <Text
                         style={[
-                          styles.aboutUpdateSecondaryButtonText,
-                          { color: colors.textPrimary },
+                          styles.aboutUpdatePrimaryButtonText,
+                          {
+                            color: availableUpdate
+                              ? colors.textInverse
+                              : colors.textPrimary,
+                          },
                         ]}
                       >
-                        {availableUpdate ? 'Buka Lagi' : 'Cek Update'}
+                        {updateButtonLabel}
                       </Text>
                     </View>
                   )}
