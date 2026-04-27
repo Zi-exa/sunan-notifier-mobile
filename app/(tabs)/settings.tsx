@@ -113,6 +113,7 @@ export default function SettingsScreen() {
   const setAppUserId = useAuthStore((state) => state.setAppUserId);
   const logout = useAuthStore((state) => state.logout);
   const availableUpdate = useAppUpdateStore((state) => state.availableUpdate);
+  const deferredAvailableUpdate = useAppUpdateStore((state) => state.deferredAvailableUpdate);
   const setAvailableUpdate = useAppUpdateStore((state) => state.setAvailableUpdate);
   const showUpdateDialog = useAppUpdateStore((state) => state.showDialog);
   const appName = Constants.expoConfig?.name ?? 'SUNAN Notifier';
@@ -165,14 +166,15 @@ export default function SettingsScreen() {
       ? 'Semua mata kuliah dipantau'
       : `${draftMonitoredCourseIds.length} mata kuliah dipantau`;
   const aboutSummary = `v${appVersion} • ${APP_MARK}`;
+  const effectiveAvailableUpdate = availableUpdate ?? deferredAvailableUpdate;
   const updateSummary =
-    availableUpdate?.kind === 'apk'
-      ? `Versi ${availableUpdate.manifest.version} siap diunduh`
-      : availableUpdate?.kind === 'eas'
+    effectiveAvailableUpdate?.kind === 'apk'
+      ? `Versi ${effectiveAvailableUpdate.manifest.version} siap diunduh`
+      : effectiveAvailableUpdate?.kind === 'eas'
         ? 'Versi baru siap dipakai'
         : 'Cek versi aplikasi';
-  const updateButtonLabel = availableUpdate ? 'Lihat Update' : 'Cek Update';
-  const updateButtonIcon: React.ComponentProps<typeof FontAwesome>['name'] = availableUpdate
+  const updateButtonLabel = effectiveAvailableUpdate ? 'Lihat Update' : 'Cek Update';
+  const updateButtonIcon: React.ComponentProps<typeof FontAwesome>['name'] = effectiveAvailableUpdate
     ? 'info-circle'
     : 'refresh';
   const accountName = user?.fullname ?? 'Belum ada sesi login';
@@ -283,7 +285,7 @@ export default function SettingsScreen() {
       return;
     }
 
-    if (availableUpdate) {
+    if (effectiveAvailableUpdate) {
       showUpdateDialog();
       return;
     }
@@ -873,8 +875,8 @@ export default function SettingsScreen() {
                   style={[
                     styles.aboutUpdatePrimaryButton,
                     {
-                      backgroundColor: availableUpdate ? colors.accent : colors.bgCard,
-                      borderColor: availableUpdate ? colors.accent : colors.borderSubtle,
+                      backgroundColor: effectiveAvailableUpdate ? colors.accent : colors.bgCard,
+                      borderColor: effectiveAvailableUpdate ? colors.accent : colors.borderSubtle,
                     },
                     updateActionState === 'checking' && styles.primaryButtonDisabled,
                   ]}
@@ -882,20 +884,20 @@ export default function SettingsScreen() {
                   {updateActionState === 'checking' ? (
                     <ActivityIndicator
                       size="small"
-                      color={availableUpdate ? colors.textInverse : colors.accent}
+                      color={effectiveAvailableUpdate ? colors.textInverse : colors.accent}
                     />
                   ) : (
                     <View style={styles.buttonContent}>
                       <FontAwesome
                         name={updateButtonIcon}
                         size={13}
-                        color={availableUpdate ? colors.textInverse : colors.textPrimary}
+                        color={effectiveAvailableUpdate ? colors.textInverse : colors.textPrimary}
                       />
                       <Text
                         style={[
                           styles.aboutUpdatePrimaryButtonText,
                           {
-                            color: availableUpdate
+                            color: effectiveAvailableUpdate
                               ? colors.textInverse
                               : colors.textPrimary,
                           },

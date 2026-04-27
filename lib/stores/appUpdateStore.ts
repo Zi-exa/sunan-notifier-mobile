@@ -5,6 +5,7 @@ import type { AvailableAppUpdate, PostUpdateNotice } from '@/lib/updates';
 
 type AppUpdateStore = {
   availableUpdate: AvailableAppUpdate | null;
+  deferredAvailableUpdate: AvailableAppUpdate | null;
   dialogVisible: boolean;
   pendingPostUpdateNotice: PostUpdateNotice | null;
   activePostUpdateNotice: PostUpdateNotice | null;
@@ -51,6 +52,7 @@ export const useAppUpdateStore = create<AppUpdateStore>()(
   persist(
     (set) => ({
       availableUpdate: null,
+      deferredAvailableUpdate: null,
       dialogVisible: false,
       pendingPostUpdateNotice: null,
       activePostUpdateNotice: null,
@@ -66,17 +68,23 @@ export const useAppUpdateStore = create<AppUpdateStore>()(
 
           return {
             availableUpdate: update,
+            deferredAvailableUpdate: update,
             dialogVisible: nextDialogVisible,
           };
         }),
       showDialog: () =>
         set((state) => {
-          const nextDialogVisible = Boolean(state.availableUpdate);
-          if (state.dialogVisible === nextDialogVisible) {
+          const restoredUpdate = state.availableUpdate ?? state.deferredAvailableUpdate;
+          const nextDialogVisible = Boolean(restoredUpdate);
+          if (
+            state.dialogVisible === nextDialogVisible &&
+            areAvailableUpdatesEqual(state.availableUpdate, restoredUpdate)
+          ) {
             return state;
           }
 
           return {
+            availableUpdate: restoredUpdate,
             dialogVisible: nextDialogVisible,
           };
         }),
@@ -91,10 +99,16 @@ export const useAppUpdateStore = create<AppUpdateStore>()(
       clearAvailableUpdate: () =>
         set((state) => {
           if (!state.availableUpdate && !state.dialogVisible) {
-            return state;
+            if (!state.deferredAvailableUpdate) {
+              return state;
+            }
           }
 
-          return { availableUpdate: null, dialogVisible: false };
+          return {
+            availableUpdate: null,
+            deferredAvailableUpdate: null,
+            dialogVisible: false,
+          };
         }),
       queuePostUpdateNotice: (notice) =>
         set({
@@ -104,6 +118,9 @@ export const useAppUpdateStore = create<AppUpdateStore>()(
       clearPendingPostUpdateNotice: () => set({ pendingPostUpdateNotice: null }),
       activatePendingPostUpdateNotice: () =>
         set((state) => ({
+          availableUpdate: null,
+          deferredAvailableUpdate: null,
+          dialogVisible: false,
           activePostUpdateNotice: state.pendingPostUpdateNotice,
           pendingPostUpdateNotice: null,
         })),
@@ -113,6 +130,7 @@ export const useAppUpdateStore = create<AppUpdateStore>()(
       name: 'sunan.app-update',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
+        deferredAvailableUpdate: state.deferredAvailableUpdate,
         pendingPostUpdateNotice: state.pendingPostUpdateNotice,
       }),
     }
