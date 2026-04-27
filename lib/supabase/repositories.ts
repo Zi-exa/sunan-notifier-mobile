@@ -23,7 +23,61 @@ export type UserSettingsInput = {
   monitoredCourseIds: number[];
 };
 
-export type RemoteUserSettings = UserSettingsInput;
+export type RemoteUserSettings = Omit<UserSettingsInput, 'notifyTaskOpen'> & {
+  notifyTaskOpen?: boolean;
+};
+
+export type SaveUserSettingsResult = 'full' | 'legacy-notify-task-open' | 'skipped';
+
+type SupabaseLikeError = {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+  hint?: string | null;
+};
+
+function isMissingNotifyTaskOpenColumnError(error: SupabaseLikeError | null | undefined): boolean {
+  if (!error) {
+    return false;
+  }
+
+  const haystack = [error.message, error.details, error.hint]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return (
+    error.code === 'PGRST204' ||
+    error.code === '42703' ||
+    (haystack.includes('notify_task_open') &&
+      (haystack.includes('column') || haystack.includes('schema cache')))
+  );
+}
+
+function toRemoteUserSettings(
+  data: Record<string, unknown>,
+  includeNotifyTaskOpen: boolean
+): RemoteUserSettings {
+  const pollIntervalMinutes = Number(data.poll_interval_minutes);
+
+  return {
+    notifyNewTask: Boolean(data.notify_new_task),
+    notifyDeadlineH1: Boolean(data.notify_deadline_h1),
+    notifyDeadlineToday: Boolean(data.notify_deadline_today),
+    notifyTaskOpen: includeNotifyTaskOpen ? Boolean(data.notify_task_open) : undefined,
+    notifyAttendance: Boolean(data.notify_attendance),
+    pollIntervalMinutes: POLLING_INTERVAL_OPTIONS.includes(pollIntervalMinutes as 15 | 30 | 60)
+      ? (pollIntervalMinutes as 15 | 30 | 60)
+      : 15,
+    dndStart: typeof data.dnd_start === 'string' ? data.dnd_start : '22:00',
+    dndEnd: typeof data.dnd_end === 'string' ? data.dnd_end : '07:00',
+    monitoredCourseIds: Array.isArray(data.monitored_course_ids)
+      ? data.monitored_course_ids
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value))
+      : [],
+  };
+}
 
 export async function syncUserProfile(input: SessionProfileInput): Promise<string | null> {
   if (!supabase) {
@@ -98,33 +152,51 @@ export async function upsertDevicePushToken(
 export async function saveUserSettings(
   appUserId: string,
   input: UserSettingsInput
-): Promise<void> {
+): Promise<SaveUserSettingsResult> {
   if (!supabase || !appUserId) {
-    return;
+    return 'skipped';
   }
+
+  const basePayload = {
+    app_user_id: appUserId,
+    notify_new_task: input.notifyNewTask,
+    notify_deadline_h1: input.notifyDeadlineH1,
+    notify_deadline_today: input.notifyDeadlineToday,
+    notify_attendance: input.notifyAttendance,
+    poll_interval_minutes: input.pollIntervalMinutes,
+    dnd_start: input.dndStart,
+    dnd_end: input.dndEnd,
+    monitored_course_ids: input.monitoredCourseIds,
+    updated_at: new Date().toISOString(),
+  };
 
   const { error } = await supabase.from('user_settings').upsert(
     {
-      app_user_id: appUserId,
-      notify_new_task: input.notifyNewTask,
-      notify_deadline_h1: input.notifyDeadlineH1,
-      notify_deadline_today: input.notifyDeadlineToday,
+      ...basePayload,
       notify_task_open: input.notifyTaskOpen,
-      notify_attendance: input.notifyAttendance,
-      poll_interval_minutes: input.pollIntervalMinutes,
-      dnd_start: input.dndStart,
-      dnd_end: input.dndEnd,
-      monitored_course_ids: input.monitoredCourseIds,
-      updated_at: new Date().toISOString(),
     },
     {
       onConflict: 'app_user_id',
     }
   );
 
+  if (error && isMissingNotifyTaskOpenColumnError(error)) {
+    const { error: legacyError } = await supabase.from('user_settings').upsert(basePayload, {
+      onConflict: 'app_user_id',
+    });
+
+    if (legacyError) {
+      throw new Error(`Gagal sinkron settings: ${legacyError.message}`);
+    }
+
+    return 'legacy-notify-task-open';
+  }
+
   if (error) {
     throw new Error(`Gagal sinkron settings: ${error.message}`);
   }
+
+  return 'full';
 }
 
 export async function loadUserSettings(appUserId: string): Promise<RemoteUserSettings | null> {
@@ -140,6 +212,26 @@ export async function loadUserSettings(appUserId: string): Promise<RemoteUserSet
     .eq('app_user_id', appUserId)
     .maybeSingle();
 
+  if (error && isMissingNotifyTaskOpenColumnError(error)) {
+    const { data: legacyData, error: legacyError } = await supabase
+      .from('user_settings')
+      .select(
+        'notify_new_task,notify_deadline_h1,notify_deadline_today,notify_attendance,poll_interval_minutes,dnd_start,dnd_end,monitored_course_ids'
+      )
+      .eq('app_user_id', appUserId)
+      .maybeSingle();
+
+    if (legacyError) {
+      throw new Error(`Gagal mengambil settings: ${legacyError.message}`);
+    }
+
+    if (!legacyData) {
+      return null;
+    }
+
+    return toRemoteUserSettings(legacyData as Record<string, unknown>, false);
+  }
+
   if (error) {
     throw new Error(`Gagal mengambil settings: ${error.message}`);
   }
@@ -148,23 +240,7 @@ export async function loadUserSettings(appUserId: string): Promise<RemoteUserSet
     return null;
   }
 
-  const pollIntervalMinutes = Number(data.poll_interval_minutes);
-
-  return {
-    notifyNewTask: Boolean(data.notify_new_task),
-    notifyDeadlineH1: Boolean(data.notify_deadline_h1),
-    notifyDeadlineToday: Boolean(data.notify_deadline_today),
-    notifyTaskOpen: Boolean(data.notify_task_open),
-    notifyAttendance: Boolean(data.notify_attendance),
-    pollIntervalMinutes: POLLING_INTERVAL_OPTIONS.includes(pollIntervalMinutes as 15 | 30 | 60)
-      ? (pollIntervalMinutes as 15 | 30 | 60)
-      : 15,
-    dndStart: String(data.dnd_start),
-    dndEnd: String(data.dnd_end),
-    monitoredCourseIds: Array.isArray(data.monitored_course_ids)
-      ? data.monitored_course_ids.map((value) => Number(value)).filter((value) => Number.isFinite(value))
-      : [],
-  };
+  return toRemoteUserSettings(data as Record<string, unknown>, true);
 }
 
 export async function upsertTaskSnapshots(

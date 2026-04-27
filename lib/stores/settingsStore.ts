@@ -78,19 +78,22 @@ export const useSettingsStore = create<SettingsState>()(
       setMonitoredCourseIds: (courseIds) => set({ monitoredCourseIds: courseIds }),
       setThemeMode: (mode) => set({ themeMode: mode }),
       applyRemoteSettings: (settings) =>
-        set({
+        set((state) => ({
           notifications: {
             notifyNewTask: settings.notifyNewTask,
             notifyDeadlineH1: settings.notifyDeadlineH1,
             notifyDeadlineToday: settings.notifyDeadlineToday,
-            notifyTaskOpen: settings.notifyTaskOpen,
+            notifyTaskOpen:
+              typeof settings.notifyTaskOpen === 'boolean'
+                ? settings.notifyTaskOpen
+                : state.notifications.notifyTaskOpen,
             notifyAttendance: settings.notifyAttendance,
           },
           pollingInterval: settings.pollIntervalMinutes,
           dndStart: settings.dndStart,
           dndEnd: settings.dndEnd,
           monitoredCourseIds: settings.monitoredCourseIds,
-        }),
+        })),
     }),
     {
       name: 'sunan.settings',

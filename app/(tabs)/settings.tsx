@@ -24,7 +24,7 @@ import { POLLING_INTERVAL_OPTIONS } from '@/lib/config';
 import { useCoursesQuery } from '@/lib/queries/useMoodleQueries';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
-import { saveUserSettings } from '@/lib/supabase/repositories';
+import { saveUserSettings, syncUserProfile } from '@/lib/supabase/repositories';
 
 const THEME_OPTIONS: {
   value: ThemeMode;
@@ -103,7 +103,9 @@ const APP_MARK_URL = 'https://github.com/Zi-exa';
 export default function SettingsScreen() {
   const { colors, mode } = useTheme();
   const insets = useSafeAreaInsets();
+  const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
+  const setAppUserId = useAuthStore((state) => state.setAppUserId);
   const logout = useAuthStore((state) => state.logout);
   const appName = Constants.expoConfig?.name ?? 'SUNAN Notifier';
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
@@ -280,18 +282,69 @@ export default function SettingsScreen() {
       setDndWindow(startInput, endInput);
       setMonitoredCourseIds(draftMonitoredCourseIds);
 
-      if (user?.appUserId) {
-        await saveUserSettings(user.appUserId, {
-          notifyNewTask: draftNotifications.notifyNewTask,
-          notifyDeadlineH1: draftNotifications.notifyDeadlineH1,
-          notifyDeadlineToday: draftNotifications.notifyDeadlineToday,
-          notifyTaskOpen: draftNotifications.notifyTaskOpen,
-          notifyAttendance: draftNotifications.notifyAttendance,
-          pollIntervalMinutes: draftPollingInterval,
-          dndStart: startInput,
-          dndEnd: endInput,
-          monitoredCourseIds: draftMonitoredCourseIds,
+      const settingsPayload = {
+        notifyNewTask: draftNotifications.notifyNewTask,
+        notifyDeadlineH1: draftNotifications.notifyDeadlineH1,
+        notifyDeadlineToday: draftNotifications.notifyDeadlineToday,
+        notifyTaskOpen: draftNotifications.notifyTaskOpen,
+        notifyAttendance: draftNotifications.notifyAttendance,
+        pollIntervalMinutes: draftPollingInterval,
+        dndStart: startInput,
+        dndEnd: endInput,
+        monitoredCourseIds: draftMonitoredCourseIds,
+      };
+
+      let resolvedAppUserId = user?.appUserId ?? null;
+
+      if (!resolvedAppUserId && token && user) {
+        try {
+          const syncedAppUserId = await syncUserProfile({
+            moodleUserId: user.id,
+            nim: user.nim,
+            fullname: user.fullname,
+            moodleToken: token,
+          });
+
+          if (syncedAppUserId) {
+            resolvedAppUserId = syncedAppUserId;
+            await setAppUserId(syncedAppUserId);
+          }
+        } catch {
+          resolvedAppUserId = null;
+        }
+      }
+
+      if (!resolvedAppUserId) {
+        setSyncState('idle');
+        openDialog({
+          tone: 'warning',
+          title: 'Tersimpan di perangkat',
+          message: 'Pengaturan lokal sudah tersimpan, tetapi profil aplikasi belum berhasil disinkronkan ke server.',
         });
+        return;
+      }
+
+      const saveResult = await saveUserSettings(resolvedAppUserId, settingsPayload);
+
+      if (saveResult === 'skipped') {
+        setSyncState('idle');
+        openDialog({
+          tone: 'warning',
+          title: 'Tersimpan di perangkat',
+          message: 'Pengaturan lokal sudah tersimpan, tetapi layanan sinkron server belum tersedia di perangkat ini.',
+        });
+        return;
+      }
+
+      if (saveResult === 'legacy-notify-task-open') {
+        setSyncState('idle');
+        openDialog({
+          tone: 'info',
+          title: 'Tersimpan sebagian di server',
+          message:
+            'Sebagian besar pengaturan sudah sinkron ke server. Opsi Tugas dibuka masih tersimpan di perangkat sampai schema server diperbarui.',
+        });
+        return;
       }
 
       setSyncState('idle');

@@ -32,6 +32,7 @@ type AuthState = {
   logoutNotice: string | null;
   hydrateSession: () => Promise<void>;
   login: (nim: string, password: string) => Promise<void>;
+  setAppUserId: (appUserId: string | null) => Promise<void>;
   expireSession: (reason?: string) => Promise<void>;
   clearError: () => void;
   clearLogoutNotice: () => void;
@@ -63,7 +64,7 @@ function normalizeAuthUser(token: string, user: AuthUser): AuthUser {
   };
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   hydrated: false,
   status: 'loading',
   token: null,
@@ -184,6 +185,32 @@ export const useAuthStore = create<AuthState>((set) => ({
         logoutNotice: null,
       });
     }
+  },
+  setAppUserId: async (appUserId) => {
+    const { token, user } = get();
+
+    if (!token || !user) {
+      return;
+    }
+
+    if (user.appUserId === appUserId) {
+      return;
+    }
+
+    const nextUser = {
+      ...user,
+      appUserId,
+    };
+
+    await setSecureItem(
+      SECURE_KEYS.authSession,
+      JSON.stringify({
+        token,
+        user: nextUser,
+      })
+    );
+
+    set({ user: nextUser });
   },
   expireSession: async (reason = 'Sesi SUNAN berakhir. Silakan login ulang.') => {
     await removeSecureItem(SECURE_KEYS.authSession);
