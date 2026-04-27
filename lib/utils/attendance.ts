@@ -34,6 +34,30 @@ function normalizeUrl(value: string | undefined): string {
   return normalizeText(value).replace(/#.*$/, '');
 }
 
+export function buildAttendanceSessionKey(
+  item: Pick<AttendanceItem, 'eventId' | 'quickLink' | 'attendanceInstanceId' | 'startsAt' | 'courseId' | 'title'>
+): string {
+  const normalizedQuickLink = normalizeUrl(item.quickLink);
+
+  if (normalizedQuickLink && typeof item.startsAt === 'number') {
+    return `session:${normalizedQuickLink}:${item.startsAt}`;
+  }
+
+  if (typeof item.attendanceInstanceId === 'number' && typeof item.startsAt === 'number') {
+    return `instance:${item.attendanceInstanceId}:${item.startsAt}`;
+  }
+
+  if (item.eventId) {
+    return `event:${item.eventId}`;
+  }
+
+  if (normalizedQuickLink) {
+    return `url:${normalizedQuickLink}`;
+  }
+
+  return `course:${item.courseId ?? 0}:${normalizeText(item.title)}`;
+}
+
 export function resolveAttendanceWindowStatus(
   { startsAt, closesAt }: AttendanceWindow,
   nowUnixSeconds = Math.floor(Date.now() / 1000),
@@ -73,19 +97,7 @@ export function resolveAttendanceItemStatus(
   );
 }
 function buildAttendanceIdentity(item: AttendanceItem): string {
-  // Each calendar event has a unique eventId — use it as primary identity.
-  // This prevents different sessions of the same attendance module (which share
-  // the same URL like view.php?id=652636) from overwriting each other.
-  if (item.eventId) {
-    return `event:${item.eventId}`;
-  }
-
-  const normalizedQuickLink = normalizeUrl(item.quickLink);
-  if (normalizedQuickLink) {
-    return `url:${normalizedQuickLink}`;
-  }
-
-  return `course:${item.courseId ?? 0}:${normalizeText(item.title)}`;
+  return buildAttendanceSessionKey(item);
 }
 
 function mergeAttendanceItem(base: AttendanceItem | undefined, preferred: AttendanceItem): AttendanceItem {

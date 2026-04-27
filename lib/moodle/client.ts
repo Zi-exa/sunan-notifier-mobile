@@ -13,6 +13,8 @@ import { getSecureItem } from '@/lib/storage/secureStore';
 import {
   extractAttendanceFromCalendar,
   mergeAttendanceSources,
+  resolveAttendanceItemStatus,
+  sortAttendanceSessions,
 } from '@/lib/utils/attendance';
 import { mapSubmissionToStatus, sortAssignmentsByDeadline } from '@/lib/utils/tasks';
 import { sanitizeRichText } from '@/lib/utils/text';
@@ -1405,17 +1407,67 @@ function matchesAttendanceReportEntry(
   );
 }
 
+function buildSyntheticAttendanceEventId(quickLink: string, startsAt: number): number {
+  const source = `${quickLink}:${startsAt}`;
+  let hash = 0;
+
+  for (let index = 0; index < source.length; index += 1) {
+    hash = (hash * 31 + source.charCodeAt(index)) | 0;
+  }
+
+  return -(Math.abs(hash) || 1);
+}
+
+function createSyntheticAttendanceHistoryItem(
+  exemplar: AttendanceItem,
+  reportEntry: ParsedAttendanceReportEntry,
+  nowUnixSeconds = Math.floor(Date.now() / 1000)
+): AttendanceItem {
+  const nextItem: AttendanceItem = {
+    ...exemplar,
+    eventId: buildSyntheticAttendanceEventId(exemplar.quickLink ?? String(exemplar.eventId), reportEntry.startsAt),
+    startsAt: reportEntry.startsAt,
+    closesAt: reportEntry.closesAt,
+    isMarked: true,
+    attendanceMarkLabel: reportEntry.attendanceMarkLabel,
+    attendanceMarkVariant: reportEntry.attendanceMarkVariant,
+    source: 'calendar',
+  };
+
+  return {
+    ...nextItem,
+    status: resolveAttendanceItemStatus(nextItem, nowUnixSeconds),
+  };
+}
+
 function markAttendanceFromWebReports(
   sessions: AttendanceItem[],
   reportsByQuickLink: Map<string, ParsedAttendanceReportEntry[]>
 ): AttendanceItem[] {
-  return sessions.map((session) => {
-    if (session.isMarked || !session.quickLink || !session.startsAt) {
+  const normalizedReports = new Map<string, ParsedAttendanceReportEntry[]>();
+  const exemplarsByQuickLink = new Map<string, AttendanceItem>();
+  const consumedEntryKeys = new Set<string>();
+
+  reportsByQuickLink.forEach((entries, quickLink) => {
+    normalizedReports.set(quickLink, entries);
+  });
+
+  const nextSessions = sessions.map((session) => {
+    if (!session.quickLink) {
       return session;
     }
 
-    const reportEntries = reportsByQuickLink.get(normalizeAttendanceQuickLink(session.quickLink) ?? '');
-    if (!reportEntries || reportEntries.length === 0) {
+    const normalizedQuickLink = normalizeAttendanceQuickLink(session.quickLink);
+    if (!normalizedQuickLink) {
+      return session;
+    }
+
+    if (!exemplarsByQuickLink.has(normalizedQuickLink)) {
+      exemplarsByQuickLink.set(normalizedQuickLink, session);
+    }
+
+    const reportEntries = normalizedReports.get(normalizedQuickLink);
+    if (!reportEntries || reportEntries.length === 0 || !session.startsAt) {
       return session;
     }
 
@@ -1424,6 +1476,8 @@ function markAttendanceFromWebReports(
       return session;
     }
 
+    consumedEntryKeys.add(`${normalizedQuickLink}:${matchedEntry.startsAt}`);
+
     return {
       ...session,
       isMarked: true,
@@ -1431,6 +1485,26 @@ function markAttendanceFromWebReports(
       attendanceMarkVariant: matchedEntry.attendanceMarkVariant,
     };
   });
+
+  const syntheticHistoryItems: AttendanceItem[] = [];
+
+  normalizedReports.forEach((entries, quickLink) => {
+    const exemplar = exemplarsByQuickLink.get(quickLink);
+    if (!exemplar) {
+      return;
+    }
+
+    entries.forEach((entry) => {
+      const entryKey = `${quickLink}:${entry.startsAt}`;
+      if (consumedEntryKeys.has(entryKey)) {
+        return;
+      }
+
+      syntheticHistoryItems.push(createSyntheticAttendanceHistoryItem(exemplar, entry));
+    });
+  });
+
+  return sortAttendanceSessions([...nextSessions, ...syntheticHistoryItems]);
 }
 
 export async function hydrateAttendanceMarksFromWebReports(

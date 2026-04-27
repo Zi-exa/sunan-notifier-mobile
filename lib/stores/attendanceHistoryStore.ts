@@ -3,7 +3,11 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { AttendanceItem } from '@/types/moodle';
-import { resolveAttendanceItemStatus, sortAttendanceSessions } from '@/lib/utils/attendance';
+import {
+  buildAttendanceSessionKey,
+  resolveAttendanceItemStatus,
+  sortAttendanceSessions,
+} from '@/lib/utils/attendance';
 
 type AttendanceHistoryState = {
   historyByUser: Record<string, AttendanceItem[]>;
@@ -14,15 +18,7 @@ type AttendanceHistoryState = {
 const HISTORY_RETENTION_SECONDS = 45 * 24 * 60 * 60;
 
 function buildHistoryKey(item: AttendanceItem): string {
-  if (item.eventId) {
-    return `event:${item.eventId}`;
-  }
-
-  if (item.quickLink) {
-    return `url:${item.quickLink}`;
-  }
-
-  return `course:${item.courseId ?? 0}:${item.title}`;
+  return buildAttendanceSessionKey(item);
 }
 
 function normalizeHistoryItem(item: AttendanceItem, nowUnixSeconds = Math.floor(Date.now() / 1000)): AttendanceItem {
