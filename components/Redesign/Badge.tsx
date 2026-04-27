@@ -8,9 +8,10 @@ type BadgeVariant = 'pending' | 'submitted' | 'overdue' | 'unknown' | 'open' | '
 type BadgeProps = {
   variant?: BadgeVariant;
   label: string;
+  showDot?: boolean;
 };
 
-export function Badge({ variant = 'accent', label }: BadgeProps) {
+export function Badge({ variant = 'accent', label, showDot = false }: BadgeProps) {
   const { colors } = useTheme();
 
   const BADGE_CONFIG: Record<BadgeVariant, { bg: string; text: string }> = {
@@ -29,12 +30,25 @@ export function Badge({ variant = 'accent', label }: BadgeProps) {
   const config = BADGE_CONFIG[variant];
   return (
     <View style={[styles.badge, { backgroundColor: config.bg }]}>
+      {showDot ? <View style={[styles.dot, { backgroundColor: config.text }]} /> : null}
       <Text style={[styles.text, { color: config.text }]}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  badge: { borderRadius: Radius.full, paddingHorizontal: 9, paddingVertical: 3 },
+  badge: {
+    borderRadius: Radius.full,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
   text: { fontSize: 11, fontWeight: '700' },
 });
