@@ -5,8 +5,10 @@
   "scripts": {
     "start": "expo start",
     "start:clear": "expo start -c",
-    "start:tunnel": "expo start --tunnel",
-    "start:tunnel:clear": "expo start --tunnel -c",
+    "start:lan": "expo start --lan",
+    "start:lan:clear": "expo start --lan -c",
+    "start:tunnel": "node scripts/start-expo.js --tunnel",
+    "start:tunnel:clear": "node scripts/start-expo.js --tunnel -c",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
