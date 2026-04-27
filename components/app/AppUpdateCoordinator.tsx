@@ -96,12 +96,18 @@ export function AppUpdateCoordinator() {
       return;
     }
 
+    const nextNotes =
+      (availableUpdate?.kind === 'eas' ? availableUpdate.notes : null) ??
+      extractUpdateNotesFromManifest(downloadedUpdate?.manifest) ??
+      extractUpdateNotesFromManifest(nativeAvailableUpdate?.manifest);
+
+    if (availableUpdate?.kind === 'eas' && availableUpdate.notes === nextNotes) {
+      return;
+    }
+
     setAvailableUpdate({
       kind: 'eas',
-      notes:
-        (availableUpdate?.kind === 'eas' ? availableUpdate.notes : null) ??
-        extractUpdateNotesFromManifest(downloadedUpdate?.manifest) ??
-        extractUpdateNotesFromManifest(nativeAvailableUpdate?.manifest),
+      notes: nextNotes,
     });
   }, [
     availableUpdate,
