@@ -7,6 +7,7 @@ import {
   getAssignments,
   getCalendarEvents,
   getCourses,
+  hydrateAttendanceMarksFromWebReports,
   hydrateAssignmentsWithSubmissionStatus,
   validateMoodleSession,
 } from '@/lib/moodle/client';
@@ -213,10 +214,11 @@ export function useAttendanceSessionsQuery() {
       const sessions = await getAttendanceSessions(token as string, allCourseIds, user?.id);
 
       if (!user?.id) {
-        return sessions;
+        return hydrateAttendanceMarksFromWebReports(sessions);
       }
 
-      return useAttendanceHistoryStore.getState().mergeSessionsForUser(user.id, sessions);
+      const merged = useAttendanceHistoryStore.getState().mergeSessionsForUser(user.id, sessions);
+      return hydrateAttendanceMarksFromWebReports(merged);
     },
   });
 

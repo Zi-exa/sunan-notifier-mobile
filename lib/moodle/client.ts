@@ -1433,6 +1433,33 @@ function markAttendanceFromWebReports(
   });
 }
 
+export async function hydrateAttendanceMarksFromWebReports(
+  sessions: AttendanceItem[]
+): Promise<AttendanceItem[]> {
+  const unresolvedQuickLinks = [
+    ...new Set(
+      sessions
+        .filter(
+          (item) => !item.isMarked && typeof item.quickLink === 'string' && item.quickLink.length > 0
+        )
+        .map((item) => item.quickLink as string)
+    ),
+  ];
+
+  if (unresolvedQuickLinks.length === 0) {
+    return sessions;
+  }
+
+  const attendanceReportsByQuickLink = await fetchAttendanceReportEntriesByQuickLink(
+    unresolvedQuickLinks
+  );
+  if (attendanceReportsByQuickLink.size === 0) {
+    return sessions;
+  }
+
+  return markAttendanceFromWebReports(sessions, attendanceReportsByQuickLink);
+}
+
 export async function getAttendanceSessions(
   token: string,
   courseIds: number[],
@@ -1483,22 +1510,7 @@ export async function getAttendanceSessions(
     attendanceLogsByInstance.size > 0
       ? markAttendanceCompletion(mergedAttendances, attendanceLogsByInstance, userId)
       : mergedAttendances;
-  const unresolvedQuickLinks = [...new Set(
-    apiMarkedAttendances
-      .filter((item) => !item.isMarked && typeof item.quickLink === 'string' && item.quickLink.length > 0)
-      .map((item) => item.quickLink as string)
-  )];
-
-  if (unresolvedQuickLinks.length === 0) {
-    return apiMarkedAttendances;
-  }
-
-  const attendanceReportsByQuickLink = await fetchAttendanceReportEntriesByQuickLink(unresolvedQuickLinks);
-  if (attendanceReportsByQuickLink.size === 0) {
-    return apiMarkedAttendances;
-  }
-
-  return markAttendanceFromWebReports(apiMarkedAttendances, attendanceReportsByQuickLink);
+  return apiMarkedAttendances;
 }
 
 export async function getSubmissionStatus(
