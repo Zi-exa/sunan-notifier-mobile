@@ -52,7 +52,7 @@ export function AppUpdateCoordinator() {
   );
   const dismissPostUpdateNotice = useAppUpdateStore((state) => state.dismissPostUpdateNotice);
   const hasCheckedRef = useRef(false);
-  const lastPendingUpdateKeyRef = useRef<string | null>(null);
+  const hasMirroredPendingUpdateRef = useRef(false);
   const lastActivatedNoticeRef = useRef<number | null>(null);
   const [errorDialog, setErrorDialog] = useState<UpdateDialogErrorState | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -95,31 +95,21 @@ export function AppUpdateCoordinator() {
 
   useEffect(() => {
     if (!isUpdatePending) {
-      lastPendingUpdateKeyRef.current = null;
+      hasMirroredPendingUpdateRef.current = false;
       return;
     }
 
-    const nextNotes =
-      (availableUpdate?.kind === 'eas' ? availableUpdate.notes : null) ??
-      extractUpdateNotesFromManifest(downloadedUpdate?.manifest) ??
-      extractUpdateNotesFromManifest(nativeAvailableUpdate?.manifest);
-    const nextKey = JSON.stringify({
-      kind: 'eas',
-      notes: nextNotes ?? null,
-    });
-
-    if (
-      lastPendingUpdateKeyRef.current === nextKey &&
-      availableUpdate?.kind === 'eas' &&
-      availableUpdate.notes === nextNotes
-    ) {
+    if (hasMirroredPendingUpdateRef.current) {
       return;
     }
 
-    lastPendingUpdateKeyRef.current = nextKey;
+    hasMirroredPendingUpdateRef.current = true;
     setAvailableUpdate({
       kind: 'eas',
-      notes: nextNotes,
+      notes:
+        (availableUpdate?.kind === 'eas' ? availableUpdate.notes : null) ??
+        extractUpdateNotesFromManifest(downloadedUpdate?.manifest) ??
+        extractUpdateNotesFromManifest(nativeAvailableUpdate?.manifest),
     });
   }, [
     availableUpdate,
