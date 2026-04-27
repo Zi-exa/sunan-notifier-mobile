@@ -39,16 +39,16 @@ export function Badge({ variant = 'accent', label, showDot = false }: BadgeProps
 const styles = StyleSheet.create({
   badge: {
     borderRadius: Radius.full,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 5,
   },
   dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
-  text: { fontSize: 11, fontWeight: '700' },
+  text: { fontSize: 10, fontWeight: '700' },
 });

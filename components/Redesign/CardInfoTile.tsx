@@ -45,8 +45,8 @@ export function CardIconBubble({
 }: CardIconBubbleProps) {
   const { colors } = useTheme();
   const palette = resolveToneColors(tone, colors);
-  const shellSize = size === 'sm' ? 54 : 62;
-  const iconSize = size === 'sm' ? 24 : 28;
+  const shellSize = size === 'sm' ? 44 : 50;
+  const iconSize = size === 'sm' ? 18 : 22;
 
   return (
     <View
@@ -123,15 +123,15 @@ const styles = StyleSheet.create({
   },
   tile: {
     flex: 1,
-    minWidth: 148,
+    minWidth: 128,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: 8,
   },
   tilePressed: {
     opacity: 0.88,
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   tileBody: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 9,
     flex: 1,
   },
   tileCopy: {
@@ -147,12 +147,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   tileTitle: {
-    fontSize: 14,
+    fontSize: 12.5,
     fontWeight: '800',
   },
   tileValue: {
-    fontSize: 11.5,
-    lineHeight: 16,
+    fontSize: 10,
+    lineHeight: 14,
     fontWeight: '600',
   },
 });
