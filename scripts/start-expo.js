@@ -11,28 +11,25 @@ function shouldFallbackToLan(output) {
   );
 }
 
-function runExpo(args) {
+function runExpo(args, options = {}) {
   return new Promise((resolve) => {
     const expoCliPath = require.resolve(path.join('expo', 'bin', 'cli'));
+    const captureStderr = options.captureStderr === true;
     const child = spawn(process.execPath, [expoCliPath, 'start', ...args], {
-      stdio: ['inherit', 'pipe', 'pipe'],
+      stdio: captureStderr ? ['inherit', 'inherit', 'pipe'] : 'inherit',
       env: process.env,
       cwd: process.cwd(),
     });
 
     let combinedOutput = '';
 
-    child.stdout.on('data', (chunk) => {
-      const text = chunk.toString();
-      combinedOutput += text;
-      process.stdout.write(text);
-    });
-
-    child.stderr.on('data', (chunk) => {
-      const text = chunk.toString();
-      combinedOutput += text;
-      process.stderr.write(text);
-    });
+    if (captureStderr && child.stderr) {
+      child.stderr.on('data', (chunk) => {
+        const text = chunk.toString();
+        combinedOutput += text;
+        process.stderr.write(text);
+      });
+    }
 
     child.on('close', (code) => {
       resolve({ code: code ?? 0, output: combinedOutput });
@@ -41,7 +38,7 @@ function runExpo(args) {
 }
 
 async function main() {
-  const firstRun = await runExpo(requestedArgs);
+  const firstRun = await runExpo(requestedArgs, { captureStderr: useTunnel });
 
   if (useTunnel && firstRun.code !== 0 && shouldFallbackToLan(firstRun.output)) {
     const lanArgs = requestedArgs.filter((arg) => arg !== '--tunnel');
