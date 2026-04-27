@@ -27,6 +27,9 @@ export type PostUpdateNotice = {
   title: string;
   message: string;
   preparedAt: number;
+  sourceVersion?: string;
+  sourceUpdateId?: string;
+  sourceCreatedAt?: string;
   targetVersion?: string;
   targetUpdateId?: string;
   targetCreatedAt?: string;
@@ -89,7 +92,8 @@ function buildPostUpdateMessage(intro: string, notes?: string | null): string {
 }
 
 export function buildPostUpdateNoticeForApk(
-  manifest: RemoteApkUpdateManifest
+  manifest: RemoteApkUpdateManifest,
+  currentVersion: string
 ): PostUpdateNotice {
   return {
     kind: 'apk',
@@ -99,11 +103,14 @@ export function buildPostUpdateNoticeForApk(
       manifest.notes
     ),
     preparedAt: Date.now(),
+    sourceVersion: currentVersion,
     targetVersion: manifest.version,
   };
 }
 
 export function buildPostUpdateNoticeForEas(options: {
+  sourceUpdateId?: string;
+  sourceCreatedAt?: string;
   targetUpdateId?: string;
   targetCreatedAt?: string;
   notes?: string | null;
@@ -113,6 +120,8 @@ export function buildPostUpdateNoticeForEas(options: {
     title: 'Update selesai',
     message: buildPostUpdateMessage('Versi baru sudah dipakai.', options.notes),
     preparedAt: Date.now(),
+    sourceUpdateId: options.sourceUpdateId,
+    sourceCreatedAt: options.sourceCreatedAt,
     targetUpdateId: options.targetUpdateId,
     targetCreatedAt: options.targetCreatedAt,
   };

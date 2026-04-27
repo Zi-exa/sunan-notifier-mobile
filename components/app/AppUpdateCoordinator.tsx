@@ -118,11 +118,26 @@ export function AppUpdateCoordinator() {
 
     const matchesCurrentRuntime =
       pendingPostUpdateNotice.kind === 'apk'
-        ? pendingPostUpdateNotice.targetVersion === currentAppVersion
-        : (pendingPostUpdateNotice.targetUpdateId &&
-            currentlyRunning.updateId === pendingPostUpdateNotice.targetUpdateId) ||
-          (pendingPostUpdateNotice.targetCreatedAt &&
-            currentlyRunning.createdAt?.toISOString() === pendingPostUpdateNotice.targetCreatedAt);
+        ? Boolean(
+            pendingPostUpdateNotice.sourceVersion &&
+              currentAppVersion !== pendingPostUpdateNotice.sourceVersion &&
+              (!pendingPostUpdateNotice.targetVersion ||
+                pendingPostUpdateNotice.targetVersion === currentAppVersion)
+          )
+        : Boolean(
+            (pendingPostUpdateNotice.targetUpdateId &&
+              currentlyRunning.updateId === pendingPostUpdateNotice.targetUpdateId) ||
+              (pendingPostUpdateNotice.sourceUpdateId &&
+                currentlyRunning.updateId &&
+                currentlyRunning.updateId !== pendingPostUpdateNotice.sourceUpdateId) ||
+              (pendingPostUpdateNotice.targetCreatedAt &&
+                currentlyRunning.createdAt?.toISOString() ===
+                  pendingPostUpdateNotice.targetCreatedAt) ||
+              (pendingPostUpdateNotice.sourceCreatedAt &&
+                currentlyRunning.createdAt?.toISOString() &&
+                currentlyRunning.createdAt?.toISOString() !==
+                  pendingPostUpdateNotice.sourceCreatedAt)
+          );
 
     if (matchesCurrentRuntime) {
       activatePendingPostUpdateNotice();
@@ -210,10 +225,14 @@ export function AppUpdateCoordinator() {
 
     try {
       if (availableUpdate.kind === 'apk') {
-        queuePostUpdateNotice(buildPostUpdateNoticeForApk(availableUpdate.manifest));
+        queuePostUpdateNotice(
+          buildPostUpdateNoticeForApk(availableUpdate.manifest, currentAppVersion)
+        );
       } else {
         queuePostUpdateNotice(
           buildPostUpdateNoticeForEas({
+            sourceUpdateId: currentlyRunning.updateId,
+            sourceCreatedAt: currentlyRunning.createdAt?.toISOString(),
             targetUpdateId: downloadedUpdate?.updateId ?? nativeAvailableUpdate?.updateId,
             targetCreatedAt:
               downloadedUpdate?.createdAt?.toISOString() ??
