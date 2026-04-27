@@ -279,6 +279,11 @@ export default function SettingsScreen() {
       return;
     }
 
+    if (availableUpdate) {
+      showUpdateDialog();
+      return;
+    }
+
     setUpdateActionState('checking');
 
     try {
@@ -854,9 +859,9 @@ export default function SettingsScreen() {
                 </Text>
                 <Text style={[styles.aboutUpdateText, { color: colors.textSecondary }]}>
                   {availableUpdate?.kind === 'apk'
-                    ? `Versi ${availableUpdate.manifest.version} sudah siap. Tekan update untuk membuka halaman install.`
+                    ? `Versi ${availableUpdate.manifest.version} sudah siap. Anda bisa lanjutkan update kapan saja dari sini.`
                     : availableUpdate?.kind === 'eas'
-                      ? 'Versi baru sudah siap dipakai. Tekan update untuk memakai versi terbaru.'
+                      ? 'Versi baru sudah siap dipakai. Anda bisa lanjutkan update kapan saja dari sini.'
                       : 'Cek pembaruan kapan saja dari sini.'}
                 </Text>
               </View>
@@ -911,7 +916,7 @@ export default function SettingsScreen() {
                           { color: colors.textPrimary },
                         ]}
                       >
-                        {availableUpdate ? 'Cek Lagi' : 'Cek Update'}
+                        {availableUpdate ? 'Buka Lagi' : 'Cek Update'}
                       </Text>
                     </View>
                   )}
