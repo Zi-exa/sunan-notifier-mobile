@@ -1,28 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppAlertDialog } from '@/components/Redesign';
 import {
-  checkForRemoteApkUpdateAsync,
-  fetchAvailableEasUpdateAsync,
-  openRemoteApkUpdateUrl,
+  applyAvailableAppUpdateAsync,
+  checkForAvailableAppUpdateAsync,
   type RemoteApkUpdateManifest,
-  reloadToApplyEasUpdateAsync,
 } from '@/lib/updates';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useAppUpdateStore } from '@/lib/stores/appUpdateStore';
 import { useTabsBootStore } from '@/lib/stores/tabsBootStore';
 
-type UpdateDialogState =
-  | {
-      kind: 'apk';
-      manifest: RemoteApkUpdateManifest;
-    }
-  | {
-      kind: 'eas';
-    }
-  | {
-      kind: 'error';
-      title: string;
-      message: string;
-    };
+type UpdateDialogErrorState = {
+  kind: 'error';
+  title: string;
+  message: string;
+};
 
 function buildRemoteApkMessage(manifest: RemoteApkUpdateManifest): string {
   const base = `Versi ${manifest.version} sudah tersedia. Aplikasi akan membuka halaman update.`;
@@ -35,8 +26,12 @@ export function AppUpdateCoordinator() {
   const authHydrated = useAuthStore((state) => state.hydrated);
   const authStatus = useAuthStore((state) => state.status);
   const tabsBootStatus = useTabsBootStore((state) => state.status);
+  const availableUpdate = useAppUpdateStore((state) => state.availableUpdate);
+  const dialogVisible = useAppUpdateStore((state) => state.dialogVisible);
+  const setAvailableUpdate = useAppUpdateStore((state) => state.setAvailableUpdate);
+  const hideDialog = useAppUpdateStore((state) => state.hideDialog);
   const hasCheckedRef = useRef(false);
-  const [dialog, setDialog] = useState<UpdateDialogState | null>(null);
+  const [errorDialog, setErrorDialog] = useState<UpdateDialogErrorState | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const bootReady =
@@ -54,27 +49,16 @@ export function AppUpdateCoordinator() {
 
     async function checkUpdates() {
       try {
-        const manifest = await checkForRemoteApkUpdateAsync();
-        if (cancelled || !manifest) {
-          if (!cancelled) {
-            const hasEasUpdate = await fetchAvailableEasUpdateAsync();
-            if (!cancelled && hasEasUpdate) {
-              setDialog({ kind: 'eas' });
-            }
-          }
+        const update = await checkForAvailableAppUpdateAsync();
+        if (cancelled || !update) {
           return;
         }
 
-        setDialog({ kind: 'apk', manifest });
-      } catch {
-        try {
-          const hasEasUpdate = await fetchAvailableEasUpdateAsync();
-          if (!cancelled && hasEasUpdate) {
-            setDialog({ kind: 'eas' });
-          }
-        } catch {
-          // Update checker should stay silent if both channels fail.
+        if (!cancelled) {
+          setAvailableUpdate(update);
         }
+      } catch {
+        // Update checker should stay silent if both channels fail.
       }
     }
 
@@ -83,27 +67,38 @@ export function AppUpdateCoordinator() {
     return () => {
       cancelled = true;
     };
-  }, [bootReady]);
+  }, [bootReady, setAvailableUpdate]);
 
   const dialogCopy = useMemo(() => {
-    if (!dialog) {
+    if (errorDialog) {
+      return {
+        tone: 'warning' as const,
+        title: errorDialog.title,
+        message: errorDialog.message,
+        confirmLabel: 'Tutup',
+        cancelLabel: undefined,
+        dismissDisabled: false,
+      };
+    }
+
+    if (!dialogVisible || !availableUpdate) {
       return null;
     }
 
-    if (dialog.kind === 'apk') {
-      const title = dialog.manifest.title?.trim() || 'Versi baru tersedia';
+    if (availableUpdate.kind === 'apk') {
+      const title = availableUpdate.manifest.title?.trim() || 'Versi baru tersedia';
 
       return {
         tone: 'info' as const,
         title,
-        message: buildRemoteApkMessage(dialog.manifest),
+        message: buildRemoteApkMessage(availableUpdate.manifest),
         confirmLabel: 'Buka update',
-        cancelLabel: dialog.manifest.mandatory ? undefined : 'Nanti',
-        dismissDisabled: dialog.manifest.mandatory ?? false,
+        cancelLabel: availableUpdate.manifest.mandatory ? undefined : 'Nanti',
+        dismissDisabled: availableUpdate.manifest.mandatory ?? false,
       };
     }
 
-    if (dialog.kind === 'eas') {
+    if (availableUpdate.kind === 'eas') {
       return {
         tone: 'info' as const,
         title: 'Versi baru siap dipakai',
@@ -115,42 +110,30 @@ export function AppUpdateCoordinator() {
       };
     }
 
-    return {
-      tone: 'warning' as const,
-      title: dialog.title,
-      message: dialog.message,
-      confirmLabel: 'Tutup',
-      cancelLabel: undefined,
-      dismissDisabled: false,
-    };
-  }, [dialog]);
+    return null;
+  }, [availableUpdate, dialogVisible, errorDialog]);
 
   async function handleConfirm() {
-    if (!dialog) {
+    if (errorDialog) {
+      setErrorDialog(null);
       return;
     }
 
-    if (dialog.kind === 'error') {
-      setDialog(null);
+    if (!availableUpdate) {
       return;
     }
 
     setSubmitting(true);
 
     try {
-      if (dialog.kind === 'apk') {
-        await openRemoteApkUpdateUrl(dialog.manifest.apkUrl);
-        setDialog(null);
-        return;
-      }
-
-      await reloadToApplyEasUpdateAsync();
+      await applyAvailableAppUpdateAsync(availableUpdate);
+      hideDialog();
     } catch {
-      setDialog({
+      setErrorDialog({
         kind: 'error',
         title: 'Belum bisa dibuka',
         message:
-          dialog.kind === 'apk'
+          availableUpdate.kind === 'apk'
             ? 'Halaman update belum bisa dibuka sekarang. Coba lagi beberapa saat.'
             : 'Pembaruan belum bisa dipasang sekarang. Tutup lalu buka lagi aplikasi ini, lalu coba lagi.',
       });
@@ -172,7 +155,12 @@ export function AppUpdateCoordinator() {
       onConfirm={handleConfirm}
       onClose={() => {
         if (!submitting) {
-          setDialog(null);
+          if (errorDialog) {
+            setErrorDialog(null);
+            return;
+          }
+
+          hideDialog();
         }
       }}
     />

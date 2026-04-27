@@ -12,6 +12,15 @@ export type RemoteApkUpdateManifest = {
   mandatory?: boolean;
 };
 
+export type AvailableAppUpdate =
+  | {
+      kind: 'apk';
+      manifest: RemoteApkUpdateManifest;
+    }
+  | {
+      kind: 'eas';
+    };
+
 type RemoteApkUpdateEnvelope =
   | RemoteApkUpdateManifest
   | {
@@ -123,6 +132,48 @@ export async function fetchAvailableEasUpdateAsync(): Promise<boolean> {
 
   await Updates.fetchUpdateAsync();
   return true;
+}
+
+export async function checkForAvailableAppUpdateAsync(): Promise<AvailableAppUpdate | null> {
+  let apkCheckSucceeded = false;
+  let easCheckSucceeded = false;
+  let apkError: unknown = null;
+  let easError: unknown = null;
+
+  try {
+    const manifest = await checkForRemoteApkUpdateAsync();
+    apkCheckSucceeded = true;
+    if (manifest) {
+      return { kind: 'apk', manifest };
+    }
+  } catch (error) {
+    apkError = error;
+  }
+
+  try {
+    const hasEasUpdate = await fetchAvailableEasUpdateAsync();
+    easCheckSucceeded = true;
+    if (hasEasUpdate) {
+      return { kind: 'eas' };
+    }
+  } catch (error) {
+    easError = error;
+  }
+
+  if (!apkCheckSucceeded && !easCheckSucceeded) {
+    throw (easError ?? apkError ?? new Error('Pembaruan belum bisa dicek sekarang.'));
+  }
+
+  return null;
+}
+
+export async function applyAvailableAppUpdateAsync(update: AvailableAppUpdate): Promise<void> {
+  if (update.kind === 'apk') {
+    await openRemoteApkUpdateUrl(update.manifest.apkUrl);
+    return;
+  }
+
+  await reloadToApplyEasUpdateAsync();
 }
 
 export async function reloadToApplyEasUpdateAsync(): Promise<void> {

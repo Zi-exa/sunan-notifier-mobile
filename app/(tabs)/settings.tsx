@@ -24,8 +24,10 @@ import { TabScreenHeader } from '@/components/app/TabScreenHeader';
 import { POLLING_INTERVAL_OPTIONS } from '@/lib/config';
 import { useCoursesQuery } from '@/lib/queries/useMoodleQueries';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useAppUpdateStore } from '@/lib/stores/appUpdateStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 import { saveUserSettings, syncUserProfile } from '@/lib/supabase/repositories';
+import { checkForAvailableAppUpdateAsync } from '@/lib/updates';
 
 const THEME_OPTIONS: {
   value: ThemeMode;
@@ -110,6 +112,9 @@ export default function SettingsScreen() {
   const user = useAuthStore((state) => state.user);
   const setAppUserId = useAuthStore((state) => state.setAppUserId);
   const logout = useAuthStore((state) => state.logout);
+  const availableUpdate = useAppUpdateStore((state) => state.availableUpdate);
+  const setAvailableUpdate = useAppUpdateStore((state) => state.setAvailableUpdate);
+  const showUpdateDialog = useAppUpdateStore((state) => state.showDialog);
   const appName = Constants.expoConfig?.name ?? 'SUNAN Notifier';
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -138,6 +143,7 @@ export default function SettingsScreen() {
     message: string;
   } | null>(null);
   const [expandedSection, setExpandedSection] = useState<SettingsSectionKey | null>(null);
+  const [updateActionState, setUpdateActionState] = useState<'idle' | 'checking'>('idle');
 
   const coursesQuery = useCoursesQuery();
   const isDark = mode === 'dark';
@@ -159,6 +165,12 @@ export default function SettingsScreen() {
       ? 'Semua mata kuliah dipantau'
       : `${draftMonitoredCourseIds.length} mata kuliah dipantau`;
   const aboutSummary = `v${appVersion} • ${APP_MARK}`;
+  const updateSummary =
+    availableUpdate?.kind === 'apk'
+      ? `Versi ${availableUpdate.manifest.version} siap diunduh`
+      : availableUpdate?.kind === 'eas'
+        ? 'Versi baru siap dipakai'
+        : 'Cek versi aplikasi';
   const accountName = user?.fullname ?? 'Belum ada sesi login';
   const contentBottomPadding = getDockContentPadding(insets.bottom);
 
@@ -260,6 +272,42 @@ export default function SettingsScreen() {
         message: 'Halaman belum bisa dibuka di perangkat ini.',
       });
     }
+  };
+
+  const handleCheckUpdate = async () => {
+    if (updateActionState === 'checking') {
+      return;
+    }
+
+    setUpdateActionState('checking');
+
+    try {
+      const update = await checkForAvailableAppUpdateAsync();
+
+      if (!update) {
+        setAvailableUpdate(null);
+        openDialog({
+          tone: 'info',
+          title: 'Sudah terbaru',
+          message: 'Aplikasi ini sudah memakai versi terbaru.',
+        });
+        return;
+      }
+
+      setAvailableUpdate(update);
+    } catch {
+      openDialog({
+        tone: 'warning',
+        title: 'Belum bisa cek update',
+        message: 'Coba lagi beberapa saat.',
+      });
+    } finally {
+      setUpdateActionState('idle');
+    }
+  };
+
+  const handleOpenUpdateDialog = () => {
+    showUpdateDialog();
   };
 
   const handleSync = async () => {
@@ -751,7 +799,7 @@ export default function SettingsScreen() {
           collapsible
           expanded={expandedSection === 'about'}
           onToggle={() => toggleSection('about')}
-          summary={aboutSummary}
+          summary={availableUpdate ? updateSummary : aboutSummary}
         >
           <View
             style={[
@@ -791,6 +839,86 @@ export default function SettingsScreen() {
           <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
 
           <View style={styles.aboutStack}>
+            <View
+              style={[
+                styles.aboutUpdateCard,
+                {
+                  backgroundColor: colors.bgCardHover,
+                  borderColor: colors.borderSubtle,
+                },
+              ]}
+            >
+              <View style={styles.aboutUpdateCopy}>
+                <Text style={[styles.aboutUpdateTitle, { color: colors.textPrimary }]}>
+                  Update aplikasi
+                </Text>
+                <Text style={[styles.aboutUpdateText, { color: colors.textSecondary }]}>
+                  {availableUpdate?.kind === 'apk'
+                    ? `Versi ${availableUpdate.manifest.version} sudah siap. Tekan update untuk membuka halaman install.`
+                    : availableUpdate?.kind === 'eas'
+                      ? 'Versi baru sudah siap dipakai. Tekan update untuk memakai versi terbaru.'
+                      : 'Cek pembaruan kapan saja dari sini.'}
+                </Text>
+              </View>
+
+              <View style={styles.aboutUpdateActions}>
+                {availableUpdate ? (
+                  <Pressable
+                    onPress={handleOpenUpdateDialog}
+                    disabled={updateActionState === 'checking'}
+                    style={[
+                      styles.aboutUpdatePrimaryButton,
+                      {
+                        backgroundColor: colors.accent,
+                      },
+                      updateActionState === 'checking' && styles.primaryButtonDisabled,
+                    ]}
+                  >
+                    <View style={styles.buttonContent}>
+                      <FontAwesome name="download" size={13} color={colors.textInverse} />
+                      <Text
+                        style={[
+                          styles.aboutUpdatePrimaryButtonText,
+                          { color: colors.textInverse },
+                        ]}
+                      >
+                        Update Sekarang
+                      </Text>
+                    </View>
+                  </Pressable>
+                ) : null}
+
+                <Pressable
+                  onPress={handleCheckUpdate}
+                  disabled={updateActionState === 'checking'}
+                  style={[
+                    styles.aboutUpdateSecondaryButton,
+                    {
+                      backgroundColor: colors.bgCard,
+                      borderColor: colors.borderSubtle,
+                    },
+                    updateActionState === 'checking' && styles.primaryButtonDisabled,
+                  ]}
+                >
+                  {updateActionState === 'checking' ? (
+                    <ActivityIndicator size="small" color={colors.accent} />
+                  ) : (
+                    <View style={styles.buttonContent}>
+                      <FontAwesome name="refresh" size={13} color={colors.textPrimary} />
+                      <Text
+                        style={[
+                          styles.aboutUpdateSecondaryButtonText,
+                          { color: colors.textPrimary },
+                        ]}
+                      >
+                        {availableUpdate ? 'Cek Lagi' : 'Cek Update'}
+                      </Text>
+                    </View>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+
             <View style={styles.aboutInfoRow}>
               <View
                 style={[
@@ -1430,6 +1558,51 @@ const styles = StyleSheet.create({
   },
   aboutStack: {
     gap: 12,
+  },
+  aboutUpdateCard: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  aboutUpdateCopy: {
+    gap: 4,
+  },
+  aboutUpdateTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  aboutUpdateText: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  aboutUpdateActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  aboutUpdatePrimaryButton: {
+    flex: 1,
+    borderRadius: Radius.md,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  aboutUpdatePrimaryButtonText: {
+    fontSize: 13.5,
+    fontWeight: '800',
+  },
+  aboutUpdateSecondaryButton: {
+    flex: 1,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aboutUpdateSecondaryButtonText: {
+    fontSize: 13.5,
+    fontWeight: '700',
   },
   aboutInfoRow: {
     flexDirection: 'row',
