@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import * as Updates from 'expo-updates';
 import { AppAlertDialog } from '@/components/Redesign';
 import {
   applyAvailableAppUpdateAsync,
@@ -23,6 +24,7 @@ function buildRemoteApkMessage(manifest: RemoteApkUpdateManifest): string {
 }
 
 export function AppUpdateCoordinator() {
+  const { isUpdatePending } = Updates.useUpdates();
   const authHydrated = useAuthStore((state) => state.hydrated);
   const authStatus = useAuthStore((state) => state.status);
   const tabsBootStatus = useTabsBootStore((state) => state.status);
@@ -68,6 +70,14 @@ export function AppUpdateCoordinator() {
       cancelled = true;
     };
   }, [bootReady, setAvailableUpdate]);
+
+  useEffect(() => {
+    if (!isUpdatePending) {
+      return;
+    }
+
+    setAvailableUpdate({ kind: 'eas' });
+  }, [isUpdatePending, setAvailableUpdate]);
 
   const dialogCopy = useMemo(() => {
     if (errorDialog) {
