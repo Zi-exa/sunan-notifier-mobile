@@ -52,6 +52,8 @@ export function AppUpdateCoordinator() {
   );
   const dismissPostUpdateNotice = useAppUpdateStore((state) => state.dismissPostUpdateNotice);
   const hasCheckedRef = useRef(false);
+  const lastPendingUpdateKeyRef = useRef<string | null>(null);
+  const lastActivatedNoticeRef = useRef<number | null>(null);
   const [errorDialog, setErrorDialog] = useState<UpdateDialogErrorState | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const currentAppVersion = getCurrentAppVersion();
@@ -93,6 +95,7 @@ export function AppUpdateCoordinator() {
 
   useEffect(() => {
     if (!isUpdatePending) {
+      lastPendingUpdateKeyRef.current = null;
       return;
     }
 
@@ -100,11 +103,20 @@ export function AppUpdateCoordinator() {
       (availableUpdate?.kind === 'eas' ? availableUpdate.notes : null) ??
       extractUpdateNotesFromManifest(downloadedUpdate?.manifest) ??
       extractUpdateNotesFromManifest(nativeAvailableUpdate?.manifest);
+    const nextKey = JSON.stringify({
+      kind: 'eas',
+      notes: nextNotes ?? null,
+    });
 
-    if (availableUpdate?.kind === 'eas' && availableUpdate.notes === nextNotes) {
+    if (
+      lastPendingUpdateKeyRef.current === nextKey &&
+      availableUpdate?.kind === 'eas' &&
+      availableUpdate.notes === nextNotes
+    ) {
       return;
     }
 
+    lastPendingUpdateKeyRef.current = nextKey;
     setAvailableUpdate({
       kind: 'eas',
       notes: nextNotes,
@@ -119,6 +131,10 @@ export function AppUpdateCoordinator() {
 
   useEffect(() => {
     if (!pendingPostUpdateNotice || activePostUpdateNotice) {
+      return;
+    }
+
+    if (lastActivatedNoticeRef.current === pendingPostUpdateNotice.preparedAt) {
       return;
     }
 
@@ -146,6 +162,7 @@ export function AppUpdateCoordinator() {
           );
 
     if (matchesCurrentRuntime) {
+      lastActivatedNoticeRef.current = pendingPostUpdateNotice.preparedAt;
       activatePendingPostUpdateNotice();
     }
   }, [
