@@ -4,7 +4,7 @@ type LoadingViewProps = {
   text?: string;
 };
 
-export function LoadingView({ text = 'Memuat data SUNAN...' }: LoadingViewProps) {
+export function LoadingView({ text = 'Memuat data...' }: LoadingViewProps) {
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color="#2B7FFF" />

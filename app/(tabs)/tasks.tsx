@@ -65,28 +65,28 @@ export default function TasksScreen() {
           {coursesQuery.isLoading || assignmentsQuery.isLoading ? (
             <View style={[styles.stateCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
               <ActivityIndicator size="large" color={colors.accent} />
-              <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Memuat daftar tugas...</Text>
+              <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Memuat tugas...</Text>
               <Text style={[styles.stateDescription, { color: colors.textSecondary }]}>
-                Menyiapkan data tugas dari SUNAN.
+                Menyiapkan daftar tugas Anda.
               </Text>
             </View>
           ) : coursesQuery.isError ? (
             <EmptyState
-              title="Daftar tugas belum tersedia"
+              title="Tugas belum bisa ditampilkan"
               description={getReadableErrorMessage(coursesQuery.error, 'tasks')}
               icon="warning"
             />
           ) : !assignmentsReady ? (
             <View style={[styles.stateCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
               <ActivityIndicator size="large" color={colors.accent} />
-              <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Menyelaraskan status tugas...</Text>
+              <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Menyiapkan tugas...</Text>
               <Text style={[styles.stateDescription, { color: colors.textSecondary }]}>
-                Menunggu status submit terakhir agar daftar tetap stabil.
+                Sebentar, status tugas sedang diperbarui.
               </Text>
             </View>
           ) : assignmentsQuery.isError ? (
             <EmptyState
-              title="Daftar tugas belum tersedia"
+              title="Tugas belum bisa ditampilkan"
               description={getReadableErrorMessage(assignmentsQuery.error, 'tasks')}
               icon="warning"
             />

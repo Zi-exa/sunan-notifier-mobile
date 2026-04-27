@@ -55,7 +55,7 @@ export default function TaskDetailScreen() {
           <FontAwesome name="circle-o-notch" size={28} color={colors.accent} />
           <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Memuat detail tugas...</Text>
           <Text style={[styles.stateText, { color: colors.textSecondary }]}>
-            Menyiapkan data tugas dari SUNAN.
+            Menyiapkan detail tugas Anda.
           </Text>
         </View>
       );
@@ -65,7 +65,7 @@ export default function TaskDetailScreen() {
       return (
         <View style={styles.stateWrap}>
           <EmptyState
-            title="Detail tugas belum tersedia"
+            title="Detail tugas belum bisa ditampilkan"
             description={getReadableErrorMessage(assignmentsQuery.error, 'tasks')}
             icon="warning"
           />
@@ -88,7 +88,7 @@ export default function TaskDetailScreen() {
         <View style={styles.stateWrap}>
           <EmptyState
             title="Tugas tidak ditemukan"
-            description="Kemungkinan data sudah berubah. Tutup popup ini lalu refresh daftar tugas."
+            description="Data tugas mungkin sudah berubah. Tutup halaman ini lalu buka lagi daftar tugas."
             icon="search"
           />
         </View>
@@ -136,7 +136,7 @@ export default function TaskDetailScreen() {
             <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>DESKRIPSI</Text>
           </View>
           <Text style={[styles.description, { color: colors.textSecondary }]}>
-            {task.intro ?? 'Tidak ada deskripsi tambahan dari dosen.'}
+            {task.intro ?? 'Belum ada deskripsi tambahan.'}
           </Text>
         </View>
 
@@ -151,7 +151,7 @@ export default function TaskDetailScreen() {
           </View>
           {!isQuizTask && !!task.submissionModifiedAt && (
             <Text style={[styles.metaMuted, { color: colors.textMuted }]}>
-              Terakhir update: {formatDateTime(task.submissionModifiedAt)}
+              Terakhir diperbarui: {formatDateTime(task.submissionModifiedAt)}
             </Text>
           )}
         </View>

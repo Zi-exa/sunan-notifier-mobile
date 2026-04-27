@@ -178,14 +178,14 @@ export default function CalendarScreen() {
           {isLoading ? (
             <View style={[styles.stateCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
               <ActivityIndicator size="large" color={colors.accent} />
-              <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Menyusun kalender deadline...</Text>
+              <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>Memuat kalender...</Text>
               <Text style={[styles.stateDescription, { color: colors.textSecondary }]}>
-                Menyiapkan tugas, absensi, dan event kalender.
+                Menyiapkan jadwal tugas dan absensi.
               </Text>
             </View>
           ) : isError ? (
             <EmptyState
-              title="Kalender belum tersedia"
+              title="Kalender belum bisa ditampilkan"
               description={getReadableErrorMessage(
                 coursesQuery.error ?? assignmentsQuery.error ?? calendarQuery.error ?? attendanceQuery.error,
                 'calendar'
@@ -193,7 +193,7 @@ export default function CalendarScreen() {
               icon="warning"
             />
           ) : dueTasksOnDate.length === 0 ? (
-            <EmptyState title="Tidak ada deadline" description="Belum ada tugas dengan deadline pada tanggal ini." icon="check-circle-o" />
+            <EmptyState title="Belum ada deadline" description="Belum ada tugas pada tanggal ini." icon="check-circle-o" />
           ) : (
             dueTasksOnDate.map((task) => (
               <TaskCard
@@ -209,7 +209,7 @@ export default function CalendarScreen() {
       <SectionCard title="Absensi" icon="check-square-o" subtitle={selectedDate}>
         <View style={styles.sectionList}>
           {isLoading || isError ? null : attendanceOnDate.length === 0 ? (
-            <EmptyState title="Tidak ada absensi" description="Tidak ada sesi absensi pada tanggal ini." icon="check-square-o" />
+            <EmptyState title="Belum ada absensi" description="Belum ada absensi pada tanggal ini." icon="check-square-o" />
           ) : (
             attendanceOnDate.map((session) => (
               <AttendanceCard key={session.eventId} attendance={session} />

@@ -61,7 +61,7 @@ export default function DashboardScreen() {
   const dashboardError = coursesQuery.error ?? assignmentsQuery.error ?? attendanceQuery.error;
 
   if (coursesQuery.isLoading || assignmentsQuery.isLoading || attendanceQuery.isLoading) {
-    return <LoadingView text="Memuat dashboard SUNAN..." />;
+    return <LoadingView text="Memuat dashboard..." />;
   }
 
   if (coursesQuery.isError || assignmentsQuery.isError || attendanceQuery.isError) {
@@ -87,7 +87,7 @@ export default function DashboardScreen() {
         }
       >
         <EmptyState
-          title="Gagal memuat dashboard"
+          title="Dashboard belum bisa ditampilkan"
           description={getReadableErrorMessage(dashboardError, 'dashboard')}
           icon="warning"
         />
@@ -245,7 +245,7 @@ export default function DashboardScreen() {
         {attendanceHighlights.length === 0 ? (
           <EmptyState
             title="Belum ada absensi aktif"
-            description="Tidak ada sesi absensi yang dibuka atau akan dibuka."
+            description="Saat ini belum ada absensi yang dibuka atau akan dibuka."
             icon="check-circle-o"
           />
         ) : (
@@ -259,13 +259,13 @@ export default function DashboardScreen() {
       <SectionCard
         title="Deadline Terdekat"
         icon="graduation-cap"
-        subtitle={assignmentsReady ? '4 tugas dengan deadline paling dekat' : 'Menyelaraskan status tugas...'}
+        subtitle={assignmentsReady ? '4 tugas dengan deadline paling dekat' : 'Menyiapkan daftar tugas...'}
       >
         {!assignmentsReady ? (
           <View style={styles.inlineLoading}>
             <ActivityIndicator color={colors.accent} />
             <Text style={[styles.inlineLoadingText, { color: colors.textSecondary }]}>
-              Menyiapkan ringkasan tugas yang akurat...
+              Sebentar, tugas sedang diperbarui.
             </Text>
           </View>
         ) : upcoming.length === 0 ? (

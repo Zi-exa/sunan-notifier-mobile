@@ -4,7 +4,7 @@ import { useTheme } from './ThemeContext';
 
 type LoadingViewProps = { text?: string };
 
-export function LoadingView({ text = 'Memuat data SUNAN...' }: LoadingViewProps) {
+export function LoadingView({ text = 'Memuat data...' }: LoadingViewProps) {
   const { colors } = useTheme();
   return (
     <View style={[styles.container, { backgroundColor: colors.bgBase }]}>
