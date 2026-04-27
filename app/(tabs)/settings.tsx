@@ -133,7 +133,6 @@ export default function SettingsScreen() {
 
   const [draftNotifications, setDraftNotifications] = useState(notifications);
   const [draftPollingInterval, setDraftPollingInterval] = useState(pollingInterval);
-  const [draftThemeMode, setDraftThemeMode] = useState(themeMode);
   const [startInput, setStartInput] = useState(dndStart);
   const [endInput, setEndInput] = useState(dndEnd);
   const [draftMonitoredCourseIds, setDraftMonitoredCourseIds] = useState(monitoredCourseIds);
@@ -149,9 +148,9 @@ export default function SettingsScreen() {
   const coursesQuery = useCoursesQuery();
   const isDark = mode === 'dark';
   const themeSummary =
-    draftThemeMode === 'system'
+    themeMode === 'system'
       ? `Ikuti sistem (${isDark ? 'gelap' : 'terang'})`
-      : `Mode ${draftThemeMode === 'dark' ? 'gelap' : 'terang'}`;
+      : `Mode ${themeMode === 'dark' ? 'gelap' : 'terang'}`;
   const syncSummary = `Cek tiap ${draftPollingInterval} menit | DND ${startInput}-${endInput}`;
   const enabledNotificationCount = NOTIFICATION_OPTIONS.reduce(
     (count, option) => count + (draftNotifications[option.key] ? 1 : 0),
@@ -189,11 +188,10 @@ export default function SettingsScreen() {
   useEffect(() => {
     setDraftNotifications(notifications);
     setDraftPollingInterval(pollingInterval);
-    setDraftThemeMode(themeMode);
     setStartInput(dndStart);
     setEndInput(dndEnd);
     setDraftMonitoredCourseIds(monitoredCourseIds);
-  }, [notifications, pollingInterval, themeMode, dndStart, dndEnd, monitoredCourseIds]);
+  }, [notifications, pollingInterval, dndStart, dndEnd, monitoredCourseIds]);
 
   const hasChanges = useMemo(() => {
     const notificationsChanged =
@@ -212,7 +210,6 @@ export default function SettingsScreen() {
     return (
       notificationsChanged ||
       draftPollingInterval !== pollingInterval ||
-      draftThemeMode !== themeMode ||
       startInput !== dndStart ||
       endInput !== dndEnd ||
       monitoredCoursesChanged
@@ -222,8 +219,6 @@ export default function SettingsScreen() {
     notifications,
     draftPollingInterval,
     pollingInterval,
-    draftThemeMode,
-    themeMode,
     startInput,
     dndStart,
     endInput,
@@ -336,7 +331,6 @@ export default function SettingsScreen() {
       setNotification('notifyTaskOpen', draftNotifications.notifyTaskOpen);
       setNotification('notifyAttendance', draftNotifications.notifyAttendance);
       setPollingInterval(draftPollingInterval);
-      setThemeMode(draftThemeMode);
       setDndWindow(startInput, endInput);
       setMonitoredCourseIds(draftMonitoredCourseIds);
 
@@ -570,13 +564,12 @@ export default function SettingsScreen() {
         >
           <View style={styles.themeRow}>
             {THEME_OPTIONS.map((option) => {
-              const selected = draftThemeMode === option.value;
+              const selected = themeMode === option.value;
               return (
                 <Pressable
                   key={option.value}
                   onPress={() => {
-                    setDraftThemeMode(option.value);
-                    setSyncState('idle');
+                    setThemeMode(option.value);
                   }}
                   style={[
                     styles.segmentButton,
