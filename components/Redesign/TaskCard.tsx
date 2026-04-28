@@ -61,6 +61,17 @@ function formatReferenceMetaDateTime(timestamp: number) {
   return `${dateLabel} ${timeLabel}`;
 }
 
+function buildTaskPreview(intro: string | undefined) {
+  if (!intro) return undefined;
+
+  const compact = intro
+    .replace(/\s*\n+\s*/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  return compact.length > 0 ? compact : undefined;
+}
+
 export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
   const { colors } = useTheme();
   const statusVariant = STATUS_BADGE_VARIANT[task.status];
@@ -71,6 +82,7 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
   const openBadge = getOpenBadge(task.openDate);
   const showDetailAction = Boolean(detailLabel);
   const useThreeColumnTiles = task.openDate != null && task.openDate > 0;
+  const preview = buildTaskPreview(task.intro);
 
   const metaTiles: React.ReactElement<React.ComponentProps<typeof CardInfoTile>>[] = [
     <CardInfoTile
@@ -145,6 +157,12 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
             <Badge variant={statusVariant} label={statusLabel} showDot />
           </View>
         </View>
+
+        {preview ? (
+          <Text style={[styles.preview, { color: colors.textSecondary }]} numberOfLines={2}>
+            {preview}
+          </Text>
+        ) : null}
 
         <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
 
@@ -227,6 +245,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     fontWeight: '800',
+  },
+  preview: {
+    fontSize: 11.5,
+    lineHeight: 17,
+    fontWeight: '500',
   },
   heroBadges: {
     flexDirection: 'row',
