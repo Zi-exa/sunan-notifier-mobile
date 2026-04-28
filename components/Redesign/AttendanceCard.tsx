@@ -123,21 +123,19 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
           </View>
           {highlight ? (
             <View style={[styles.highlightPill, { backgroundColor: colors.accentDim }]}>
-              <FontAwesome name="bell-o" size={12} color={colors.accent} />
+              <FontAwesome name="bell-o" size={11} color={colors.accent} />
               <Text style={[styles.highlightText, { color: colors.accent }]}>Notifikasi</Text>
             </View>
           ) : null}
         </View>
 
-        <View style={styles.heroRow}>
-          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
-            {attendance.title}
-          </Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
+          {attendance.title}
+        </Text>
 
-          <View style={styles.heroBadges}>
-            {markBadge ? <Badge variant={markBadge.variant} label={markBadge.label} showDot /> : null}
-            <Badge variant={config.variant} label={config.label} showDot />
-          </View>
+        <View style={styles.statusRow}>
+          {markBadge ? <Badge variant={markBadge.variant} label={markBadge.label} showDot /> : null}
+          <Badge variant={config.variant} label={config.label} showDot />
         </View>
 
         {metaTiles.length > 0 ? (
@@ -168,64 +166,55 @@ const styles = StyleSheet.create({
     ...Shadow.card,
   },
   accentStrip: {
-    width: 6,
+    width: 5,
   },
   body: {
     flex: 1,
-    paddingHorizontal: 15,
-    paddingVertical: 14,
-    gap: 11,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 9,
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   courseWrap: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     minWidth: 0,
   },
   course: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.25,
+    letterSpacing: 0.2,
   },
   highlightPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     borderRadius: Radius.full,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
   },
   highlightText: {
-    fontSize: 10.5,
+    fontSize: 9.5,
     fontWeight: '700',
   },
   title: {
-    flex: 1,
-    fontSize: 18,
-    lineHeight: 25,
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: '800',
   },
-  heroRow: {
+  statusRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  heroBadges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    gap: 8,
-    maxWidth: '46%',
+    alignItems: 'center',
+    gap: 6,
   },
   divider: {
     height: 1,
@@ -234,10 +223,10 @@ const styles = StyleSheet.create({
   tileGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   tileGridThreeColumn: {
-    gap: 6,
+    gap: 5,
   },
   tileColumnAuto: {
     flexBasis: 'auto',

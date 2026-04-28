@@ -71,6 +71,7 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
   const openBadge = getOpenBadge(task.openDate);
   const showDetailAction = Boolean(detailLabel);
   const useThreeColumnTiles = task.openDate != null && task.openDate > 0;
+
   const metaTiles: React.ReactElement<React.ComponentProps<typeof CardInfoTile>>[] = [
     <CardInfoTile
       key="activity"
@@ -94,14 +95,15 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
   }
 
   metaTiles.push(
-      <CardInfoTile
+    <CardInfoTile
       key="deadline"
       icon="clock-o"
       title="Deadline"
       value={useThreeColumnTiles ? formatReferenceMetaDateTime(task.dueDate) : formatDateTime(task.dueDate)}
       tone={task.status === 'overdue' ? 'warning' : 'muted'}
-      />
+    />
   );
+
   return (
     <Pressable
       onPress={() => onPress?.(task)}
@@ -129,20 +131,18 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
               <Text style={[styles.detailLinkText, { color: colors.accentBright }]}>
                 {detailLabel}
               </Text>
-              <FontAwesome name="angle-right" size={18} color={colors.accentBright} />
+              <FontAwesome name="angle-right" size={16} color={colors.accentBright} />
             </View>
           ) : null}
         </View>
 
-        <View style={styles.heroRow}>
-          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
-            {task.name}
-          </Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
+          {task.name}
+        </Text>
 
-          <View style={styles.heroBadges}>
-            {openBadge ? <Badge variant={openBadge.variant} label={openBadge.label} showDot /> : null}
-            <Badge variant={statusVariant} label={statusLabel} showDot />
-          </View>
+        <View style={styles.statusRow}>
+          {openBadge ? <Badge variant={openBadge.variant} label={openBadge.label} showDot /> : null}
+          <Badge variant={statusVariant} label={statusLabel} showDot />
         </View>
 
         <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
@@ -173,63 +173,54 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   accentStrip: {
-    width: 6,
+    width: 5,
     borderTopLeftRadius: Radius.xl,
     borderBottomLeftRadius: Radius.xl,
   },
   body: {
     flex: 1,
-    paddingHorizontal: 15,
-    paddingVertical: 14,
-    gap: 11,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 9,
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   courseWrap: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     minWidth: 0,
   },
   course: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.25,
+    letterSpacing: 0.2,
   },
   detailLinkRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
   },
   detailLinkText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   title: {
-    flex: 1,
-    fontSize: 18,
-    lineHeight: 25,
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: '800',
   },
-  heroRow: {
+  statusRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  heroBadges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    gap: 8,
-    maxWidth: '46%',
+    alignItems: 'center',
+    gap: 6,
   },
   divider: {
     height: 1,
@@ -238,10 +229,10 @@ const styles = StyleSheet.create({
   tileGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   tileGridThreeColumn: {
-    gap: 6,
+    gap: 5,
   },
   tileColumnAuto: {
     flexBasis: 'auto',

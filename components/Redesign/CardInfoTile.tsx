@@ -47,8 +47,8 @@ export function CardIconBubble({
 }: CardIconBubbleProps) {
   const { colors } = useTheme();
   const palette = resolveToneColors(tone, colors);
-  const shellSize = size === 'xs' ? 36 : size === 'sm' ? 44 : 50;
-  const iconSize = size === 'xs' ? 15 : size === 'sm' ? 18 : 22;
+  const shellSize = size === 'xs' ? 32 : size === 'sm' ? 40 : 46;
+  const iconSize = size === 'xs' ? 14 : size === 'sm' ? 17 : 20;
 
   return (
     <View
@@ -146,18 +146,18 @@ const styles = StyleSheet.create({
     minWidth: 128,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    paddingHorizontal: 11,
-    paddingVertical: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 7,
   },
   tileCompact: {
     minWidth: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    gap: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 7,
+    gap: 5,
   },
   tilePressed: {
     opacity: 0.88,
@@ -165,33 +165,33 @@ const styles = StyleSheet.create({
   tileBody: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
+    gap: 8,
     flex: 1,
   },
   tileBodyCompact: {
-    gap: 7,
+    gap: 6,
   },
   tileCopy: {
     flex: 1,
     gap: 2,
   },
   tileCopyCompact: {
-    gap: 2,
+    gap: 1,
   },
   tileTitle: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '800',
   },
   tileTitleCompact: {
-    fontSize: 11,
+    fontSize: 10.5,
   },
   tileValue: {
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 9.5,
+    lineHeight: 13,
     fontWeight: '600',
   },
   tileValueCompact: {
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 9.25,
+    lineHeight: 12,
   },
 });
