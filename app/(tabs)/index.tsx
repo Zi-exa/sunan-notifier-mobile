@@ -227,7 +227,7 @@ export default function DashboardScreen() {
                 : colors.textPrimary,
           },
           {
-            label: 'Sudah Dikumpulkan',
+            label: 'Terkumpul',
             value: submittedCount,
             icon: 'check-circle',
             iconColor: colors.success,
