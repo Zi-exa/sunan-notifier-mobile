@@ -136,13 +136,14 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
           ) : null}
         </View>
 
-        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
-          {task.name}
-        </Text>
-
-        <View style={styles.statusRow}>
-          {openBadge ? <Badge variant={openBadge.variant} label={openBadge.label} showDot /> : null}
-          <Badge variant={statusVariant} label={statusLabel} showDot />
+        <View style={styles.heroRow}>
+          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
+            {task.name}
+          </Text>
+          <View style={styles.heroBadges}>
+            {openBadge ? <Badge variant={openBadge.variant} label={openBadge.label} showDot /> : null}
+            <Badge variant={statusVariant} label={statusLabel} showDot />
+          </View>
         </View>
 
         <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
@@ -151,7 +152,11 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
           {metaTiles.map((tile, index) =>
             React.cloneElement(tile, {
               compact: useThreeColumnTiles,
-              style: useThreeColumnTiles ? styles.tileColumnThird : styles.tileColumnAuto,
+              style: useThreeColumnTiles
+                ? index === 0
+                  ? styles.tileColumnNarrow
+                  : styles.tileColumnWide
+                : styles.tileColumnAuto,
               key: tile.key ?? `meta-tile-${index}`,
             })
           )}
@@ -180,25 +185,25 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 9,
+    paddingVertical: 11,
+    gap: 8,
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   courseWrap: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     minWidth: 0,
   },
   course: {
     flex: 1,
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.2,
@@ -209,18 +214,25 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   detailLinkText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
   },
-  title: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '800',
-  },
-  statusRow: {
+  heroRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  title: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '800',
+  },
+  heroBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    flexShrink: 0,
   },
   divider: {
     height: 1,
@@ -232,15 +244,20 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tileGridThreeColumn: {
-    gap: 5,
+    gap: 4,
   },
   tileColumnAuto: {
     flexBasis: 'auto',
     maxWidth: '100%',
   },
-  tileColumnThird: {
-    flexBasis: '31.2%',
-    maxWidth: '31.2%',
+  tileColumnNarrow: {
+    flexBasis: '26.5%',
+    maxWidth: '26.5%',
+    flexGrow: 0,
+  },
+  tileColumnWide: {
+    flexBasis: '34.5%',
+    maxWidth: '34.5%',
     flexGrow: 0,
   },
 });

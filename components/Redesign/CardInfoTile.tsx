@@ -47,8 +47,8 @@ export function CardIconBubble({
 }: CardIconBubbleProps) {
   const { colors } = useTheme();
   const palette = resolveToneColors(tone, colors);
-  const shellSize = size === 'xs' ? 32 : size === 'sm' ? 40 : 46;
-  const iconSize = size === 'xs' ? 14 : size === 'sm' ? 17 : 20;
+  const shellSize = size === 'xs' ? 30 : size === 'sm' ? 38 : 42;
+  const iconSize = size === 'xs' ? 13 : size === 'sm' ? 16 : 18;
 
   return (
     <View
@@ -83,6 +83,7 @@ export function CardInfoTile({
     backgroundColor: colors.bgCardHover,
     borderColor: colors.borderSubtle,
   };
+  const valueLines = compact ? 1 : 2;
 
   const content = (
     <>
@@ -102,7 +103,7 @@ export function CardInfoTile({
           {value ? (
             <Text
               style={[styles.tileValue, compact && styles.tileValueCompact, { color: colors.textSecondary }]}
-              numberOfLines={2}
+              numberOfLines={valueLines}
             >
               {value}
             </Text>
@@ -143,21 +144,21 @@ const styles = StyleSheet.create({
   },
   tile: {
     flex: 1,
-    minWidth: 128,
+    minWidth: 122,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 7,
+    gap: 6,
   },
   tileCompact: {
     minWidth: 0,
-    paddingHorizontal: 7,
-    paddingVertical: 7,
-    gap: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    gap: 4,
   },
   tilePressed: {
     opacity: 0.88,
@@ -165,11 +166,11 @@ const styles = StyleSheet.create({
   tileBody: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 7,
     flex: 1,
   },
   tileBodyCompact: {
-    gap: 6,
+    gap: 5,
   },
   tileCopy: {
     flex: 1,
@@ -179,19 +180,19 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   tileTitle: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
   },
   tileTitleCompact: {
-    fontSize: 10.5,
+    fontSize: 9.75,
   },
   tileValue: {
-    fontSize: 9.5,
-    lineHeight: 13,
+    fontSize: 9.25,
+    lineHeight: 12,
     fontWeight: '600',
   },
   tileValueCompact: {
-    fontSize: 9.25,
-    lineHeight: 12,
+    fontSize: 8.4,
+    lineHeight: 10,
   },
 });
