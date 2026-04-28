@@ -35,14 +35,14 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
       }
     : null;
 
-  const metaTiles: React.ReactNode[] = [];
+  const metaTiles: React.ReactElement<React.ComponentProps<typeof CardInfoTile>>[] = [];
 
   if (attendance.quickLink) {
     metaTiles.push(
       <CardInfoTile
         key="link"
         icon="external-link"
-        title="Buka di SUNAN"
+        title="Buka"
         tone="accent"
         trailingChevron
         onPress={() => Linking.openURL(attendance.quickLink as string)}
@@ -73,6 +73,7 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
       />
     );
   }
+  const useThreeColumnTiles = metaTiles.length === 3;
 
   return (
     <View
@@ -116,7 +117,15 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
         {metaTiles.length > 0 ? (
           <>
             <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-            <View style={styles.tileGrid}>{metaTiles}</View>
+            <View style={[styles.tileGrid, useThreeColumnTiles && styles.tileGridThreeColumn]}>
+              {metaTiles.map((tile, index) =>
+                React.cloneElement(tile, {
+                  compact: useThreeColumnTiles,
+                  style: useThreeColumnTiles ? styles.tileColumnThird : styles.tileColumnAuto,
+                  key: tile.key ?? `attendance-meta-${index}`,
+                })
+              )}
+            </View>
           </>
         ) : null}
       </View>
@@ -191,5 +200,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  tileGridThreeColumn: {
+    gap: 6,
+  },
+  tileColumnAuto: {
+    flexBasis: 'auto',
+    maxWidth: '100%',
+  },
+  tileColumnThird: {
+    flexBasis: '31.2%',
+    maxWidth: '31.2%',
+    flexGrow: 0,
   },
 });

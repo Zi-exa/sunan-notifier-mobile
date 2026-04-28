@@ -1,13 +1,13 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Radius } from './theme';
 import { useTheme } from './ThemeContext';
 
 type CardIconBubbleProps = {
   icon: React.ComponentProps<typeof FontAwesome>['name'];
   tone?: 'accent' | 'warning' | 'success' | 'muted';
-  size?: 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md';
 };
 
 type CardInfoTileProps = {
@@ -17,6 +17,8 @@ type CardInfoTileProps = {
   tone?: CardIconBubbleProps['tone'];
   trailingChevron?: boolean;
   onPress?: () => void;
+  compact?: boolean;
+  style?: StyleProp<ViewStyle>;
 };
 
 function resolveToneColors(
@@ -45,8 +47,8 @@ export function CardIconBubble({
 }: CardIconBubbleProps) {
   const { colors } = useTheme();
   const palette = resolveToneColors(tone, colors);
-  const shellSize = size === 'sm' ? 44 : 50;
-  const iconSize = size === 'sm' ? 18 : 22;
+  const shellSize = size === 'xs' ? 36 : size === 'sm' ? 44 : 50;
+  const iconSize = size === 'xs' ? 15 : size === 'sm' ? 18 : 22;
 
   return (
     <View
@@ -73,6 +75,8 @@ export function CardInfoTile({
   tone = 'accent',
   trailingChevron = false,
   onPress,
+  compact = false,
+  style,
 }: CardInfoTileProps) {
   const { colors } = useTheme();
   const tileStyle = {
@@ -82,21 +86,31 @@ export function CardInfoTile({
 
   const content = (
     <>
-      <View style={styles.tileBody}>
-        <CardIconBubble icon={icon} tone={tone} size="sm" />
-        <View style={styles.tileCopy}>
-          <Text style={[styles.tileTitle, { color: tone === 'accent' ? colors.accentBright : colors.textPrimary }]} numberOfLines={1}>
+      <View style={[styles.tileBody, compact && styles.tileBodyCompact]}>
+        <CardIconBubble icon={icon} tone={tone} size={compact ? 'xs' : 'sm'} />
+        <View style={[styles.tileCopy, compact && styles.tileCopyCompact]}>
+          <Text
+            style={[
+              styles.tileTitle,
+              compact && styles.tileTitleCompact,
+              { color: tone === 'accent' ? colors.accentBright : colors.textPrimary },
+            ]}
+            numberOfLines={1}
+          >
             {title}
           </Text>
           {value ? (
-            <Text style={[styles.tileValue, { color: colors.textSecondary }]} numberOfLines={2}>
+            <Text
+              style={[styles.tileValue, compact && styles.tileValueCompact, { color: colors.textSecondary }]}
+              numberOfLines={2}
+            >
               {value}
             </Text>
           ) : null}
         </View>
       </View>
       {trailingChevron ? (
-        <FontAwesome name="angle-right" size={20} color={colors.textMuted} />
+        <FontAwesome name="angle-right" size={compact ? 16 : 20} color={colors.textMuted} />
       ) : null}
     </>
   );
@@ -105,14 +119,20 @@ export function CardInfoTile({
     return (
       <Pressable
         onPress={onPress}
-        style={({ pressed }) => [styles.tile, tileStyle, pressed && styles.tilePressed]}
+        style={({ pressed }) => [
+          styles.tile,
+          tileStyle,
+          compact && styles.tileCompact,
+          style,
+          pressed && styles.tilePressed,
+        ]}
       >
         {content}
       </Pressable>
     );
   }
 
-  return <View style={[styles.tile, tileStyle]}>{content}</View>;
+  return <View style={[styles.tile, tileStyle, compact && styles.tileCompact, style]}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -133,6 +153,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
+  tileCompact: {
+    minWidth: 0,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    gap: 6,
+  },
   tilePressed: {
     opacity: 0.88,
   },
@@ -142,17 +168,30 @@ const styles = StyleSheet.create({
     gap: 9,
     flex: 1,
   },
+  tileBodyCompact: {
+    gap: 7,
+  },
   tileCopy: {
     flex: 1,
     gap: 2,
+  },
+  tileCopyCompact: {
+    gap: 1,
   },
   tileTitle: {
     fontSize: 12.5,
     fontWeight: '800',
   },
+  tileTitleCompact: {
+    fontSize: 11.5,
+  },
   tileValue: {
     fontSize: 10,
     lineHeight: 14,
     fontWeight: '600',
+  },
+  tileValueCompact: {
+    fontSize: 9.5,
+    lineHeight: 13,
   },
 });

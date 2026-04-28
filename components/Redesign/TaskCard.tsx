@@ -56,8 +56,7 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
   const activityIcon = task.activityType === 'quiz' ? 'question-circle-o' : 'file-text-o';
   const openBadge = getOpenBadge(task.openDate);
   const showDetailAction = Boolean(detailLabel);
-
-  const metaTiles: React.ReactNode[] = [
+  const metaTiles: React.ReactElement<React.ComponentProps<typeof CardInfoTile>>[] = [
     <CardInfoTile
       key="activity"
       icon={activityIcon}
@@ -86,8 +85,9 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
       title="Deadline"
       value={formatDateTime(task.dueDate)}
       tone={task.status === 'overdue' ? 'warning' : 'muted'}
-    />
+      />
   );
+  const useThreeColumnTiles = metaTiles.length === 3;
 
   return (
     <Pressable
@@ -132,7 +132,15 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
 
         <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
 
-        <View style={styles.tileGrid}>{metaTiles}</View>
+        <View style={[styles.tileGrid, useThreeColumnTiles && styles.tileGridThreeColumn]}>
+          {metaTiles.map((tile, index) =>
+            React.cloneElement(tile, {
+              compact: useThreeColumnTiles,
+              style: useThreeColumnTiles ? styles.tileColumnThird : styles.tileColumnAuto,
+              key: tile.key ?? `meta-tile-${index}`,
+            })
+          )}
+        </View>
       </View>
     </Pressable>
   );
@@ -207,5 +215,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  tileGridThreeColumn: {
+    gap: 6,
+  },
+  tileColumnAuto: {
+    flexBasis: 'auto',
+    maxWidth: '100%',
+  },
+  tileColumnThird: {
+    flexBasis: '31.2%',
+    maxWidth: '31.2%',
+    flexGrow: 0,
   },
 });
