@@ -176,14 +176,14 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   tileCopyCompact: {
-    gap: 1,
+    gap: 2,
   },
   tileTitle: {
     fontSize: 12.5,
     fontWeight: '800',
   },
   tileTitleCompact: {
-    fontSize: 11.5,
+    fontSize: 11,
   },
   tileValue: {
     fontSize: 10,
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tileValueCompact: {
-    fontSize: 9.5,
-    lineHeight: 13,
+    fontSize: 10,
+    lineHeight: 14,
   },
 });

@@ -25,10 +25,10 @@ const STATUS_CONFIG: Record<
   closed: { label: 'Riwayat', variant: 'closed', strip: '#4A5A78' },
 };
 
-function formatCompactMetaDateTime(timestamp: number) {
+function formatReferenceMetaDateTime(timestamp: number) {
   const date = new Date(timestamp * 1000);
   const dateLabel = date.toLocaleDateString('id-ID', {
-    day: '2-digit',
+    day: 'numeric',
     month: 'short',
   });
   const timeLabel = date.toLocaleTimeString('id-ID', {
@@ -36,7 +36,7 @@ function formatCompactMetaDateTime(timestamp: number) {
     minute: '2-digit',
     hour12: false,
   });
-  return `${dateLabel}\n${timeLabel}`;
+  return `${dateLabel} ${timeLabel}`;
 }
 
 export function AttendanceCard({ attendance, highlight = false }: AttendanceCardProps) {
@@ -75,7 +75,7 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
         title="Mulai"
         value={
           useThreeColumnTiles
-            ? formatCompactMetaDateTime(attendance.startsAt)
+            ? formatReferenceMetaDateTime(attendance.startsAt)
             : formatDateTime(attendance.startsAt)
         }
         tone="muted"
@@ -91,7 +91,7 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
         title="Tutup"
         value={
           useThreeColumnTiles
-            ? formatCompactMetaDateTime(attendance.closesAt)
+            ? formatReferenceMetaDateTime(attendance.closesAt)
             : formatDateTime(attendance.closesAt)
         }
         tone={attendance.status === 'closing_soon' ? 'warning' : 'muted'}
@@ -129,13 +129,15 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
           ) : null}
         </View>
 
-        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
-          {attendance.title}
-        </Text>
+        <View style={styles.heroRow}>
+          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
+            {attendance.title}
+          </Text>
 
-        <View style={styles.badgeRow}>
-          {markBadge ? <Badge variant={markBadge.variant} label={markBadge.label} showDot /> : null}
-          <Badge variant={config.variant} label={config.label} showDot />
+          <View style={styles.heroBadges}>
+            {markBadge ? <Badge variant={markBadge.variant} label={markBadge.label} showDot /> : null}
+            <Badge variant={config.variant} label={config.label} showDot />
+          </View>
         </View>
 
         {metaTiles.length > 0 ? (
@@ -207,14 +209,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   title: {
+    flex: 1,
     fontSize: 18,
     lineHeight: 25,
     fontWeight: '800',
   },
-  badgeRow: {
+  heroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  heroBadges: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'flex-end',
     gap: 8,
+    maxWidth: '46%',
   },
   divider: {
     height: 1,

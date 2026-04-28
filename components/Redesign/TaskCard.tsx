@@ -47,10 +47,10 @@ function getOpenBadge(
   return { label: 'Akan Dibuka', variant: 'available' };
 }
 
-function formatCompactMetaDateTime(timestamp: number) {
+function formatReferenceMetaDateTime(timestamp: number) {
   const date = new Date(timestamp * 1000);
   const dateLabel = date.toLocaleDateString('id-ID', {
-    day: '2-digit',
+    day: 'numeric',
     month: 'short',
   });
   const timeLabel = date.toLocaleTimeString('id-ID', {
@@ -58,7 +58,7 @@ function formatCompactMetaDateTime(timestamp: number) {
     minute: '2-digit',
     hour12: false,
   });
-  return `${dateLabel}\n${timeLabel}`;
+  return `${dateLabel} ${timeLabel}`;
 }
 
 export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
@@ -87,18 +87,18 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
         key="open"
         icon="calendar-o"
         title="Buka"
-        value={useThreeColumnTiles ? formatCompactMetaDateTime(task.openDate) : formatDateTime(task.openDate)}
+        value={useThreeColumnTiles ? formatReferenceMetaDateTime(task.openDate) : formatDateTime(task.openDate)}
         tone="accent"
       />
     );
   }
 
   metaTiles.push(
-    <CardInfoTile
+      <CardInfoTile
       key="deadline"
       icon="clock-o"
       title="Deadline"
-      value={useThreeColumnTiles ? formatCompactMetaDateTime(task.dueDate) : formatDateTime(task.dueDate)}
+      value={useThreeColumnTiles ? formatReferenceMetaDateTime(task.dueDate) : formatDateTime(task.dueDate)}
       tone={task.status === 'overdue' ? 'warning' : 'muted'}
       />
   );
@@ -134,13 +134,15 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
           ) : null}
         </View>
 
-        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
-          {task.name}
-        </Text>
+        <View style={styles.heroRow}>
+          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
+            {task.name}
+          </Text>
 
-        <View style={styles.badgeRow}>
-          {openBadge ? <Badge variant={openBadge.variant} label={openBadge.label} showDot /> : null}
-          <Badge variant={statusVariant} label={statusLabel} showDot />
+          <View style={styles.heroBadges}>
+            {openBadge ? <Badge variant={openBadge.variant} label={openBadge.label} showDot /> : null}
+            <Badge variant={statusVariant} label={statusLabel} showDot />
+          </View>
         </View>
 
         <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
@@ -211,14 +213,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   title: {
+    flex: 1,
     fontSize: 18,
     lineHeight: 25,
     fontWeight: '800',
   },
-  badgeRow: {
+  heroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  heroBadges: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'flex-end',
     gap: 8,
+    maxWidth: '46%',
   },
   divider: {
     height: 1,
