@@ -62,7 +62,12 @@ function buildTaskPreview(intro: string | undefined) {
     .replace(/\s{2,}/g, ' ')
     .trim();
 
-  return compact.length > 0 ? compact : undefined;
+  if (compact.length === 0) return undefined;
+
+  const maxLength = 72;
+  if (compact.length <= maxLength) return compact;
+
+  return `${compact.slice(0, maxLength).trimEnd()}...`;
 }
 
 export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
@@ -150,7 +155,7 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
         </View>
 
         {preview ? (
-          <Text style={[styles.preview, { color: colors.textSecondary }]} numberOfLines={2}>
+          <Text style={[styles.preview, { color: colors.textSecondary }]} numberOfLines={1}>
             {preview}
           </Text>
         ) : null}
@@ -232,8 +237,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   preview: {
-    fontSize: 11.5,
-    lineHeight: 17,
+    fontSize: 10.75,
+    lineHeight: 15,
     fontWeight: '500',
   },
   heroBadges: {
