@@ -31,13 +31,6 @@ const STATUS_BADGE_LABEL: Record<AssignmentItem['status'], string> = {
   unknown: 'Dicek',
 };
 
-const STATUS_ACCENT: Record<AssignmentItem['status'], string> = {
-  pending: '#FFB347',
-  submitted: '#2ECC71',
-  overdue: '#FF5C5C',
-  unknown: '#4F8EF7',
-};
-
 function getOpenBadge(
   openDate: number | undefined
 ): { label: string; variant: React.ComponentProps<typeof Badge>['variant'] } | null {
@@ -76,7 +69,6 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
   const { colors } = useTheme();
   const statusVariant = STATUS_BADGE_VARIANT[task.status];
   const statusLabel = STATUS_BADGE_LABEL[task.status];
-  const accentColor = STATUS_ACCENT[task.status];
   const activityLabel = task.activityType === 'quiz' ? 'Kuis' : 'Tugas';
   const activityIcon = task.activityType === 'quiz' ? 'question-circle-o' : 'file-text-o';
   const openBadge = getOpenBadge(task.openDate);
@@ -129,7 +121,6 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
         pressed && styles.pressed,
       ]}
     >
-      <View style={[styles.accentStrip, { backgroundColor: accentColor }]} />
       <View style={styles.body}>
         <View style={styles.topRow}>
           <View style={styles.courseWrap}>
@@ -186,7 +177,6 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
     borderRadius: Radius.xl,
     borderWidth: 1,
     overflow: 'hidden',
@@ -194,11 +184,6 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.9,
-  },
-  accentStrip: {
-    width: 5,
-    borderTopLeftRadius: Radius.xl,
-    borderBottomLeftRadius: Radius.xl,
   },
   body: {
     flex: 1,

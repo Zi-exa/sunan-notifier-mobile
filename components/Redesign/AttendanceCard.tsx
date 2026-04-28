@@ -16,13 +16,13 @@ type AttendanceCardProps = {
 
 const STATUS_CONFIG: Record<
   AttendanceItem['status'],
-  { label: string; variant: React.ComponentProps<typeof Badge>['variant']; strip: string }
+  { label: string; variant: React.ComponentProps<typeof Badge>['variant'] }
 > = {
-  open: { label: 'Dibuka', variant: 'open', strip: '#2ECC71' },
-  closing_soon: { label: 'Segera Tutup', variant: 'closing_soon', strip: '#FFB347' },
-  upcoming: { label: 'Akan Dibuka', variant: 'upcoming', strip: '#4F8EF7' },
-  available: { label: 'Tersedia', variant: 'available', strip: '#A78BFA' },
-  closed: { label: 'Riwayat', variant: 'closed', strip: '#4A5A78' },
+  open: { label: 'Dibuka', variant: 'open' },
+  closing_soon: { label: 'Segera Tutup', variant: 'closing_soon' },
+  upcoming: { label: 'Akan Dibuka', variant: 'upcoming' },
+  available: { label: 'Tersedia', variant: 'available' },
+  closed: { label: 'Riwayat', variant: 'closed' },
 };
 
 function formatReferenceMetaDateTime(timestamp: number) {
@@ -109,7 +109,6 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
         },
       ]}
     >
-      <View style={[styles.accentStrip, { backgroundColor: config.strip }]} />
       <View style={styles.body}>
         <View style={styles.topRow}>
           <View style={styles.courseWrap}>
@@ -164,14 +163,10 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
     borderRadius: Radius.xl,
     borderWidth: 1,
     overflow: 'hidden',
     ...Shadow.card,
-  },
-  accentStrip: {
-    width: 5,
   },
   body: {
     flex: 1,
