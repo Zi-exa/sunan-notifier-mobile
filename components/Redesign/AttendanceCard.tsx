@@ -25,6 +25,20 @@ const STATUS_CONFIG: Record<
   closed: { label: 'Riwayat', variant: 'closed', strip: '#4A5A78' },
 };
 
+function formatCompactMetaDateTime(timestamp: number) {
+  const date = new Date(timestamp * 1000);
+  const dateLabel = date.toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+  });
+  const timeLabel = date.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return `${dateLabel}\n${timeLabel}`;
+}
+
 export function AttendanceCard({ attendance, highlight = false }: AttendanceCardProps) {
   const { colors } = useTheme();
   const config = STATUS_CONFIG[attendance.status];
@@ -34,6 +48,9 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
         variant: attendance.attendanceMarkVariant ?? 'submitted',
       }
     : null;
+  const useThreeColumnTiles = Boolean(
+    attendance.quickLink && attendance.startsAt && attendance.closesAt
+  );
 
   const metaTiles: React.ReactElement<React.ComponentProps<typeof CardInfoTile>>[] = [];
 
@@ -56,7 +73,11 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
         key="start"
         icon="calendar-o"
         title="Mulai"
-        value={formatDateTime(attendance.startsAt)}
+        value={
+          useThreeColumnTiles
+            ? formatCompactMetaDateTime(attendance.startsAt)
+            : formatDateTime(attendance.startsAt)
+        }
         tone="muted"
       />
     );
@@ -68,12 +89,15 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
         key="close"
         icon="clock-o"
         title="Tutup"
-        value={formatDateTime(attendance.closesAt)}
+        value={
+          useThreeColumnTiles
+            ? formatCompactMetaDateTime(attendance.closesAt)
+            : formatDateTime(attendance.closesAt)
+        }
         tone={attendance.status === 'closing_soon' ? 'warning' : 'muted'}
       />
     );
   }
-  const useThreeColumnTiles = metaTiles.length === 3;
 
   return (
     <View

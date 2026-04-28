@@ -47,6 +47,20 @@ function getOpenBadge(
   return { label: 'Akan Dibuka', variant: 'available' };
 }
 
+function formatCompactMetaDateTime(timestamp: number) {
+  const date = new Date(timestamp * 1000);
+  const dateLabel = date.toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+  });
+  const timeLabel = date.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return `${dateLabel}\n${timeLabel}`;
+}
+
 export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
   const { colors } = useTheme();
   const statusVariant = STATUS_BADGE_VARIANT[task.status];
@@ -56,6 +70,7 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
   const activityIcon = task.activityType === 'quiz' ? 'question-circle-o' : 'file-text-o';
   const openBadge = getOpenBadge(task.openDate);
   const showDetailAction = Boolean(detailLabel);
+  const useThreeColumnTiles = task.openDate != null && task.openDate > 0;
   const metaTiles: React.ReactElement<React.ComponentProps<typeof CardInfoTile>>[] = [
     <CardInfoTile
       key="activity"
@@ -72,7 +87,7 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
         key="open"
         icon="calendar-o"
         title="Buka"
-        value={formatDateTime(task.openDate)}
+        value={useThreeColumnTiles ? formatCompactMetaDateTime(task.openDate) : formatDateTime(task.openDate)}
         tone="accent"
       />
     );
@@ -83,12 +98,10 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
       key="deadline"
       icon="clock-o"
       title="Deadline"
-      value={formatDateTime(task.dueDate)}
+      value={useThreeColumnTiles ? formatCompactMetaDateTime(task.dueDate) : formatDateTime(task.dueDate)}
       tone={task.status === 'overdue' ? 'warning' : 'muted'}
       />
   );
-  const useThreeColumnTiles = metaTiles.length === 3;
-
   return (
     <Pressable
       onPress={() => onPress?.(task)}
