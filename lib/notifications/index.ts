@@ -16,6 +16,7 @@ type NotificationsModule = typeof import('expo-notifications');
 
 let cachedNotificationsModule: NotificationsModule | null = null;
 let notificationHandlerConfigured = false;
+let localNotificationsReadyPromise: Promise<boolean> | null = null;
 
 function getNotificationsModule(): NotificationsModule {
   if (cachedNotificationsModule) {
@@ -106,37 +107,17 @@ function isExpoGoRuntime(): boolean {
 }
 
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
+  const ready = await ensureLocalNotificationsReadyAsync();
+  if (!ready) {
+    return null;
+  }
+
   // Expo Go no longer supports remote push registration for expo-notifications on SDK 53+.
-  if (isExpoGoRuntime()) {
+  if (isExpoGoRuntime() || !Device.isDevice) {
     return null;
   }
 
   const Notifications = ensureNotificationHandlerConfigured();
-
-  if (!Device.isDevice) {
-    return null;
-  }
-
-  const currentPermission = await Notifications.getPermissionsAsync();
-  let finalStatus = currentPermission.status;
-
-  if (currentPermission.status !== 'granted') {
-    const requestResult = await Notifications.requestPermissionsAsync();
-    finalStatus = requestResult.status;
-  }
-
-  if (finalStatus !== 'granted') {
-    return null;
-  }
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#2B7FFF',
-    });
-  }
 
   const projectId = getExpoProjectId();
   if (!projectId) {
@@ -157,6 +138,45 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     }
 
     throw error;
+  }
+}
+
+export async function ensureLocalNotificationsReadyAsync(): Promise<boolean> {
+  if (localNotificationsReadyPromise) {
+    return localNotificationsReadyPromise;
+  }
+
+  localNotificationsReadyPromise = (async () => {
+    const Notifications = ensureNotificationHandlerConfigured();
+
+    const currentPermission = await Notifications.getPermissionsAsync();
+    let finalStatus = currentPermission.status;
+
+    if (currentPermission.status !== 'granted') {
+      const requestResult = await Notifications.requestPermissionsAsync();
+      finalStatus = requestResult.status;
+    }
+
+    if (finalStatus !== 'granted') {
+      return false;
+    }
+
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#2B7FFF',
+      });
+    }
+
+    return true;
+  })();
+
+  try {
+    return await localNotificationsReadyPromise;
+  } finally {
+    localNotificationsReadyPromise = null;
   }
 }
 
@@ -232,6 +252,11 @@ export async function scheduleTaskLocalNotification(
   task: AssignmentItem,
   kind: NotificationKind
 ): Promise<string | null> {
+  const ready = await ensureLocalNotificationsReadyAsync();
+  if (!ready) {
+    return null;
+  }
+
   const Notifications = ensureNotificationHandlerConfigured();
   const triggerDate = buildScheduleDate(kind, task.dueDate);
 
@@ -323,9 +348,13 @@ export async function sendImmediateAttendanceNotification(params: {
   kind: Extract<NotificationKind, 'attendance_open' | 'attendance_closing'>;
   eventId: number;
 }): Promise<void> {
-  const Notifications = ensureNotificationHandlerConfigured();
-
   try {
+    const ready = await ensureLocalNotificationsReadyAsync();
+    if (!ready) {
+      return;
+    }
+
+    const Notifications = ensureNotificationHandlerConfigured();
     await Notifications.scheduleNotificationAsync({
       content: {
         title: params.title,
@@ -351,9 +380,13 @@ export async function sendImmediateTaskNotification(params: {
   kind: Extract<NotificationKind, 'task_open' | 'task_closing'>;
   taskId: number;
 }): Promise<void> {
-  const Notifications = ensureNotificationHandlerConfigured();
-
   try {
+    const ready = await ensureLocalNotificationsReadyAsync();
+    if (!ready) {
+      return;
+    }
+
+    const Notifications = ensureNotificationHandlerConfigured();
     await Notifications.scheduleNotificationAsync({
       content: {
         title: params.title,

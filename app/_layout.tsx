@@ -19,6 +19,7 @@ import { AppUpdateCoordinator } from '@/components/app/AppUpdateCoordinator';
 
 import {
   attachNotificationNavigationListener,
+  ensureLocalNotificationsReadyAsync,
   getLastNotificationNavigationPayloadAsync,
   registerForPushNotificationsAsync,
 } from '@/lib/notifications';
@@ -225,6 +226,10 @@ function AppBootstrap() {
       router.push(`/task/${payload.taskId}`);
     }
   }, [router, status]);
+
+  useEffect(() => {
+    void ensureLocalNotificationsReadyAsync();
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
