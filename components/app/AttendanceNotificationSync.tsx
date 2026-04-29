@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { sendImmediateAttendanceNotification } from '@/lib/notifications';
 import { useAttendanceSessionsQuery } from '@/lib/queries/useMoodleQueries';
+import { resolveAttendanceItemStatus } from '@/lib/utils/attendance';
 import { useNotificationDedupeStore } from '@/lib/stores/notificationDedupeStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 
@@ -15,6 +16,10 @@ import { useSettingsStore } from '@/lib/stores/settingsStore';
  *                          a session is open, but not more than once per day per session.
  *  • attendance_closing  — an open session has ≤ 30 min left. Sends once per window
  *                          and persists that dedupe across app restarts.
+ *
+ * IMPORTANT: Status is re-derived from startsAt/closesAt at notification time, NOT from
+ * the cached `attendance.status` value. The cached value can be stale if the app was
+ * backgrounded or the data was pre-loaded at boot time.
  */
 export function AttendanceNotificationSync() {
   const notifyAttendance = useSettingsStore((state) => state.notifications.notifyAttendance);
@@ -51,10 +56,15 @@ export function AttendanceNotificationSync() {
         continue;
       }
 
+      // Re-derive status in real time from the raw time window fields.
+      // The cached attendance.status may be stale if the data was loaded at boot
+      // and the session has since transitioned (e.g., upcoming → open → closing_soon).
+      const liveStatus = resolveAttendanceItemStatus(attendance, nowUnix);
+
       // ── attendance_open ──────────────────────────────────────────────────────
       // Fire whenever an attendance is open (= not yet attended, since Moodle's
       // upcoming view only surfaces unfinished events). Deduplicate once per day.
-      if (attendance.status === 'open' || attendance.status === 'available') {
+      if (liveStatus === 'open' || liveStatus === 'available') {
         const key = `open-${attendance.eventId}-${today}`;
         if (!hasKey(key)) {
           markKey(key);
@@ -68,9 +78,9 @@ export function AttendanceNotificationSync() {
       }
 
       // ── attendance_closing ───────────────────────────────────────────────────
-      // Fire once when there are ≤ 30 minutes left. `closing_soon` status is
-      // already set by resolveAttendanceStatus when closesAt – now ≤ 30 min.
-      if (attendance.status === 'closing_soon') {
+      // Fire once when there are ≤ 30 minutes left. Use liveStatus so this works
+      // even if the cached status is still 'open'.
+      if (liveStatus === 'closing_soon') {
         if (!attendance.closesAt) {
           continue;
         }
