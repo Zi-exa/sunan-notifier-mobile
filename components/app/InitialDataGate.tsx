@@ -8,10 +8,12 @@ import {
   getCalendarEvents,
   getCourses,
   hydrateAssignmentsWithSubmissionStatus,
+  hydrateAttendanceMarksFromWebReports,
   validateMoodleSession,
 } from '@/lib/moodle/client';
 import { isAuthError } from '@/lib/moodle/errors';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useAttendanceHistoryStore } from '@/lib/stores/attendanceHistoryStore';
 import { useTabsBootStore } from '@/lib/stores/tabsBootStore';
 import { sortAssignmentsByDeadline } from '@/lib/utils/tasks';
 
@@ -109,11 +111,22 @@ export function InitialDataGate({ children }: InitialDataGateProps) {
 
         const [assignments, attendances] = await Promise.all([
           getAssignments(sessionToken, allCourseIds, courses),
-          getAttendanceSessions(sessionToken, allCourseIds),
+          // Pass userId so getAttendanceSessions can enrich with session logs.
+          // Then merge with persisted history store (same logic as queryFn) so that
+          // the initial cache already contains history items and the Riwayat filter
+          // is populated without requiring a pull-to-refresh.
+          getAttendanceSessions(sessionToken, allCourseIds, userId),
         ]);
 
+        const attendancesWithHistory = useAttendanceHistoryStore
+          .getState()
+          .mergeSessionsForUser(userId, attendances);
+        const attendancesHydrated = await hydrateAttendanceMarksFromWebReports(
+          attendancesWithHistory
+        );
+
         queryClient.setQueryData(assignmentsQueryKey, assignments);
-        queryClient.setQueryData(attendanceQueryKey, attendances);
+        queryClient.setQueryData(attendanceQueryKey, attendancesHydrated);
 
         if (!cancelled) {
           setBootStatus('ready');
