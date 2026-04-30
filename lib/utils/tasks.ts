@@ -84,7 +84,9 @@ export function sortAssignmentsByDeadline(items: AssignmentItem[]): AssignmentIt
 }
 
 export function countPendingAssignments(items: AssignmentItem[]): number {
-  return items.filter((item) => item.status === 'pending' || item.status === 'overdue').length;
+  // Only count 'pending' — overdue tasks have their own separate KPI card on the dashboard.
+  // This also matches the 'Belum Dikerjakan' filter in the tasks tab which filters by 'pending' only.
+  return items.filter((item) => item.status === 'pending').length;
 }
 
 export function areAssignmentStatusesResolved(items: AssignmentItem[]): boolean {
