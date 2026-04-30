@@ -46,7 +46,12 @@ export default function DashboardScreen() {
   const assignments = assignmentsQuery.data ?? [];
   const attendances = attendanceQuery.data ?? [];
   const assignmentsReady = areAssignmentStatusesResolved(assignments);
-  const upcoming = assignmentsReady ? assignments.slice(0, 4) : [];
+  // Only show non-submitted tasks in "Deadline Terdekat" — submitted tasks
+  // should not appear as pending work on the dashboard.
+  const pendingAssignments = assignmentsReady
+    ? assignments.filter((item) => item.status !== 'submitted')
+    : [];
+  const upcoming = pendingAssignments.slice(0, 4);
   const attendanceHighlights = attendances
     .filter((item) => item.status !== 'closed')
     .slice(0, 3);

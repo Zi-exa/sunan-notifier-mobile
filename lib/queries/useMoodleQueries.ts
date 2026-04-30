@@ -150,6 +150,9 @@ export function useAssignmentsQuery() {
     queryKey: ['assignments', user?.id ?? 'anon', allCourseIdKey],
     enabled: Boolean(token && allCourseIds.length > 0),
     staleTime: STALE_TIME_MS,
+    // Always refetch when the component mounts so that submission status
+    // reflects the latest state (e.g. after the user submits a task in the browser).
+    refetchOnMount: true,
     retry: shouldRetryQuery,
     queryFn: async () => {
       const assignments = await getAssignments(
