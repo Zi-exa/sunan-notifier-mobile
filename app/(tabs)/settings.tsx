@@ -366,7 +366,24 @@ export default function SettingsScreen() {
         }
       }
 
-      if (!resolvedAppUserId) {
+      if (!token || !user) {
+        throw new Error('Sesi login tidak tersedia.');
+      }
+
+      const saveResponse = await saveUserSettings({
+        moodleToken: token,
+        moodleUserId: user.id,
+        nim: user.nim,
+        fullname: user.fullname,
+        settings: settingsPayload,
+      });
+
+      if (saveResponse.appUserId && saveResponse.appUserId !== resolvedAppUserId) {
+        resolvedAppUserId = saveResponse.appUserId;
+        await setAppUserId(saveResponse.appUserId);
+      }
+
+      if (saveResponse.result === 'skipped') {
         setSyncState('idle');
         openDialog({
           tone: 'success',
@@ -376,19 +393,7 @@ export default function SettingsScreen() {
         return;
       }
 
-      const saveResult = await saveUserSettings(resolvedAppUserId, settingsPayload);
-
-      if (saveResult === 'skipped') {
-        setSyncState('idle');
-        openDialog({
-          tone: 'success',
-          title: SETTINGS_SAVED_TITLE,
-          message: SETTINGS_SAVED_MESSAGE,
-        });
-        return;
-      }
-
-      if (saveResult === 'legacy-notify-task-open') {
+      if (saveResponse.result === 'legacy-notify-task-open') {
         setSyncState('idle');
         openDialog({
           tone: 'success',

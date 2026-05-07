@@ -45,6 +45,7 @@ function AppBootstrap() {
   const queryClient = useQueryClient();
   const hydrated = useAuthStore((state) => state.hydrated);
   const status = useAuthStore((state) => state.status);
+  const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
   const hydrateSession = useAuthStore((state) => state.hydrateSession);
   const resetTabsBootStatus = useTabsBootStore((state) => state.reset);
@@ -100,25 +101,35 @@ function AppBootstrap() {
     let cancelled = false;
 
     async function syncRemoteSettings() {
-      if (status !== 'authenticated' || !user?.appUserId) {
+      if (status !== 'authenticated' || !token || !user?.id || !user.nim || !user.fullname) {
         remoteSettingsUserIdRef.current = null;
         return;
       }
 
-      if (remoteSettingsUserIdRef.current === user.appUserId) {
+      if (remoteSettingsUserIdRef.current === String(user.id)) {
         return;
       }
 
       try {
-        const remoteSettings = await loadUserSettings(user.appUserId);
-        if (!cancelled && remoteSettings) {
-          applyRemoteSettings(remoteSettings);
+        const response = await loadUserSettings({
+          moodleToken: token,
+          moodleUserId: user.id,
+          nim: user.nim,
+          fullname: user.fullname,
+        });
+
+        if (!cancelled && response.settings) {
+          applyRemoteSettings(response.settings);
+        }
+
+        if (!cancelled && response.appUserId && response.appUserId !== user.appUserId) {
+          await useAuthStore.getState().setAppUserId(response.appUserId);
         }
       } catch {
         // Remote settings sync should not block app startup.
       } finally {
         if (!cancelled) {
-          remoteSettingsUserIdRef.current = user.appUserId;
+          remoteSettingsUserIdRef.current = String(user.id);
         }
       }
     }
@@ -128,7 +139,7 @@ function AppBootstrap() {
     return () => {
       cancelled = true;
     };
-  }, [applyRemoteSettings, status, user?.appUserId]);
+  }, [applyRemoteSettings, status, token, user?.appUserId, user?.fullname, user?.id, user?.nim]);
 
   useEffect(() => {
     const buildPayloadKey = (
@@ -235,7 +246,7 @@ function AppBootstrap() {
     let isMounted = true;
 
     async function syncPushToken() {
-      if (status !== 'authenticated' || !user?.appUserId) {
+      if (status !== 'authenticated' || !token || !user?.id || !user.nim || !user.fullname) {
         return;
       }
 
@@ -244,7 +255,17 @@ function AppBootstrap() {
         if (!isMounted || !pushToken) {
           return;
         }
-        await upsertDevicePushToken(user.appUserId, pushToken);
+        const appUserId = await upsertDevicePushToken({
+          moodleToken: token,
+          moodleUserId: user.id,
+          nim: user.nim,
+          fullname: user.fullname,
+          pushToken,
+        });
+
+        if (isMounted && appUserId && appUserId !== user.appUserId) {
+          await useAuthStore.getState().setAppUserId(appUserId);
+        }
       } catch {
         // Push token sync should not block app boot.
       }
@@ -255,7 +276,7 @@ function AppBootstrap() {
     return () => {
       isMounted = false;
     };
-  }, [status, user?.appUserId]);
+  }, [status, token, user?.appUserId, user?.fullname, user?.id, user?.nim]);
 
   return null;
 }
