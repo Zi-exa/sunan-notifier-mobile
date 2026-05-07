@@ -347,11 +347,11 @@ export async function sendImmediateAttendanceNotification(params: {
   body: string;
   kind: Extract<NotificationKind, 'attendance_open' | 'attendance_closing'>;
   eventId: number;
-}): Promise<void> {
+}): Promise<boolean> {
   try {
     const ready = await ensureLocalNotificationsReadyAsync();
     if (!ready) {
-      return;
+      return false;
     }
 
     const Notifications = ensureNotificationHandlerConfigured();
@@ -369,8 +369,10 @@ export async function sendImmediateAttendanceNotification(params: {
         seconds: 1,
       },
     });
+    return true;
   } catch {
     // Local notification failure should never block app behavior.
+    return false;
   }
 }
 
@@ -379,11 +381,11 @@ export async function sendImmediateTaskNotification(params: {
   body: string;
   kind: Extract<NotificationKind, 'task_open' | 'task_closing'>;
   taskId: number;
-}): Promise<void> {
+}): Promise<boolean> {
   try {
     const ready = await ensureLocalNotificationsReadyAsync();
     if (!ready) {
-      return;
+      return false;
     }
 
     const Notifications = ensureNotificationHandlerConfigured();
@@ -401,7 +403,9 @@ export async function sendImmediateTaskNotification(params: {
         seconds: 1,
       },
     });
+    return true;
   } catch {
     // Local notification failure should never block app behavior.
+    return false;
   }
 }

@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { sendImmediateTaskNotification } from '@/lib/notifications';
+import { useEffect, useRef } from 'react';
+import { scheduleTaskLocalNotification, sendImmediateTaskNotification } from '@/lib/notifications';
 import { useAssignmentsQuery } from '@/lib/queries/useMoodleQueries';
 import { useNotificationDedupeStore } from '@/lib/stores/notificationDedupeStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
@@ -19,6 +19,9 @@ import { useSettingsStore } from '@/lib/stores/settingsStore';
  * guarded by statusResolved to avoid notifying already-submitted tasks before hydration.
  */
 export function TaskNotificationSync() {
+  const notifyNewTask = useSettingsStore((state) => state.notifications.notifyNewTask);
+  const notifyDeadlineH1 = useSettingsStore((state) => state.notifications.notifyDeadlineH1);
+  const notifyDeadlineToday = useSettingsStore((state) => state.notifications.notifyDeadlineToday);
   const notifyTaskOpen = useSettingsStore((state) => state.notifications.notifyTaskOpen);
   const monitoredCourseIds = useSettingsStore((state) => state.monitoredCourseIds);
   const assignmentsQuery = useAssignmentsQuery();
@@ -26,9 +29,13 @@ export function TaskNotificationSync() {
   const hasKey = useNotificationDedupeStore((state) => state.hasKey);
   const markKey = useNotificationDedupeStore((state) => state.markKey);
   const pruneOlderThan = useNotificationDedupeStore((state) => state.pruneOlderThan);
+  const pendingKeysRef = useRef(new Set<string>());
 
   useEffect(() => {
-    if (!notifyTaskOpen || !dedupeHydrated) {
+    if (
+      !dedupeHydrated ||
+      (!notifyNewTask && !notifyDeadlineH1 && !notifyDeadlineToday && !notifyTaskOpen)
+    ) {
       return;
     }
 
@@ -57,20 +64,70 @@ export function TaskNotificationSync() {
         continue;
       }
 
+      // ── new_task ───────────────────────────────────────────────────────────
+      // Notify once when a task is first discovered by the app.
+      if (notifyNewTask) {
+        const key = `task-new-${task.id}-${task.openDate ?? 0}-${task.dueDate}`;
+        if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
+          pendingKeysRef.current.add(key);
+          void scheduleTaskLocalNotification(task, 'new_task').then((notificationId) => {
+            if (notificationId) {
+              markKey(key);
+            }
+            pendingKeysRef.current.delete(key);
+          });
+        }
+      }
+
+      // ── deadline reminders ────────────────────────────────────────────────
+      // Schedule once for H-1 and once for the due date at 07:00 local time.
+      if (task.dueDate > 0) {
+        if (notifyDeadlineH1) {
+          const key = `task-deadline-h1-${task.id}-${task.dueDate}`;
+          if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
+            pendingKeysRef.current.add(key);
+            void scheduleTaskLocalNotification(task, 'deadline_h1').then((notificationId) => {
+              if (notificationId) {
+                markKey(key);
+              }
+              pendingKeysRef.current.delete(key);
+            });
+          }
+        }
+
+        if (notifyDeadlineToday) {
+          const key = `task-deadline-today-${task.id}-${task.dueDate}`;
+          if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
+            pendingKeysRef.current.add(key);
+            void scheduleTaskLocalNotification(task, 'deadline_today').then((notificationId) => {
+              if (notificationId) {
+                markKey(key);
+              }
+              pendingKeysRef.current.delete(key);
+            });
+          }
+        }
+      }
+
       // ── task_open ──────────────────────────────────────────────────────────
       // Notify once on the same calendar day the task opens (within 24 h of openDate).
       // The dedupe key includes openDate so this fires at most once per task opening.
-      if (task.openDate && task.openDate > 0) {
+      if (notifyTaskOpen && task.openDate && task.openDate > 0) {
         const secondsSinceOpen = nowUnix - task.openDate;
         if (secondsSinceOpen >= 0 && secondsSinceOpen <= OPEN_WINDOW_SECONDS) {
           const key = `task-open-${task.id}-${task.openDate}`;
-          if (!hasKey(key)) {
-            markKey(key);
-            sendImmediateTaskNotification({
+          if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
+            pendingKeysRef.current.add(key);
+            void sendImmediateTaskNotification({
               title: 'Tugas Sudah Dibuka',
               body: `${task.name} (${task.courseName}) sudah bisa dikerjakan.`,
               kind: 'task_open',
               taskId: task.id,
+            }).then((didSchedule) => {
+              if (didSchedule) {
+                markKey(key);
+              }
+              pendingKeysRef.current.delete(key);
             });
           }
         }
@@ -88,20 +145,36 @@ export function TaskNotificationSync() {
         const secondsLeft = task.dueDate - nowUnix;
         if (secondsLeft > 0 && secondsLeft <= CLOSING_SOON_SECONDS) {
           const key = `task-closing-${task.id}-${task.dueDate}`;
-          if (!hasKey(key)) {
-            markKey(key);
+          if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
+            pendingKeysRef.current.add(key);
             const minutesLeft = Math.ceil(secondsLeft / 60);
-            sendImmediateTaskNotification({
+            void sendImmediateTaskNotification({
               title: 'Tugas Segera Ditutup',
               body: `${task.name} (${task.courseName}) akan ditutup dalam ${minutesLeft} menit. Segera kirim tugas Anda.`,
               kind: 'task_closing',
               taskId: task.id,
+            }).then((didSchedule) => {
+              if (didSchedule) {
+                markKey(key);
+              }
+              pendingKeysRef.current.delete(key);
             });
           }
         }
       }
     }
-  }, [assignmentsQuery.data, dedupeHydrated, hasKey, markKey, monitoredCourseIds, notifyTaskOpen, pruneOlderThan]);
+  }, [
+    assignmentsQuery.data,
+    dedupeHydrated,
+    hasKey,
+    markKey,
+    monitoredCourseIds,
+    notifyDeadlineH1,
+    notifyDeadlineToday,
+    notifyNewTask,
+    notifyTaskOpen,
+    pruneOlderThan,
+  ]);
 
   return null;
 }

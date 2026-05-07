@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { sendImmediateAttendanceNotification } from '@/lib/notifications';
 import { useAttendanceSessionsQuery } from '@/lib/queries/useMoodleQueries';
 import { resolveAttendanceItemStatus } from '@/lib/utils/attendance';
@@ -29,6 +29,7 @@ export function AttendanceNotificationSync() {
   const hasKey = useNotificationDedupeStore((state) => state.hasKey);
   const markKey = useNotificationDedupeStore((state) => state.markKey);
   const pruneOlderThan = useNotificationDedupeStore((state) => state.pruneOlderThan);
+  const pendingKeysRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (!notifyAttendance || !dedupeHydrated) {
@@ -66,13 +67,18 @@ export function AttendanceNotificationSync() {
       // upcoming view only surfaces unfinished events). Deduplicate once per day.
       if (liveStatus === 'open' || liveStatus === 'available') {
         const key = `open-${attendance.eventId}-${today}`;
-        if (!hasKey(key)) {
-          markKey(key);
-          sendImmediateAttendanceNotification({
+        if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
+          pendingKeysRef.current.add(key);
+          void sendImmediateAttendanceNotification({
             title: 'Absensi Dibuka',
             body: `${attendance.title} (${attendance.courseName}) sudah dibuka. Segera isi sekarang.`,
             kind: 'attendance_open',
             eventId: attendance.eventId,
+          }).then((didSchedule) => {
+            if (didSchedule) {
+              markKey(key);
+            }
+            pendingKeysRef.current.delete(key);
           });
         }
       }
@@ -91,13 +97,18 @@ export function AttendanceNotificationSync() {
         }
 
         const key = `closing-${attendance.eventId}-${attendance.closesAt}`;
-        if (!hasKey(key)) {
-          markKey(key);
-          sendImmediateAttendanceNotification({
+        if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
+          pendingKeysRef.current.add(key);
+          void sendImmediateAttendanceNotification({
             title: 'Absensi Segera Ditutup',
             body: `${attendance.title} (${attendance.courseName}) akan ditutup dalam ${Math.ceil(secondsLeft / 60)} menit. Segera isi sekarang.`,
             kind: 'attendance_closing',
             eventId: attendance.eventId,
+          }).then((didSchedule) => {
+            if (didSchedule) {
+              markKey(key);
+            }
+            pendingKeysRef.current.delete(key);
           });
         }
       }
