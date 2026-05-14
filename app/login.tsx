@@ -178,7 +178,7 @@ export default function LoginScreen() {
                   value={nim}
                   onChangeText={(v) => handleChange(setNim, v)}
                   style={[styles.input, { color: colors.textPrimary }]}
-                  placeholder="Contoh: 202351207"
+                  placeholder="Masukkan NIM SUNAN"
                   placeholderTextColor={isDark ? colors.textSecondary : colors.textMuted}
                   keyboardType="numeric"
                   autoCapitalize="none"
