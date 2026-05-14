@@ -25,6 +25,7 @@ import { POLLING_INTERVAL_OPTIONS } from '@/lib/config';
 import { useCoursesQuery } from '@/lib/queries/useMoodleQueries';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useAppUpdateStore } from '@/lib/stores/appUpdateStore';
+import { usePushTokenSyncStore } from '@/lib/stores/pushTokenSyncStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 import { saveUserSettings, syncUserProfile } from '@/lib/supabase/repositories';
 import { checkForAvailableAppUpdateAsync } from '@/lib/updates';
@@ -105,6 +106,17 @@ const APP_MARK_URL = 'https://github.com/Zi-exa';
 const SETTINGS_SAVED_TITLE = 'Tersimpan';
 const SETTINGS_SAVED_MESSAGE = 'Pengaturan berhasil disimpan.';
 
+function formatPushSyncUpdatedAt(value: number | null): string {
+  if (!value) {
+    return 'Belum ada percobaan.';
+  }
+
+  return `Dicek ${new Date(value).toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })}`;
+}
+
 export default function SettingsScreen() {
   const { colors, mode } = useTheme();
   const insets = useSafeAreaInsets();
@@ -116,6 +128,10 @@ export default function SettingsScreen() {
   const deferredAvailableUpdate = useAppUpdateStore((state) => state.deferredAvailableUpdate);
   const setAvailableUpdate = useAppUpdateStore((state) => state.setAvailableUpdate);
   const showUpdateDialog = useAppUpdateStore((state) => state.showDialog);
+  const pushSyncStatus = usePushTokenSyncStore((state) => state.status);
+  const pushSyncMessage = usePushTokenSyncStore((state) => state.message);
+  const pushTokenKind = usePushTokenSyncStore((state) => state.tokenKind);
+  const pushSyncLastUpdatedAt = usePushTokenSyncStore((state) => state.lastUpdatedAt);
   const appName = Constants.expoConfig?.name ?? 'SUNAN Notifier';
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -160,6 +176,17 @@ export default function SettingsScreen() {
     enabledNotificationCount === 0
       ? 'Semua notifikasi nonaktif'
       : `${enabledNotificationCount} notifikasi aktif`;
+  const pushSyncReady = pushSyncStatus === 'ready';
+  const pushSyncTitle = pushSyncReady
+    ? `Perangkat aktif${pushTokenKind ? ` (${pushTokenKind})` : ''}`
+    : pushSyncStatus === 'syncing'
+      ? 'Mendaftarkan perangkat'
+      : 'Perangkat belum aktif';
+  const pushSyncIcon: React.ComponentProps<typeof FontAwesome>['name'] = pushSyncReady
+    ? 'check-circle'
+    : pushSyncStatus === 'syncing'
+      ? 'refresh'
+      : 'exclamation-circle';
   const monitoredLabel =
     draftMonitoredCourseIds.length === 0
       ? 'Semua mata kuliah dipantau'
@@ -717,6 +744,42 @@ export default function SettingsScreen() {
               />
             </View>
           ))}
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+          <View
+            style={[
+              styles.pushStatusCard,
+              {
+                backgroundColor: pushSyncReady ? colors.accentDim : colors.bgCardHover,
+                borderColor: pushSyncReady ? colors.borderAccent : colors.borderMuted,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.pushStatusIcon,
+                {
+                  backgroundColor: pushSyncReady ? colors.accentDim : colors.bgCard,
+                },
+              ]}
+            >
+              <FontAwesome
+                name={pushSyncIcon}
+                size={15}
+                color={pushSyncReady ? colors.accent : colors.textSecondary}
+              />
+            </View>
+            <View style={styles.pushStatusCopy}>
+              <Text style={[styles.pushStatusTitle, { color: colors.textPrimary }]}>
+                {pushSyncTitle}
+              </Text>
+              <Text style={[styles.pushStatusMessage, { color: colors.textSecondary }]}>
+                {pushSyncMessage}
+              </Text>
+              <Text style={[styles.pushStatusMeta, { color: colors.textMuted }]}>
+                {formatPushSyncUpdatedAt(pushSyncLastUpdatedAt)}
+              </Text>
+            </View>
+          </View>
         </SectionCard>
 
         <SectionCard
@@ -1424,6 +1487,39 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
+  },
+  pushStatusCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  pushStatusIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: Radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pushStatusCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  pushStatusTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+  },
+  pushStatusMessage: {
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+  pushStatusMeta: {
+    fontSize: 11.5,
+    fontWeight: '600',
   },
   inlineBlock: {
     gap: 10,

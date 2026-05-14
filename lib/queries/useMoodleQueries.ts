@@ -13,6 +13,7 @@ import {
 } from '@/lib/moodle/client';
 import { useAttendanceHistoryStore } from '@/lib/stores/attendanceHistoryStore';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useSettingsStore } from '@/lib/stores/settingsStore';
 import { sortAssignmentsByDeadline } from '@/lib/utils/tasks';
 
 const STALE_TIME_MS = 5 * 60 * 1000;
@@ -138,6 +139,7 @@ export function useCoursesQuery() {
 export function useAssignmentsQuery() {
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
+  const pollingInterval = useSettingsStore((state) => state.pollingInterval);
   const coursesQuery = useCoursesQuery();
 
   const allCourseIds = useMemo(
@@ -150,6 +152,8 @@ export function useAssignmentsQuery() {
     queryKey: ['assignments', user?.id ?? 'anon', allCourseIdKey],
     enabled: Boolean(token && allCourseIds.length > 0),
     staleTime: STALE_TIME_MS,
+    refetchInterval: pollingInterval * 60 * 1000,
+    refetchIntervalInBackground: false,
     // Always refetch when the component mounts so that submission status
     // reflects the latest state (e.g. after the user submits a task in the browser).
     refetchOnMount: true,
@@ -200,6 +204,7 @@ export function useCalendarEventsQuery(range?: CalendarQueryRange) {
 export function useAttendanceSessionsQuery() {
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
+  const pollingInterval = useSettingsStore((state) => state.pollingInterval);
   const coursesQuery = useCoursesQuery();
 
   const allCourseIds = useMemo(
@@ -212,6 +217,8 @@ export function useAttendanceSessionsQuery() {
     queryKey: ['attendance-sessions', user?.id ?? 'anon', allCourseIdKey],
     enabled: Boolean(token && allCourseIds.length > 0),
     staleTime: STALE_TIME_MS,
+    refetchInterval: pollingInterval * 60 * 1000,
+    refetchIntervalInBackground: false,
     retry: shouldRetryQuery,
     queryFn: async () => {
       const sessions = await getAttendanceSessions(token as string, allCourseIds, user?.id);

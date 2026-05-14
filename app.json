@@ -30,6 +30,12 @@
         "foregroundImage": "./assets/images/sunan-notifier-mark.png",
         "backgroundColor": "#f0f4ff"
       },
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE"
+      ],
+      "versionCode": 2,
       "package": "id.umk.sunannotifier",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false

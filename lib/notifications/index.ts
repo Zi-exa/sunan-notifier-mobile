@@ -18,6 +18,17 @@ let cachedNotificationsModule: NotificationsModule | null = null;
 let notificationHandlerConfigured = false;
 let localNotificationsReadyPromise: Promise<boolean> | null = null;
 
+export type PushRegistrationResult =
+  | {
+      status: 'registered';
+      token: string;
+      tokenKind: 'expo' | 'native';
+    }
+  | {
+      status: 'unavailable' | 'denied' | 'error';
+      reason: string;
+    };
+
 function getNotificationsModule(): NotificationsModule {
   if (cachedNotificationsModule) {
     return cachedNotificationsModule;
@@ -106,27 +117,87 @@ function isExpoGoRuntime(): boolean {
   return Constants.appOwnership === 'expo' || executionEnvironment === 'storeClient';
 }
 
+function normalizePushTokenData(data: unknown): string | null {
+  if (typeof data !== 'string') {
+    return null;
+  }
+
+  const token = data.trim();
+  return token.length > 0 ? token : null;
+}
+
+async function getNativeDevicePushTokenAsync(
+  Notifications: NotificationsModule
+): Promise<PushRegistrationResult> {
+  try {
+    const token = await Notifications.getDevicePushTokenAsync();
+    const normalizedToken = normalizePushTokenData(token.data);
+
+    if (!normalizedToken) {
+      return {
+        status: 'unavailable',
+        reason: 'Token native perangkat belum tersedia.',
+      };
+    }
+
+    return {
+      status: 'registered',
+      token: normalizedToken,
+      tokenKind: 'native',
+    };
+  } catch (error) {
+    return {
+      status: 'error',
+      reason: error instanceof Error ? error.message : 'Gagal mengambil token native perangkat.',
+    };
+  }
+}
+
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
+  const result = await registerForPushNotificationsDetailedAsync();
+  return result.status === 'registered' ? result.token : null;
+}
+
+export async function registerForPushNotificationsDetailedAsync(): Promise<PushRegistrationResult> {
   const ready = await ensureLocalNotificationsReadyAsync();
   if (!ready) {
-    return null;
+    return {
+      status: 'denied',
+      reason: 'Izin notifikasi belum aktif.',
+    };
   }
 
   // Expo Go no longer supports remote push registration for expo-notifications on SDK 53+.
   if (isExpoGoRuntime() || !Device.isDevice) {
-    return null;
+    return {
+      status: 'unavailable',
+      reason: 'Token push hanya tersedia di APK yang terpasang pada perangkat fisik.',
+    };
   }
 
   const Notifications = ensureNotificationHandlerConfigured();
 
   const projectId = getExpoProjectId();
   if (!projectId) {
-    return null;
+    return getNativeDevicePushTokenAsync(Notifications);
   }
 
   try {
     const token = await Notifications.getExpoPushTokenAsync({ projectId });
-    return token.data;
+    const normalizedToken = normalizePushTokenData(token.data);
+
+    if (!normalizedToken) {
+      return {
+        status: 'unavailable',
+        reason: 'Expo push token belum tersedia.',
+      };
+    }
+
+    return {
+      status: 'registered',
+      token: normalizedToken,
+      tokenKind: 'expo',
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message.toLowerCase() : '';
     if (
@@ -134,10 +205,24 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       message.includes('development build') ||
       message.includes('storeclient')
     ) {
-      return null;
+      return {
+        status: 'unavailable',
+        reason: 'Remote push tidak tersedia di runtime ini.',
+      };
     }
 
-    throw error;
+    const nativeResult = await getNativeDevicePushTokenAsync(Notifications);
+    if (nativeResult.status === 'registered') {
+      return nativeResult;
+    }
+
+    return {
+      status: 'error',
+      reason:
+        error instanceof Error
+          ? `${error.message}; fallback native: ${nativeResult.reason}`
+          : nativeResult.reason,
+    };
   }
 }
 
@@ -373,6 +458,40 @@ export async function sendImmediateAttendanceNotification(params: {
   } catch {
     // Local notification failure should never block app behavior.
     return false;
+  }
+}
+
+export async function scheduleAttendanceLocalNotification(params: {
+  title: string;
+  body: string;
+  kind: Extract<NotificationKind, 'attendance_open' | 'attendance_closing'>;
+  eventId: number;
+  triggerDate: Date;
+}): Promise<string | null> {
+  try {
+    const ready = await ensureLocalNotificationsReadyAsync();
+    if (!ready || params.triggerDate.getTime() <= Date.now()) {
+      return null;
+    }
+
+    const Notifications = ensureNotificationHandlerConfigured();
+    return Notifications.scheduleNotificationAsync({
+      content: {
+        title: params.title,
+        body: params.body,
+        data: {
+          kind: params.kind,
+          attendanceEventId: params.eventId,
+        } satisfies NotificationNavigationPayload,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: params.triggerDate,
+      },
+    });
+  } catch {
+    // Local notification failure should never block app behavior.
+    return null;
   }
 }
 

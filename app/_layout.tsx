@@ -11,7 +11,7 @@ import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import 'react-native-reanimated';
-import { Appearance } from 'react-native';
+import { AppState, Appearance } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/components/Redesign';
 import { AppUpdateCoordinator } from '@/components/app/AppUpdateCoordinator';
@@ -21,9 +21,10 @@ import {
   attachNotificationNavigationListener,
   ensureLocalNotificationsReadyAsync,
   getLastNotificationNavigationPayloadAsync,
-  registerForPushNotificationsAsync,
+  registerForPushNotificationsDetailedAsync,
 } from '@/lib/notifications';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { usePushTokenSyncStore } from '@/lib/stores/pushTokenSyncStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 import { useTabsBootStore } from '@/lib/stores/tabsBootStore';
 import { loadUserSettings, upsertDevicePushToken } from '@/lib/supabase/repositories';
@@ -243,30 +244,79 @@ function AppBootstrap() {
   }, []);
 
   useEffect(() => {
+    if (status !== 'authenticated') {
+      return;
+    }
+
+    let previousState = AppState.currentState;
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      const wasBackgrounded = previousState === 'background' || previousState === 'inactive';
+      previousState = nextState;
+
+      if (!wasBackgrounded || nextState !== 'active') {
+        return;
+      }
+
+      void queryClient.invalidateQueries({ queryKey: ['courses'] });
+      void queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      void queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [queryClient, status, user?.id]);
+
+  useEffect(() => {
     let isMounted = true;
 
     async function syncPushToken() {
+      const pushSyncStore = usePushTokenSyncStore.getState();
+
       if (status !== 'authenticated' || !token || !user?.id || !user.nim || !user.fullname) {
+        if (status === 'authenticated') {
+          pushSyncStore.setUnavailable('Data login belum lengkap untuk mendaftarkan perangkat.');
+        }
         return;
       }
 
       try {
-        const pushToken = await registerForPushNotificationsAsync();
-        if (!isMounted || !pushToken) {
+        pushSyncStore.setSyncing();
+        const registration = await registerForPushNotificationsDetailedAsync();
+        if (!isMounted) {
           return;
         }
+
+        if (registration.status !== 'registered') {
+          if (registration.status === 'error') {
+            pushSyncStore.setError(registration.reason);
+          } else {
+            pushSyncStore.setUnavailable(registration.reason);
+          }
+          return;
+        }
+
         const appUserId = await upsertDevicePushToken({
           moodleToken: token,
           moodleUserId: user.id,
           nim: user.nim,
           fullname: user.fullname,
-          pushToken,
+          pushToken: registration.token,
         });
+
+        if (isMounted) {
+          pushSyncStore.setReady(registration.tokenKind);
+        }
 
         if (isMounted && appUserId && appUserId !== user.appUserId) {
           await useAuthStore.getState().setAppUserId(appUserId);
         }
-      } catch {
+      } catch (error) {
+        if (isMounted) {
+          pushSyncStore.setError(
+            error instanceof Error ? error.message : 'Gagal mendaftarkan perangkat.'
+          );
+        }
         // Push token sync should not block app boot.
       }
     }

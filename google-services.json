@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "156682667024",
+    "project_id": "sunan-notifier",
+    "storage_bucket": "sunan-notifier.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:156682667024:android:d918badd5da26691af7695",
+        "android_client_info": {
+          "package_name": "id.umk.sunannotifier"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgqp2cATCYR3H8RkukFMqmxfTBUNmtRKE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:156682667024:android:74b61a643fc07b62af7695",
+        "android_client_info": {
+          "package_name": "id.umk.sunannotifier.preview"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgqp2cATCYR3H8RkukFMqmxfTBUNmtRKE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

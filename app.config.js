@@ -6,6 +6,7 @@ const PREVIEW_APP_ID = 'id.umk.sunannotifier.preview';
 const PROFILE_CHANNELS = {
   development: 'development',
   preview: 'preview',
+  'production-apk': 'production',
   production: 'production',
 };
 

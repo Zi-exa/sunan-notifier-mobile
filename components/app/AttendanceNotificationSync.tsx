@@ -1,14 +1,26 @@
 import { useEffect, useRef } from 'react';
-import { sendImmediateAttendanceNotification } from '@/lib/notifications';
+import {
+  scheduleAttendanceLocalNotification,
+  sendImmediateAttendanceNotification,
+} from '@/lib/notifications';
 import { useAttendanceSessionsQuery } from '@/lib/queries/useMoodleQueries';
 import { resolveAttendanceItemStatus } from '@/lib/utils/attendance';
 import { useNotificationDedupeStore } from '@/lib/stores/notificationDedupeStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 
+function toLocalDateKeyFromUnix(unixSeconds: number): string {
+  const date = new Date(unixSeconds * 1000);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
+}
+
 /**
  * AttendanceNotificationSync — renders nothing, runs as a background sync effect.
  *
  * Fires a local notification when:
+ *  • attendance_open     — an upcoming attendance session is scheduled locally
+ *                          for its start time when the app discovers it early.
  *  • attendance_open     — an attendance session is currently open and the user hasn't
  *                          attended yet (inferred: Moodle only includes unattended sessions
  *                          in the upcoming view). Deduplicates once per calendar day so
@@ -62,7 +74,30 @@ export function AttendanceNotificationSync() {
       // and the session has since transitioned (e.g., upcoming → open → closing_soon).
       const liveStatus = resolveAttendanceItemStatus(attendance, nowUnix);
 
-      // ── attendance_open ──────────────────────────────────────────────────────
+      // ── attendance_open schedule ─────────────────────────────────────────────
+      // If the app sees an upcoming attendance before it opens, schedule a local
+      // notification for the actual start time instead of waiting for a later refetch.
+      if (liveStatus === 'upcoming' && attendance.startsAt && attendance.startsAt > nowUnix) {
+        const openDateKey = toLocalDateKeyFromUnix(attendance.startsAt);
+        const key = `open-${attendance.eventId}-${openDateKey}`;
+        if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
+          pendingKeysRef.current.add(key);
+          void scheduleAttendanceLocalNotification({
+            title: 'Absensi Dibuka',
+            body: `${attendance.title} (${attendance.courseName}) sudah dibuka. Segera isi sekarang.`,
+            kind: 'attendance_open',
+            eventId: attendance.eventId,
+            triggerDate: new Date(attendance.startsAt * 1000),
+          }).then((notificationId) => {
+            if (notificationId) {
+              markKey(key);
+            }
+            pendingKeysRef.current.delete(key);
+          });
+        }
+      }
+
+      // ── attendance_open immediate ────────────────────────────────────────────
       // Fire whenever an attendance is open (= not yet attended, since Moodle's
       // upcoming view only surfaces unfinished events). Deduplicate once per day.
       if (liveStatus === 'open' || liveStatus === 'available') {
