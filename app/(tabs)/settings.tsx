@@ -162,8 +162,9 @@ export default function SettingsScreen() {
       : `${enabledNotificationCount} notifikasi aktif`;
   const monitoredLabel =
     draftMonitoredCourseIds.length === 0
-      ? 'Semua mata kuliah dipantau'
-      : `${draftMonitoredCourseIds.length} mata kuliah dipantau`;
+      ? 'Semua mata kuliah'
+      : `${draftMonitoredCourseIds.length} dipilih`;
+  const courseScopeMode = draftMonitoredCourseIds.length === 0 ? 'all' : 'custom';
   const aboutSummary = `v${appVersion} • ${APP_MARK}`;
   const effectiveAvailableUpdate = availableUpdate ?? deferredAvailableUpdate;
   const updateSummary =
@@ -734,7 +735,7 @@ export default function SettingsScreen() {
                     tone: 'info',
                     title: 'Mata Kuliah Dipantau',
                     message:
-                      'Pilih mata kuliah yang ingin dipantau untuk pengingat. Halaman utama tetap menampilkan semua mata kuliah aktif.',
+                      'Mode Semua memantau seluruh mata kuliah, termasuk yang baru muncul. Mode Pilih hanya mengirim pengingat untuk mata kuliah yang dipilih.',
                   });
                 }}
               style={[
@@ -755,45 +756,112 @@ export default function SettingsScreen() {
               <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Memuat daftar mata kuliah...</Text>
             </View>
           ) : (
-            <View style={styles.courseList}>
-              {(coursesQuery.data ?? []).map((course) => {
-                const selected = draftMonitoredCourseIds.includes(course.id);
-                return (
-                  <Pressable
-                    key={course.id}
-                    onPress={() => toggleDraftCourse(course.id)}
+            <View style={styles.courseScopeStack}>
+              <View style={styles.courseModeRow}>
+                <Pressable
+                  onPress={() => setDraftMonitoredCourseIds([])}
+                  style={[
+                    styles.courseModeButton,
+                    {
+                      backgroundColor: courseScopeMode === 'all' ? colors.accentDim : colors.bgCardHover,
+                      borderColor: courseScopeMode === 'all' ? colors.accent : colors.borderMuted,
+                    },
+                  ]}
+                >
+                  <FontAwesome
+                    name="globe"
+                    size={13}
+                    color={courseScopeMode === 'all' ? colors.accentBright : colors.textSecondary}
+                  />
+                  <Text
                     style={[
-                      styles.courseRow,
-                      {
-                        backgroundColor: selected ? colors.accentDim : colors.bgCardHover,
-                        borderColor: selected ? colors.accent : colors.borderMuted,
-                      },
+                      styles.courseModeText,
+                      { color: courseScopeMode === 'all' ? colors.accentBright : colors.textPrimary },
                     ]}
                   >
-                    <View style={styles.courseTextWrap}>
-                      <Text
+                    Semua
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    const courses = coursesQuery.data ?? [];
+                    if (draftMonitoredCourseIds.length === 0 && courses[0]) {
+                      setDraftMonitoredCourseIds([courses[0].id]);
+                    }
+                  }}
+                  style={[
+                    styles.courseModeButton,
+                    {
+                      backgroundColor: courseScopeMode === 'custom' ? colors.accentDim : colors.bgCardHover,
+                      borderColor: courseScopeMode === 'custom' ? colors.accent : colors.borderMuted,
+                    },
+                  ]}
+                >
+                  <FontAwesome
+                    name="check-square-o"
+                    size={13}
+                    color={courseScopeMode === 'custom' ? colors.accentBright : colors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.courseModeText,
+                      { color: courseScopeMode === 'custom' ? colors.accentBright : colors.textPrimary },
+                    ]}
+                  >
+                    Pilih
+                  </Text>
+                </Pressable>
+              </View>
+
+              <Text style={[styles.courseScopeHint, { color: colors.textSecondary }]}>
+                {courseScopeMode === 'all'
+                  ? 'Pengingat aktif untuk semua mata kuliah, termasuk yang baru muncul.'
+                  : 'Pengingat hanya aktif untuk mata kuliah yang dicentang di bawah.'}
+              </Text>
+
+              {courseScopeMode === 'custom' ? (
+                <View style={styles.courseList}>
+                  {(coursesQuery.data ?? []).map((course) => {
+                    const selected = draftMonitoredCourseIds.includes(course.id);
+                    return (
+                      <Pressable
+                        key={course.id}
+                        onPress={() => toggleDraftCourse(course.id)}
                         style={[
-                          styles.courseTitle,
-                          { color: selected ? colors.accentBright : colors.textPrimary },
+                          styles.courseRow,
+                          {
+                            backgroundColor: selected ? colors.accentDim : colors.bgCardHover,
+                            borderColor: selected ? colors.accent : colors.borderMuted,
+                          },
                         ]}
                       >
-                        {course.fullname}
-                      </Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.courseCheck,
-                        {
-                          backgroundColor: selected ? colors.accent : 'transparent',
-                          borderColor: selected ? colors.accent : colors.borderMuted,
-                        },
-                      ]}
-                    >
-                      {selected ? <FontAwesome name="check" size={11} color={colors.textInverse} /> : null}
-                    </View>
-                  </Pressable>
-                );
-              })}
+                        <View style={styles.courseTextWrap}>
+                          <Text
+                            style={[
+                              styles.courseTitle,
+                              { color: selected ? colors.accentBright : colors.textPrimary },
+                            ]}
+                          >
+                            {course.fullname}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.courseCheck,
+                            {
+                              backgroundColor: selected ? colors.accent : 'transparent',
+                              borderColor: selected ? colors.accent : colors.borderMuted,
+                            },
+                          ]}
+                        >
+                          {selected ? <FontAwesome name="check" size={11} color={colors.textInverse} /> : null}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
             </View>
           )}
         </SectionCard>
@@ -1480,6 +1548,32 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
+  },
+  courseScopeStack: {
+    gap: 10,
+  },
+  courseModeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  courseModeButton: {
+    flex: 1,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingVertical: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 7,
+  },
+  courseModeText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  courseScopeHint: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontWeight: '600',
   },
   courseList: {
     gap: 8,
