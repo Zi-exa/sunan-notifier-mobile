@@ -281,6 +281,10 @@ function buildScheduleDate(kind: NotificationKind, dueDateUnixSeconds: number): 
     return reminderDate;
   }
 
+  if (kind === 'task_closing') {
+    return new Date(dueDate.getTime() - 30 * 60 * 1000);
+  }
+
   return new Date(Date.now() + 3 * 1000);
 }
 

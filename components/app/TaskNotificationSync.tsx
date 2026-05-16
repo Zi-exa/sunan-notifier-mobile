@@ -140,25 +140,35 @@ export function TaskNotificationSync() {
       }
 
       // ── task_closing ───────────────────────────────────────────────────────
-      // Notify when dueDate is within 30 minutes from now.
-      if (task.dueDate > 0) {
+      // Schedule at dueDate - 30 minutes when the task is seen early; if the app
+      // only sees it inside that window, send immediately.
+      if (notifyDeadlineToday && task.dueDate > 0) {
         const secondsLeft = task.dueDate - nowUnix;
-        if (secondsLeft > 0 && secondsLeft <= CLOSING_SOON_SECONDS) {
+        if (secondsLeft > 0) {
           const key = `task-closing-${task.id}-${task.dueDate}`;
           if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
             pendingKeysRef.current.add(key);
-            const minutesLeft = Math.ceil(secondsLeft / 60);
-            void sendImmediateTaskNotification({
-              title: 'Tugas Segera Ditutup',
-              body: `${task.name} (${task.courseName}) akan ditutup dalam ${minutesLeft} menit. Segera kirim tugas Anda.`,
-              kind: 'task_closing',
-              taskId: task.id,
-            }).then((didSchedule) => {
-              if (didSchedule) {
-                markKey(key);
-              }
-              pendingKeysRef.current.delete(key);
-            });
+            if (secondsLeft <= CLOSING_SOON_SECONDS) {
+              const minutesLeft = Math.ceil(secondsLeft / 60);
+              void sendImmediateTaskNotification({
+                title: 'Tugas Segera Ditutup',
+                body: `${task.name} (${task.courseName}) akan ditutup dalam ${minutesLeft} menit. Segera kirim tugas Anda.`,
+                kind: 'task_closing',
+                taskId: task.id,
+              }).then((didSchedule) => {
+                if (didSchedule) {
+                  markKey(key);
+                }
+                pendingKeysRef.current.delete(key);
+              });
+            } else {
+              void scheduleTaskLocalNotification(task, 'task_closing').then((notificationId) => {
+                if (notificationId) {
+                  markKey(key);
+                }
+                pendingKeysRef.current.delete(key);
+              });
+            }
           }
         }
       }
