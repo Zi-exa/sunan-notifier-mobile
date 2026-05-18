@@ -13,7 +13,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   UIManager,
   View,
 } from 'react-native';
@@ -121,20 +120,15 @@ export default function SettingsScreen() {
 
   const notifications = useSettingsStore((state) => state.notifications);
   const pollingInterval = useSettingsStore((state) => state.pollingInterval);
-  const dndStart = useSettingsStore((state) => state.dndStart);
-  const dndEnd = useSettingsStore((state) => state.dndEnd);
   const monitoredCourseIds = useSettingsStore((state) => state.monitoredCourseIds);
   const themeMode = useSettingsStore((state) => state.themeMode);
   const setNotification = useSettingsStore((state) => state.setNotification);
   const setPollingInterval = useSettingsStore((state) => state.setPollingInterval);
-  const setDndWindow = useSettingsStore((state) => state.setDndWindow);
   const setMonitoredCourseIds = useSettingsStore((state) => state.setMonitoredCourseIds);
   const setThemeMode = useSettingsStore((state) => state.setThemeMode);
 
   const [draftNotifications, setDraftNotifications] = useState(notifications);
   const [draftPollingInterval, setDraftPollingInterval] = useState(pollingInterval);
-  const [startInput, setStartInput] = useState(dndStart);
-  const [endInput, setEndInput] = useState(dndEnd);
   const [draftMonitoredCourseIds, setDraftMonitoredCourseIds] = useState(monitoredCourseIds);
   const [syncState, setSyncState] = useState<'idle' | 'syncing'>('idle');
   const [dialogState, setDialogState] = useState<{
@@ -151,7 +145,7 @@ export default function SettingsScreen() {
     themeMode === 'system'
       ? `Ikuti sistem (${isDark ? 'gelap' : 'terang'})`
       : `Mode ${themeMode === 'dark' ? 'gelap' : 'terang'}`;
-  const syncSummary = `Cek tiap ${draftPollingInterval} menit | DND ${startInput}-${endInput}`;
+  const syncSummary = `Cek tiap ${draftPollingInterval} menit`;
   const enabledNotificationCount = NOTIFICATION_OPTIONS.reduce(
     (count, option) => count + (draftNotifications[option.key] ? 1 : 0),
     0
@@ -189,10 +183,8 @@ export default function SettingsScreen() {
   useEffect(() => {
     setDraftNotifications(notifications);
     setDraftPollingInterval(pollingInterval);
-    setStartInput(dndStart);
-    setEndInput(dndEnd);
     setDraftMonitoredCourseIds(monitoredCourseIds);
-  }, [notifications, pollingInterval, dndStart, dndEnd, monitoredCourseIds]);
+  }, [notifications, pollingInterval, monitoredCourseIds]);
 
   const hasChanges = useMemo(() => {
     const notificationsChanged =
@@ -211,8 +203,6 @@ export default function SettingsScreen() {
     return (
       notificationsChanged ||
       draftPollingInterval !== pollingInterval ||
-      startInput !== dndStart ||
-      endInput !== dndEnd ||
       monitoredCoursesChanged
     );
   }, [
@@ -220,10 +210,6 @@ export default function SettingsScreen() {
     notifications,
     draftPollingInterval,
     pollingInterval,
-    startInput,
-    dndStart,
-    endInput,
-    dndEnd,
     draftMonitoredCourseIds,
     monitoredCourseIds,
   ]);
@@ -332,7 +318,6 @@ export default function SettingsScreen() {
       setNotification('notifyTaskOpen', draftNotifications.notifyTaskOpen);
       setNotification('notifyAttendance', draftNotifications.notifyAttendance);
       setPollingInterval(draftPollingInterval);
-      setDndWindow(startInput, endInput);
       setMonitoredCourseIds(draftMonitoredCourseIds);
 
       const settingsPayload = {
@@ -342,8 +327,6 @@ export default function SettingsScreen() {
         notifyTaskOpen: draftNotifications.notifyTaskOpen,
         notifyAttendance: draftNotifications.notifyAttendance,
         pollIntervalMinutes: draftPollingInterval,
-        dndStart: startInput,
-        dndEnd: endInput,
         monitoredCourseIds: draftMonitoredCourseIds,
       };
 
@@ -648,55 +631,6 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-
-          <View style={styles.inlineBlock}>
-            <InlineLabel icon="moon-o" text="Jam tidak ganggu" />
-            <View style={styles.timeRow}>
-              <View style={styles.timeInputGroup}>
-                <Text style={[styles.timeFieldLabel, { color: colors.textSecondary }]}>Mulai</Text>
-                <TextInput
-                  value={startInput}
-                  onChangeText={(value) => {
-                    setStartInput(value);
-                    setSyncState('idle');
-                  }}
-                  style={[
-                    styles.timeInput,
-                    {
-                      backgroundColor: colors.bgCardHover,
-                      borderColor: colors.borderMuted,
-                      color: colors.textPrimary,
-                    },
-                  ]}
-                  placeholder="22:00"
-                  placeholderTextColor={colors.textMuted}
-                  autoCapitalize="none"
-                />
-              </View>
-              <View style={styles.timeInputGroup}>
-                <Text style={[styles.timeFieldLabel, { color: colors.textSecondary }]}>Selesai</Text>
-                <TextInput
-                  value={endInput}
-                  onChangeText={(value) => {
-                    setEndInput(value);
-                    setSyncState('idle');
-                  }}
-                  style={[
-                    styles.timeInput,
-                    {
-                      backgroundColor: colors.bgCardHover,
-                      borderColor: colors.borderMuted,
-                      color: colors.textPrimary,
-                    },
-                  ]}
-                  placeholder="07:00"
-                  placeholderTextColor={colors.textMuted}
-                  autoCapitalize="none"
-                />
-              </View>
-            </View>
-          </View>
         </SectionCard>
 
         <SectionCard

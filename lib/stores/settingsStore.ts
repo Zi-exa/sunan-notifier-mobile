@@ -17,14 +17,11 @@ type SettingsState = {
   hydrated: boolean;
   notifications: NotificationSettings;
   pollingInterval: PollingInterval;
-  dndStart: string;
-  dndEnd: string;
   monitoredCourseIds: number[];
   themeMode: ThemeMode;
   setHydrated: (value: boolean) => void;
   setNotification: (key: keyof NotificationSettings, value: boolean) => void;
   setPollingInterval: (value: PollingInterval) => void;
-  setDndWindow: (start: string, end: string) => void;
   toggleCourse: (courseId: number) => void;
   setMonitoredCourseIds: (courseIds: number[]) => void;
   setThemeMode: (mode: ThemeMode) => void;
@@ -43,8 +40,6 @@ export const useSettingsStore = create<SettingsState>()(
         notifyAttendance: true,
       },
       pollingInterval: 15,
-      dndStart: '22:00',
-      dndEnd: '07:00',
       monitoredCourseIds: [],
       themeMode: 'system' as ThemeMode,
       setHydrated: (value) => set({ hydrated: value }),
@@ -56,11 +51,6 @@ export const useSettingsStore = create<SettingsState>()(
           },
         })),
       setPollingInterval: (value) => set({ pollingInterval: value }),
-      setDndWindow: (start, end) =>
-        set({
-          dndStart: start,
-          dndEnd: end,
-        }),
       toggleCourse: (courseId) =>
         set((state) => {
           const exists = state.monitoredCourseIds.includes(courseId);
@@ -90,8 +80,6 @@ export const useSettingsStore = create<SettingsState>()(
             notifyAttendance: settings.notifyAttendance,
           },
           pollingInterval: settings.pollIntervalMinutes,
-          dndStart: settings.dndStart,
-          dndEnd: settings.dndEnd,
           monitoredCourseIds: settings.monitoredCourseIds,
         })),
     }),
@@ -104,8 +92,6 @@ export const useSettingsStore = create<SettingsState>()(
       partialize: (state) => ({
         notifications: state.notifications,
         pollingInterval: state.pollingInterval,
-        dndStart: state.dndStart,
-        dndEnd: state.dndEnd,
         monitoredCourseIds: state.monitoredCourseIds,
         themeMode: state.themeMode,
       }),

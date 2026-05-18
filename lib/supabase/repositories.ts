@@ -17,8 +17,6 @@ export type UserSettingsInput = {
   notifyTaskOpen: boolean;
   notifyAttendance: boolean;
   pollIntervalMinutes: PollingInterval;
-  dndStart: string;
-  dndEnd: string;
   monitoredCourseIds: number[];
 };
 
@@ -72,8 +70,6 @@ function coerceRemoteSettings(data: Record<string, unknown>): RemoteUserSettings
     pollIntervalMinutes: POLLING_INTERVAL_OPTIONS.includes(pollIntervalMinutes as PollingInterval)
       ? (pollIntervalMinutes as PollingInterval)
       : 15,
-    dndStart: typeof data.dndStart === 'string' ? data.dndStart : '22:00',
-    dndEnd: typeof data.dndEnd === 'string' ? data.dndEnd : '07:00',
     monitoredCourseIds: Array.isArray(data.monitoredCourseIds)
       ? data.monitoredCourseIds
           .map((value) => Number(value))
