@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { SECURE_KEYS } from '@/lib/config';
 import { CONFIG } from '@/lib/config';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
-import { getAuthenticatedMoodleFileUrl, requestMoodleToken, getSiteInfo } from '@/lib/moodle/client';
+import { getAuthenticatedMoodleFileUrl, requestMoodleTokenPayload, getSiteInfo } from '@/lib/moodle/client';
 import { getSecureItem, removeSecureItem, setSecureItem } from '@/lib/storage/secureStore';
 import { syncUserProfile } from '@/lib/supabase/repositories';
 
@@ -18,6 +18,7 @@ export type AuthUser = {
 
 type AuthSession = {
   token: string;
+  privateToken?: string;
   user: AuthUser;
 };
 
@@ -27,6 +28,7 @@ type AuthState = {
   hydrated: boolean;
   status: AuthStatus;
   token: string | null;
+  privateToken: string | null;
   user: AuthUser | null;
   error: string | null;
   logoutNotice: string | null;
@@ -68,6 +70,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   hydrated: false,
   status: 'loading',
   token: null,
+  privateToken: null,
   user: null,
   error: null,
   logoutNotice: null,
@@ -76,7 +79,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const session = safeParseSession(stored);
 
     if (!session?.token || !session.user) {
-      set({ hydrated: true, status: 'unauthenticated', token: null, user: null, logoutNotice: null });
+      set({
+        hydrated: true,
+        status: 'unauthenticated',
+        token: null,
+        privateToken: null,
+        user: null,
+        logoutNotice: null,
+      });
       return;
     }
 
@@ -90,6 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         hydrated: true,
         status: 'unauthenticated',
         token: null,
+        privateToken: null,
         user: null,
         error: null,
         logoutNotice: null,
@@ -113,6 +124,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       hydrated: true,
       status: 'authenticated',
       token: session.token,
+      privateToken: session.privateToken ?? null,
       user: normalizedUser,
       error: null,
       logoutNotice: null,
@@ -129,7 +141,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       set({ status: 'loading', error: null, logoutNotice: null });
 
-      const token = await requestMoodleToken(normalizedNim, password);
+      const tokenPayload = await requestMoodleTokenPayload(normalizedNim, password);
+      const token = tokenPayload.token;
       const siteInfo = await getSiteInfo(token);
 
       const baseUser: AuthUser = {
@@ -158,7 +171,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         appUserId,
       };
 
-      const session: AuthSession = { token, user };
+      const session: AuthSession = { token, privateToken: tokenPayload.privateToken, user };
       await setSecureItem(SECURE_KEYS.authSession, JSON.stringify(session));
 
       // Save credentials for next login suggestion (stored securely on-device)
@@ -170,6 +183,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({
         status: 'authenticated',
         token,
+        privateToken: tokenPayload.privateToken ?? null,
         user,
         error: null,
         logoutNotice: null,
@@ -180,6 +194,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({
         status: 'unauthenticated',
         token: null,
+        privateToken: null,
         user: null,
         error: message,
         logoutNotice: null,
@@ -187,7 +202,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   setAppUserId: async (appUserId) => {
-    const { token, user } = get();
+    const { token, privateToken, user } = get();
 
     if (!token || !user) {
       return;
@@ -206,6 +221,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       SECURE_KEYS.authSession,
       JSON.stringify({
         token,
+        privateToken: privateToken ?? undefined,
         user: nextUser,
       })
     );
@@ -218,6 +234,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({
       status: 'unauthenticated',
       token: null,
+      privateToken: null,
       user: null,
       error: reason,
       logoutNotice: null,
@@ -234,6 +251,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({
       status: 'unauthenticated',
       token: null,
+      privateToken: null,
       user: null,
       error: null,
       logoutNotice: 'Anda berhasil keluar dari akun SUNAN.',

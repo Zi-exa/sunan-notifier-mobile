@@ -1,11 +1,11 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Linking from 'expo-linking';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, useTheme, Radius, Shadow } from '@/components/Redesign';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
+import { openSunanLink } from '@/lib/moodle/openSunanLink';
 import { useAssignmentsQuery } from '@/lib/queries/useMoodleQueries';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { formatDateTime } from '@/lib/utils/date';
@@ -25,7 +25,11 @@ export default function TaskDetailScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const authHydrated = useAuthStore((state) => state.hydrated);
   const authStatus = useAuthStore((state) => state.status);
+  const token = useAuthStore((state) => state.token);
+  const privateToken = useAuthStore((state) => state.privateToken);
+  const userId = useAuthStore((state) => state.user?.id ?? null);
   const assignmentsQuery = useAssignmentsQuery();
+  const [openingLink, setOpeningLink] = useState(false);
 
   const STATUS_COLOR: Record<string, string> = {
     pending: colors.warning,
@@ -47,6 +51,24 @@ export default function TaskDetailScreen() {
       router.replace('/login');
     }
   }, [authHydrated, authStatus, router]);
+
+  const handleOpenTaskLink = useCallback(async () => {
+    if (!task || openingLink) {
+      return;
+    }
+
+    setOpeningLink(true);
+    try {
+      await openSunanLink({
+        url: task.quickLink,
+        token,
+        userId,
+        privateToken,
+      });
+    } finally {
+      setOpeningLink(false);
+    }
+  }, [openingLink, privateToken, task, token, userId]);
 
   const renderBody = () => {
     if (assignmentsQuery.isLoading) {
@@ -157,12 +179,14 @@ export default function TaskDetailScreen() {
         </View>
 
         <Pressable
+          disabled={openingLink}
           style={({ pressed }) => [
             styles.primaryButton,
             { backgroundColor: colors.accent },
+            openingLink && { opacity: 0.68 },
             pressed && { opacity: 0.82 },
           ]}
-          onPress={() => Linking.openURL(task.quickLink)}
+          onPress={handleOpenTaskLink}
         >
           <View style={styles.primaryButtonContent}>
             <FontAwesome name="external-link" size={14} color="#FFFFFF" />

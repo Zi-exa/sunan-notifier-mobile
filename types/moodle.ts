@@ -96,6 +96,11 @@ export type MoodleCalendarPayload = {
   events: MoodleCalendarEvent[];
 };
 
+export type MoodleTokenPayload = {
+  token: string;
+  privateToken?: string;
+};
+
 export type MoodleSubmissionStatus = {
   lastattempt?: {
     submission?: {

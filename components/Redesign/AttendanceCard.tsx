@@ -1,8 +1,9 @@
 import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { StyleSheet, Text, View } from 'react-native';
-import * as Linking from 'expo-linking';
 import { AttendanceItem } from '@/types/moodle';
+import { openSunanLink } from '@/lib/moodle/openSunanLink';
+import { useAuthStore } from '@/lib/stores/authStore';
 import { formatDateTime } from '@/lib/utils/date';
 import { Badge } from './Badge';
 import { CardIconBubble, CardInfoTile } from './CardInfoTile';
@@ -41,6 +42,9 @@ function formatReferenceMetaDateTime(timestamp: number) {
 
 export function AttendanceCard({ attendance, highlight = false }: AttendanceCardProps) {
   const { colors } = useTheme();
+  const token = useAuthStore((state) => state.token);
+  const privateToken = useAuthStore((state) => state.privateToken);
+  const userId = useAuthStore((state) => state.user?.id ?? null);
   const config = STATUS_CONFIG[attendance.status];
   const markBadge = attendance.isMarked
     ? {
@@ -53,6 +57,14 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
   );
 
   const metaTiles: React.ReactElement<React.ComponentProps<typeof CardInfoTile>>[] = [];
+  const handleOpenAttendanceLink = React.useCallback(() => {
+    void openSunanLink({
+      url: attendance.quickLink,
+      token,
+      userId,
+      privateToken,
+    });
+  }, [attendance.quickLink, privateToken, token, userId]);
 
   if (attendance.quickLink) {
     metaTiles.push(
@@ -62,7 +74,7 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
         title="Buka"
         tone="accent"
         trailingChevron
-        onPress={() => Linking.openURL(attendance.quickLink as string)}
+        onPress={handleOpenAttendanceLink}
       />
     );
   }

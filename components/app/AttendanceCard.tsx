@@ -1,6 +1,8 @@
-import * as Linking from 'expo-linking';
+import { useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AttendanceItem } from '@/types/moodle';
+import { openSunanLink } from '@/lib/moodle/openSunanLink';
+import { useAuthStore } from '@/lib/stores/authStore';
 import { formatDateTime } from '@/lib/utils/date';
 
 type AttendanceCardProps = {
@@ -43,6 +45,17 @@ const STATUS_THEME = {
 
 export function AttendanceCard({ attendance, highlight = false }: AttendanceCardProps) {
   const theme = STATUS_THEME[attendance.status];
+  const token = useAuthStore((state) => state.token);
+  const privateToken = useAuthStore((state) => state.privateToken);
+  const userId = useAuthStore((state) => state.user?.id ?? null);
+  const handleOpenAttendanceLink = useCallback(() => {
+    void openSunanLink({
+      url: attendance.quickLink,
+      token,
+      userId,
+      privateToken,
+    });
+  }, [attendance.quickLink, privateToken, token, userId]);
 
   return (
     <View style={[styles.container, { borderColor: theme.border }, highlight && styles.containerHighlight]}>
@@ -83,7 +96,7 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
       ) : null}
 
       {attendance.quickLink ? (
-        <Pressable style={styles.linkButton} onPress={() => Linking.openURL(attendance.quickLink as string)}>
+        <Pressable style={styles.linkButton} onPress={handleOpenAttendanceLink}>
           <Text style={styles.linkButtonText}>Buka Absensi di SUNAN</Text>
         </Pressable>
       ) : null}

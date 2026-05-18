@@ -31,6 +31,7 @@ import {
   MoodleQuiz,
   MoodleQuizzesPayload,
   MoodleSiteInfo,
+  MoodleTokenPayload,
   MoodleSubmissionStatus,
   MoodleTokenResponse,
 } from '@/types/moodle';
@@ -47,6 +48,12 @@ type MoodleExceptionPayload = {
   errorcode: string;
   message: string;
   debuginfo?: string;
+};
+
+type MoodleAutologinKeyPayload = {
+  key?: string;
+  autologinurl?: string;
+  warnings?: unknown[];
 };
 
 type MoodleAttendanceLogEntry = {
@@ -97,6 +104,7 @@ const MAINTENANCE_PROBE_CACHE_MS = 30 * 1000;
 const QUIZ_TASK_ID_OFFSET = 2_000_000_000;
 const ATTENDANCE_REPORT_VIEW = 5;
 const ATTENDANCE_MATCH_TOLERANCE_SECONDS = 5 * 60;
+const MOODLE_APP_USER_AGENT = 'MoodleMobile SUNANNotifier';
 
 let maintenanceProbePromise: Promise<boolean> | null = null;
 let lastMaintenanceProbeAt = 0;
@@ -730,7 +738,8 @@ async function parseResponse<T>(response: Response): Promise<T> {
 async function callMoodleFunction<T>(
   token: string,
   functionName: string,
-  params: Record<string, unknown> = {}
+  params: Record<string, unknown> = {},
+  options: { headers?: Record<string, string> } = {}
 ): Promise<T> {
   const body = new URLSearchParams();
   body.append('wstoken', token);
@@ -745,6 +754,7 @@ async function callMoodleFunction<T>(
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        ...options.headers,
       },
       body: body.toString(),
     });
@@ -753,6 +763,112 @@ async function callMoodleFunction<T>(
   }
 
   return parseResponse<T>(response);
+}
+
+function toMoodleLocalUrl(targetUrl: string): string | null {
+  try {
+    const baseUrl = new URL(CONFIG.moodleBaseUrl);
+    const url = new URL(targetUrl, baseUrl);
+
+    if (url.origin !== baseUrl.origin) {
+      return null;
+    }
+
+    return `${url.pathname}${url.search}${url.hash}` || '/';
+  } catch {
+    return null;
+  }
+}
+
+function buildAutologinUrl(
+  autologinUrl: string | undefined,
+  userId: number,
+  key: string,
+  localTargetUrl: string
+): string | null {
+  try {
+    const baseUrl = new URL(CONFIG.moodleBaseUrl);
+    const url = new URL(autologinUrl || '/admin/tool/mobile/autologin.php', baseUrl);
+
+    if (url.origin !== baseUrl.origin) {
+      return null;
+    }
+
+    url.searchParams.set('userid', String(userId));
+    url.searchParams.set('key', key);
+    url.searchParams.set('urltogo', localTargetUrl);
+
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+async function getAutologinPrivateToken(
+  currentToken: string,
+  privateToken?: string | null
+): Promise<MoodleTokenPayload | null> {
+  const trimmedPrivateToken = privateToken?.trim();
+  if (trimmedPrivateToken) {
+    return {
+      token: currentToken,
+      privateToken: trimmedPrivateToken,
+    };
+  }
+
+  const credentials = await readSavedCredentials();
+  if (!credentials) {
+    return null;
+  }
+
+  try {
+    const refreshed = await requestMoodleTokenPayload(credentials.nim, credentials.password);
+    return refreshed.privateToken ? refreshed : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function resolveMoodleAutologinUrl(
+  token: string,
+  userId: number,
+  targetUrl: string,
+  privateToken?: string | null
+): Promise<string | null> {
+  if (CONFIG.useMockData) {
+    return targetUrl;
+  }
+
+  const localTargetUrl = toMoodleLocalUrl(targetUrl);
+  if (!localTargetUrl) {
+    return null;
+  }
+
+  const tokenPayload = await getAutologinPrivateToken(token, privateToken);
+  if (!tokenPayload?.privateToken) {
+    return null;
+  }
+
+  try {
+    const payload = await callMoodleFunction<MoodleAutologinKeyPayload>(
+      tokenPayload.token,
+      'tool_mobile_get_autologin_key',
+      { privatetoken: tokenPayload.privateToken },
+      {
+        headers: {
+          'User-Agent': MOODLE_APP_USER_AGENT,
+        },
+      }
+    );
+
+    if (!payload.key) {
+      return null;
+    }
+
+    return buildAutologinUrl(payload.autologinurl, userId, payload.key, localTargetUrl);
+  } catch {
+    return null;
+  }
 }
 
 function toAssignmentItem(courseName: string, assignment: MoodleAssignment): AssignmentItem {
@@ -1065,9 +1181,9 @@ export function getCalendarRangeForMonth(year: number, monthIndex: number): Cale
   };
 }
 
-export async function requestMoodleToken(nim: string, password: string): Promise<string> {
+export async function requestMoodleTokenPayload(nim: string, password: string): Promise<MoodleTokenPayload> {
   if (CONFIG.useMockData) {
-    return 'mock-token';
+    return { token: 'mock-token' };
   }
 
   const body = new URLSearchParams({
@@ -1122,6 +1238,14 @@ export async function requestMoodleToken(nim: string, password: string): Promise
     });
   }
 
+  return {
+    token: payload.token,
+    privateToken: payload.privatetoken || undefined,
+  };
+}
+
+export async function requestMoodleToken(nim: string, password: string): Promise<string> {
+  const payload = await requestMoodleTokenPayload(nim, password);
   return payload.token;
 }
 
