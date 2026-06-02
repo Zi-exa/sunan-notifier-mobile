@@ -165,11 +165,18 @@ function AppBootstrap() {
       handledNotificationKeysRef.current.add(key);
 
       if (
+        payload.kind === 'attendance_h1' ||
+        payload.kind === 'attendance_preopen' ||
         payload.kind === 'attendance_open' ||
         payload.kind === 'attendance_closing' ||
         typeof payload.attendanceEventId === 'number'
       ) {
-        const filter = payload.kind === 'attendance_closing' ? 'closing_soon' : 'open';
+        const filter =
+          payload.kind === 'attendance_closing'
+            ? 'closing_soon'
+            : payload.kind === 'attendance_open'
+              ? 'open'
+              : 'upcoming';
 
         router.push({
           pathname: '/(tabs)/attendance',
@@ -216,11 +223,18 @@ function AppBootstrap() {
     pendingNotificationPayloadRef.current = null;
 
     if (
+      payload.kind === 'attendance_h1' ||
+      payload.kind === 'attendance_preopen' ||
       payload.kind === 'attendance_open' ||
       payload.kind === 'attendance_closing' ||
       typeof payload.attendanceEventId === 'number'
     ) {
-      const filter = payload.kind === 'attendance_closing' ? 'closing_soon' : 'open';
+      const filter =
+        payload.kind === 'attendance_closing'
+          ? 'closing_soon'
+          : payload.kind === 'attendance_open'
+            ? 'open'
+            : 'upcoming';
 
       router.push({
         pathname: '/(tabs)/attendance',

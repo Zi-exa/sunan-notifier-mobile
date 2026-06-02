@@ -19,6 +19,8 @@ function toLocalDateKeyFromUnix(unixSeconds: number): string {
  * AttendanceNotificationSync — renders nothing, runs as a background sync effect.
  *
  * Fires a local notification when:
+ *  • attendance_h1       — an attendance session is 1 day away.
+ *  • attendance_preopen  — an attendance session opens in 1 hour.
  *  • attendance_open     — an upcoming attendance session is scheduled locally
  *                          for its start time when the app discovers it early.
  *  • attendance_open     — an attendance session is currently open and the user hasn't
@@ -50,6 +52,8 @@ export function AttendanceNotificationSync() {
 
     const nowUnix = Math.floor(Date.now() / 1000);
     const now = new Date();
+    const H1_SECONDS = 24 * 60 * 60;
+    const PREOPEN_SECONDS = 60 * 60;
     const OPEN_FALLBACK_WINDOW_SECONDS = 15 * 60;
     const CLOSING_SOON_SECONDS = 30 * 60;
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
@@ -80,8 +84,53 @@ export function AttendanceNotificationSync() {
       // If the app sees an upcoming attendance before it opens, schedule a local
       // notification for the actual start time instead of waiting for a later refetch.
       if (liveStatus === 'upcoming' && attendance.startsAt && attendance.startsAt > nowUnix) {
+        const reminderDayKey = `h1-${attendance.eventId}-${attendance.startsAt}`;
+        const reminderHourKey = `preopen-${attendance.eventId}-${attendance.startsAt}`;
         const openDateKey = toLocalDateKeyFromUnix(attendance.startsAt);
         const key = `open-${attendance.eventId}-${openDateKey}`;
+        const h1TriggerUnix = attendance.startsAt - H1_SECONDS;
+        const preopenTriggerUnix = attendance.startsAt - PREOPEN_SECONDS;
+
+        if (
+          h1TriggerUnix > nowUnix &&
+          !hasKey(reminderDayKey) &&
+          !pendingKeysRef.current.has(reminderDayKey)
+        ) {
+          pendingKeysRef.current.add(reminderDayKey);
+          void scheduleAttendanceLocalNotification({
+            title: 'Absensi Besok',
+            body: `${attendance.title} (${attendance.courseName}) dibuka besok. Siapkan absensi Anda.`,
+            kind: 'attendance_h1',
+            eventId: attendance.eventId,
+            triggerDate: new Date(h1TriggerUnix * 1000),
+          }).then((notificationId) => {
+            if (notificationId) {
+              markKey(reminderDayKey);
+            }
+            pendingKeysRef.current.delete(reminderDayKey);
+          });
+        }
+
+        if (
+          preopenTriggerUnix > nowUnix &&
+          !hasKey(reminderHourKey) &&
+          !pendingKeysRef.current.has(reminderHourKey)
+        ) {
+          pendingKeysRef.current.add(reminderHourKey);
+          void scheduleAttendanceLocalNotification({
+            title: 'Absensi 1 Jam Lagi',
+            body: `${attendance.title} (${attendance.courseName}) dibuka 1 jam lagi.`,
+            kind: 'attendance_preopen',
+            eventId: attendance.eventId,
+            triggerDate: new Date(preopenTriggerUnix * 1000),
+          }).then((notificationId) => {
+            if (notificationId) {
+              markKey(reminderHourKey);
+            }
+            pendingKeysRef.current.delete(reminderHourKey);
+          });
+        }
+
         if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
           pendingKeysRef.current.add(key);
           void scheduleAttendanceLocalNotification({
@@ -95,6 +144,48 @@ export function AttendanceNotificationSync() {
               markKey(key);
             }
             pendingKeysRef.current.delete(key);
+          });
+        }
+
+        const secondsSinceH1 = nowUnix - h1TriggerUnix;
+        if (
+          secondsSinceH1 >= 0 &&
+          secondsSinceH1 <= OPEN_FALLBACK_WINDOW_SECONDS &&
+          !hasKey(reminderDayKey) &&
+          !pendingKeysRef.current.has(reminderDayKey)
+        ) {
+          pendingKeysRef.current.add(reminderDayKey);
+          void sendImmediateAttendanceNotification({
+            title: 'Absensi Besok',
+            body: `${attendance.title} (${attendance.courseName}) dibuka besok. Siapkan absensi Anda.`,
+            kind: 'attendance_h1',
+            eventId: attendance.eventId,
+          }).then((didSchedule) => {
+            if (didSchedule) {
+              markKey(reminderDayKey);
+            }
+            pendingKeysRef.current.delete(reminderDayKey);
+          });
+        }
+
+        const secondsSincePreopen = nowUnix - preopenTriggerUnix;
+        if (
+          secondsSincePreopen >= 0 &&
+          secondsSincePreopen <= OPEN_FALLBACK_WINDOW_SECONDS &&
+          !hasKey(reminderHourKey) &&
+          !pendingKeysRef.current.has(reminderHourKey)
+        ) {
+          pendingKeysRef.current.add(reminderHourKey);
+          void sendImmediateAttendanceNotification({
+            title: 'Absensi 1 Jam Lagi',
+            body: `${attendance.title} (${attendance.courseName}) dibuka 1 jam lagi.`,
+            kind: 'attendance_preopen',
+            eventId: attendance.eventId,
+          }).then((didSchedule) => {
+            if (didSchedule) {
+              markKey(reminderHourKey);
+            }
+            pendingKeysRef.current.delete(reminderHourKey);
           });
         }
       }

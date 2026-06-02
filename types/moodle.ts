@@ -160,5 +160,7 @@ export type NotificationKind =
   | 'deadline_today'
   | 'task_open'
   | 'task_closing'
+  | 'attendance_h1'
+  | 'attendance_preopen'
   | 'attendance_open'
   | 'attendance_closing';

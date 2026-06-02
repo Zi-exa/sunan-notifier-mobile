@@ -310,6 +310,20 @@ function buildNotificationContent(kind: NotificationKind, taskName: string) {
     };
   }
 
+  if (kind === 'attendance_h1') {
+    return {
+      title: 'Absensi Besok',
+      body: 'Besok ada absensi. Siapkan diri Anda.',
+    };
+  }
+
+  if (kind === 'attendance_preopen') {
+    return {
+      title: 'Absensi 1 Jam Lagi',
+      body: 'Absensi akan segera dibuka.',
+    };
+  }
+
   if (kind === 'attendance_closing') {
     return {
       title: 'Absensi Segera Ditutup',
@@ -437,7 +451,10 @@ export async function setAppBadgeCount(count: number): Promise<void> {
 export async function sendImmediateAttendanceNotification(params: {
   title: string;
   body: string;
-  kind: Extract<NotificationKind, 'attendance_open' | 'attendance_closing'>;
+  kind: Extract<
+    NotificationKind,
+    'attendance_h1' | 'attendance_preopen' | 'attendance_open' | 'attendance_closing'
+  >;
   eventId: number;
 }): Promise<boolean> {
   try {
@@ -471,7 +488,10 @@ export async function sendImmediateAttendanceNotification(params: {
 export async function scheduleAttendanceLocalNotification(params: {
   title: string;
   body: string;
-  kind: Extract<NotificationKind, 'attendance_open' | 'attendance_closing'>;
+  kind: Extract<
+    NotificationKind,
+    'attendance_h1' | 'attendance_preopen' | 'attendance_open' | 'attendance_closing'
+  >;
   eventId: number;
   triggerDate: Date;
 }): Promise<string | null> {
