@@ -37,4 +37,5 @@ export type PollingInterval = (typeof POLLING_INTERVAL_OPTIONS)[number];
 export const SECURE_KEYS = {
   authSession: 'sunan.auth.session',
   savedCredentials: 'sunan.saved.credentials',
+  savedCredentialsPreference: 'sunan.saved.credentials.preference',
 } as const;

@@ -16,7 +16,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { AppAlertDialog, useTheme } from '@/components/Redesign';
 import { CONFIG, SECURE_KEYS } from '@/lib/config';
 import { isMaintenanceMessage } from '@/lib/moodle/errors';
-import { getSecureItem, removeSecureItem } from '@/lib/storage/secureStore';
+import { getSecureItem, removeSecureItem, setSecureItem } from '@/lib/storage/secureStore';
 import { useAuthStore } from '@/lib/stores/authStore';
 
 type SavedCredentials = { nim: string; password: string };
@@ -28,6 +28,12 @@ function parseSavedCredentials(raw: string | null): SavedCredentials | null {
   } catch {
     return null;
   }
+}
+
+function parseSavedCredentialsPreference(raw: string | null): boolean | null {
+  if (raw === 'true') return true;
+  if (raw === 'false') return false;
+  return null;
 }
 
 export default function LoginScreen() {
@@ -43,15 +49,29 @@ export default function LoginScreen() {
   const [nim, setNim] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberCredentials, setRememberCredentials] = useState(false);
+  const [rememberCredentials, setRememberCredentials] = useState<boolean | null>(null);
   const [savedCredentials, setSavedCredentials] = useState<SavedCredentials | null>(null);
+  const [showSavedSuggestion, setShowSavedSuggestion] = useState(false);
   const [maintenanceAlertVisible, setMaintenanceAlertVisible] = useState(false);
 
   useEffect(() => {
-    getSecureItem(SECURE_KEYS.savedCredentials).then((raw) => {
-      const creds = parseSavedCredentials(raw);
+    Promise.all([
+      getSecureItem(SECURE_KEYS.savedCredentials),
+      getSecureItem(SECURE_KEYS.savedCredentialsPreference),
+    ]).then(([savedCredentialsRaw, preferenceRaw]) => {
+      const creds = parseSavedCredentials(savedCredentialsRaw);
+      const preference = parseSavedCredentialsPreference(preferenceRaw);
+
       if (creds) {
         setSavedCredentials(creds);
+      }
+
+      if (preference !== null) {
+        setRememberCredentials(preference);
+        return;
+      }
+
+      if (creds) {
         setRememberCredentials(true);
       }
     });
@@ -73,7 +93,9 @@ export default function LoginScreen() {
 
   const isLoading = status === 'loading';
   const hasSavedCredentials = savedCredentials !== null;
-  const canShowSavedSuggestion = rememberCredentials && hasSavedCredentials;
+  const shouldShowRememberPrompt = rememberCredentials === null;
+  const canShowSavedSuggestion =
+    rememberCredentials === true && hasSavedCredentials && showSavedSuggestion;
   const isDark = mode === 'dark';
 
   const handleChange = (setter: (v: string) => void, value: string) => {
@@ -85,12 +107,15 @@ export default function LoginScreen() {
     if (savedCredentials) {
       setNim(savedCredentials.nim);
       setPassword(savedCredentials.password);
+      setShowSavedSuggestion(false);
       if (error) clearError();
     }
   };
 
   const handleRememberCredentialsChange = async (nextValue: boolean) => {
     setRememberCredentials(nextValue);
+    setShowSavedSuggestion(false);
+    await setSecureItem(SECURE_KEYS.savedCredentialsPreference, String(nextValue));
 
     if (!nextValue && savedCredentials) {
       await removeSecureItem(SECURE_KEYS.savedCredentials);
@@ -98,6 +123,12 @@ export default function LoginScreen() {
     }
 
     if (error) clearError();
+  };
+
+  const handleCredentialsFieldFocus = () => {
+    if (rememberCredentials === true && hasSavedCredentials) {
+      setShowSavedSuggestion(true);
+    }
   };
 
   return (
@@ -139,80 +170,72 @@ export default function LoginScreen() {
               },
             ]}
           >
-            <View
-              style={[
-                styles.preferenceCard,
-                {
-                  backgroundColor: isDark ? colors.bgCardHover : colors.bgCard,
-                  borderColor: isDark ? colors.borderAccent : colors.borderSubtle,
-                },
-              ]}
-            >
-              <View style={styles.preferenceHeader}>
-                <Text style={[styles.preferenceTitle, { color: colors.textPrimary }]}>
-                  Simpan akun di perangkat ini?
-                </Text>
-                <Text style={[styles.preferenceHint, { color: colors.textSecondary }]}>
-                  Jika dipilih, akun bisa muncul lagi sebagai sugest login di lain waktu.
-                </Text>
-              </View>
-
-              <View style={styles.preferenceChoices}>
-                <Pressable
-                  style={[
-                    styles.preferenceChoice,
-                    {
-                      backgroundColor:
-                        !rememberCredentials
-                          ? isDark
-                            ? colors.bgBase
-                            : colors.bgCardHover
-                          : 'transparent',
-                      borderColor: !rememberCredentials ? colors.accent : colors.borderMuted,
-                    },
-                  ]}
-                  onPress={() => {
-                    void handleRememberCredentialsChange(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.preferenceChoiceText,
-                      { color: !rememberCredentials ? colors.accent : colors.textSecondary },
-                    ]}
-                  >
-                    Tidak
+            {shouldShowRememberPrompt && (
+              <View
+                style={[
+                  styles.preferenceCard,
+                  {
+                    backgroundColor: isDark ? colors.bgCardHover : colors.bgCard,
+                    borderColor: isDark ? colors.borderAccent : colors.borderSubtle,
+                  },
+                ]}
+              >
+                <View style={styles.preferenceHeader}>
+                  <Text style={[styles.preferenceTitle, { color: colors.textPrimary }]}>
+                    Simpan akun di perangkat ini?
                   </Text>
-                </Pressable>
-
-                <Pressable
-                  style={[
-                    styles.preferenceChoice,
-                    {
-                      backgroundColor:
-                        rememberCredentials
-                          ? isDark
-                            ? colors.bgBase
-                            : colors.bgCardHover
-                          : 'transparent',
-                      borderColor: rememberCredentials ? colors.accent : colors.borderMuted,
-                    },
-                  ]}
-                  onPress={() => {
-                    void handleRememberCredentialsChange(true);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.preferenceChoiceText,
-                      { color: rememberCredentials ? colors.accent : colors.textSecondary },
-                    ]}
-                  >
-                    Ya
+                  <Text style={[styles.preferenceHint, { color: colors.textSecondary }]}>
+                    Jika dipilih, akun bisa muncul lagi sebagai sugest login di lain waktu.
                   </Text>
-                </Pressable>
+                </View>
+
+                <View style={styles.preferenceChoices}>
+                  <Pressable
+                    style={[
+                      styles.preferenceChoice,
+                      {
+                        backgroundColor: isDark ? colors.bgBase : colors.bgCardHover,
+                        borderColor: colors.borderMuted,
+                      },
+                    ]}
+                    onPress={() => {
+                      void handleRememberCredentialsChange(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.preferenceChoiceText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Tidak
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[
+                      styles.preferenceChoice,
+                      {
+                        backgroundColor: isDark ? colors.bgBase : colors.bgCardHover,
+                        borderColor: colors.borderMuted,
+                      },
+                    ]}
+                    onPress={() => {
+                      void handleRememberCredentialsChange(true);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.preferenceChoiceText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Ya
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
+            )}
 
             {canShowSavedSuggestion && (
               <Pressable
@@ -263,6 +286,7 @@ export default function LoginScreen() {
                 <TextInput
                   value={nim}
                   onChangeText={(v) => handleChange(setNim, v)}
+                  onFocus={handleCredentialsFieldFocus}
                   style={[styles.input, { color: colors.textPrimary }]}
                   placeholder="Masukkan NIM SUNAN"
                   placeholderTextColor={isDark ? colors.textSecondary : colors.textMuted}
@@ -293,6 +317,7 @@ export default function LoginScreen() {
                 <TextInput
                   value={password}
                   onChangeText={(v) => handleChange(setPassword, v)}
+                  onFocus={handleCredentialsFieldFocus}
                   style={[styles.input, styles.passwordInput, { color: colors.textPrimary }]}
                   secureTextEntry={!showPassword}
                   placeholder="Masukkan password SUNAN"
@@ -322,7 +347,7 @@ export default function LoginScreen() {
                 { backgroundColor: isDark ? colors.accentBright : colors.accent },
                 isLoading && styles.buttonDisabled,
               ]}
-              onPress={() => login(nim, password, { rememberCredentials })}
+              onPress={() => login(nim, password, { rememberCredentials: rememberCredentials === true })}
               disabled={isLoading}
             >
               {isLoading ? (
