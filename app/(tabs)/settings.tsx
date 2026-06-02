@@ -6,7 +6,6 @@ import {
   Animated,
   Image,
   LayoutAnimation,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -99,8 +98,6 @@ const ACCOUNT_CARD_PALETTE = {
   avatarBorder: 'rgba(126, 175, 255, 0.36)',
 };
 
-const APP_MARK = 'ZxiruL';
-const APP_MARK_URL = 'https://github.com/Zi-exa';
 const SETTINGS_SAVED_TITLE = 'Tersimpan';
 const SETTINGS_SAVED_MESSAGE = 'Pengaturan berhasil disimpan.';
 
@@ -159,7 +156,7 @@ export default function SettingsScreen() {
       ? 'Semua mata kuliah'
       : `${draftMonitoredCourseIds.length} dipilih`;
   const courseScopeMode = draftMonitoredCourseIds.length === 0 ? 'all' : 'custom';
-  const aboutSummary = `v${appVersion} • ${APP_MARK}`;
+  const aboutSummary = `v${appVersion}`;
   const effectiveAvailableUpdate = availableUpdate ?? deferredAvailableUpdate;
   const updateSummary =
     effectiveAvailableUpdate?.kind === 'apk'
@@ -248,18 +245,6 @@ export default function SettingsScreen() {
   const toggleSection = (section: SettingsSectionKey) => {
     LayoutAnimation.configureNext(ACCORDION_LAYOUT_ANIMATION);
     setExpandedSection((current) => (current === section ? null : section));
-  };
-
-  const handleOpenAppMark = async () => {
-    try {
-      await Linking.openURL(APP_MARK_URL);
-    } catch {
-      openDialog({
-        tone: 'warning',
-        title: 'Link tidak bisa dibuka',
-        message: 'Halaman belum bisa dibuka di perangkat ini.',
-      });
-    }
   };
 
   const handleCheckUpdate = async () => {
@@ -925,33 +910,6 @@ export default function SettingsScreen() {
               </Text>
             </View>
 
-            <View style={styles.aboutMarkRow}>
-              <View style={styles.aboutMarkCopy}>
-                <Text style={[styles.aboutMarkLabel, { color: colors.textSecondary }]}>Mark proyek</Text>
-                <Text style={[styles.aboutMarkHint, { color: colors.textMuted }]}>
-                  Buka GitHub creator
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="link"
-                accessibilityLabel="Buka GitHub ZxiruL"
-                onPress={handleOpenAppMark}
-                style={({ pressed }) => [
-                  styles.aboutMarkBadge,
-                  {
-                    backgroundColor: colors.accentDim,
-                    borderColor: colors.borderAccent,
-                    opacity: pressed ? 0.86 : 1,
-                  },
-                ]}
-              >
-                <FontAwesome name="star-o" size={12} color={colors.accent} />
-                <Text style={[styles.aboutMarkBadgeText, { color: colors.accentBright }]}>
-                  {APP_MARK}
-                </Text>
-                <FontAwesome name="external-link" size={11} color={colors.accent} />
-              </Pressable>
-            </View>
           </View>
         </SectionCard>
 
