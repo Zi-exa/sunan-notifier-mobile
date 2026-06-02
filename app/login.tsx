@@ -16,7 +16,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { AppAlertDialog, useTheme } from '@/components/Redesign';
 import { CONFIG, SECURE_KEYS } from '@/lib/config';
 import { isMaintenanceMessage } from '@/lib/moodle/errors';
-import { getSecureItem } from '@/lib/storage/secureStore';
+import { getSecureItem, removeSecureItem } from '@/lib/storage/secureStore';
 import { useAuthStore } from '@/lib/stores/authStore';
 
 type SavedCredentials = { nim: string; password: string };
@@ -43,17 +43,16 @@ export default function LoginScreen() {
   const [nim, setNim] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberCredentials, setRememberCredentials] = useState(false);
   const [savedCredentials, setSavedCredentials] = useState<SavedCredentials | null>(null);
   const [maintenanceAlertVisible, setMaintenanceAlertVisible] = useState(false);
 
-  // Load saved credentials on mount
   useEffect(() => {
     getSecureItem(SECURE_KEYS.savedCredentials).then((raw) => {
       const creds = parseSavedCredentials(raw);
       if (creds) {
         setSavedCredentials(creds);
-        setNim(creds.nim);
-        setPassword(creds.password);
+        setRememberCredentials(true);
       }
     });
   }, []);
@@ -74,6 +73,7 @@ export default function LoginScreen() {
 
   const isLoading = status === 'loading';
   const hasSavedCredentials = savedCredentials !== null;
+  const canShowSavedSuggestion = rememberCredentials && hasSavedCredentials;
   const isDark = mode === 'dark';
 
   const handleChange = (setter: (v: string) => void, value: string) => {
@@ -87,6 +87,17 @@ export default function LoginScreen() {
       setPassword(savedCredentials.password);
       if (error) clearError();
     }
+  };
+
+  const handleRememberCredentialsChange = async (nextValue: boolean) => {
+    setRememberCredentials(nextValue);
+
+    if (!nextValue && savedCredentials) {
+      await removeSecureItem(SECURE_KEYS.savedCredentials);
+      setSavedCredentials(null);
+    }
+
+    if (error) clearError();
   };
 
   return (
@@ -128,7 +139,82 @@ export default function LoginScreen() {
               },
             ]}
           >
-            {hasSavedCredentials && (
+            <View
+              style={[
+                styles.preferenceCard,
+                {
+                  backgroundColor: isDark ? colors.bgCardHover : colors.bgCard,
+                  borderColor: isDark ? colors.borderAccent : colors.borderSubtle,
+                },
+              ]}
+            >
+              <View style={styles.preferenceHeader}>
+                <Text style={[styles.preferenceTitle, { color: colors.textPrimary }]}>
+                  Simpan akun di perangkat ini?
+                </Text>
+                <Text style={[styles.preferenceHint, { color: colors.textSecondary }]}>
+                  Jika dipilih, akun bisa muncul lagi sebagai sugest login di lain waktu.
+                </Text>
+              </View>
+
+              <View style={styles.preferenceChoices}>
+                <Pressable
+                  style={[
+                    styles.preferenceChoice,
+                    {
+                      backgroundColor:
+                        !rememberCredentials
+                          ? isDark
+                            ? colors.bgBase
+                            : colors.bgCardHover
+                          : 'transparent',
+                      borderColor: !rememberCredentials ? colors.accent : colors.borderMuted,
+                    },
+                  ]}
+                  onPress={() => {
+                    void handleRememberCredentialsChange(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.preferenceChoiceText,
+                      { color: !rememberCredentials ? colors.accent : colors.textSecondary },
+                    ]}
+                  >
+                    Tidak
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={[
+                    styles.preferenceChoice,
+                    {
+                      backgroundColor:
+                        rememberCredentials
+                          ? isDark
+                            ? colors.bgBase
+                            : colors.bgCardHover
+                          : 'transparent',
+                      borderColor: rememberCredentials ? colors.accent : colors.borderMuted,
+                    },
+                  ]}
+                  onPress={() => {
+                    void handleRememberCredentialsChange(true);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.preferenceChoiceText,
+                      { color: rememberCredentials ? colors.accent : colors.textSecondary },
+                    ]}
+                  >
+                    Ya
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {canShowSavedSuggestion && (
               <Pressable
                 style={[
                   styles.suggestionBanner,
@@ -236,7 +322,7 @@ export default function LoginScreen() {
                 { backgroundColor: isDark ? colors.accentBright : colors.accent },
                 isLoading && styles.buttonDisabled,
               ]}
-              onPress={() => login(nim, password)}
+              onPress={() => login(nim, password, { rememberCredentials })}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -325,6 +411,40 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 24,
     elevation: 4,
+  },
+  preferenceCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  preferenceHeader: {
+    gap: 4,
+  },
+  preferenceTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  preferenceHint: {
+    fontSize: 11.5,
+    lineHeight: 17,
+  },
+  preferenceChoices: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  preferenceChoice: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: 11,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  preferenceChoiceText: {
+    fontSize: 12.5,
+    fontWeight: '700',
   },
   suggestionBanner: {
     flexDirection: 'row',

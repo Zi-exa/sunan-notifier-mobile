@@ -33,7 +33,11 @@ type AuthState = {
   error: string | null;
   logoutNotice: string | null;
   hydrateSession: () => Promise<void>;
-  login: (nim: string, password: string) => Promise<void>;
+  login: (
+    nim: string,
+    password: string,
+    options?: { rememberCredentials?: boolean }
+  ) => Promise<void>;
   setAppUserId: (appUserId: string | null) => Promise<void>;
   expireSession: (reason?: string) => Promise<void>;
   clearError: () => void;
@@ -130,8 +134,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       logoutNotice: null,
     });
   },
-  login: async (nim: string, password: string) => {
+  login: async (nim: string, password: string, options) => {
     const normalizedNim = nim.trim();
+    const rememberCredentials = options?.rememberCredentials ?? false;
 
     if (!normalizedNim || !password) {
       set({ error: 'NIM dan password wajib diisi.' });
@@ -174,11 +179,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const session: AuthSession = { token, privateToken: tokenPayload.privateToken, user };
       await setSecureItem(SECURE_KEYS.authSession, JSON.stringify(session));
 
-      // Save credentials for next login suggestion (stored securely on-device)
-      await setSecureItem(
-        SECURE_KEYS.savedCredentials,
-        JSON.stringify({ nim: normalizedNim, password })
-      );
+      if (rememberCredentials) {
+        await setSecureItem(
+          SECURE_KEYS.savedCredentials,
+          JSON.stringify({ nim: normalizedNim, password })
+        );
+      } else {
+        await removeSecureItem(SECURE_KEYS.savedCredentials);
+      }
 
       set({
         status: 'authenticated',
