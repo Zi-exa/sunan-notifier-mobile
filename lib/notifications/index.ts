@@ -339,7 +339,10 @@ function buildNotificationContent(kind: NotificationKind, taskName: string) {
 
 export async function scheduleTaskLocalNotification(
   task: AssignmentItem,
-  kind: NotificationKind
+  kind: NotificationKind,
+  options?: {
+    triggerDate?: Date;
+  }
 ): Promise<string | null> {
   const ready = await ensureLocalNotificationsReadyAsync();
   if (!ready) {
@@ -347,7 +350,7 @@ export async function scheduleTaskLocalNotification(
   }
 
   const Notifications = ensureNotificationHandlerConfigured();
-  const triggerDate = buildScheduleDate(kind, task.dueDate);
+  const triggerDate = options?.triggerDate ?? buildScheduleDate(kind, task.dueDate);
 
   if (triggerDate.getTime() <= Date.now()) {
     return null;

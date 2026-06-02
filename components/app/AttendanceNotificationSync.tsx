@@ -50,6 +50,8 @@ export function AttendanceNotificationSync() {
 
     const nowUnix = Math.floor(Date.now() / 1000);
     const now = new Date();
+    const OPEN_FALLBACK_WINDOW_SECONDS = 15 * 60;
+    const CLOSING_SOON_SECONDS = 30 * 60;
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
       now.getDate()
     ).padStart(2, '0')}`;
@@ -97,12 +99,47 @@ export function AttendanceNotificationSync() {
         }
       }
 
+      const closingKey = attendance.closesAt
+        ? `closing-${attendance.eventId}-${attendance.closesAt}`
+        : null;
+      const closesAtUnix = attendance.closesAt ?? 0;
+      const closingTriggerUnix = closesAtUnix > 0 ? closesAtUnix - CLOSING_SOON_SECONDS : 0;
+
+      // ── attendance_closing schedule ────────────────────────────────────────
+      // If the close time is still far enough away, schedule it up front.
+      if (
+        closingKey &&
+        closesAtUnix > 0 &&
+        closingTriggerUnix > nowUnix &&
+        !hasKey(closingKey) &&
+        !pendingKeysRef.current.has(closingKey)
+      ) {
+        pendingKeysRef.current.add(closingKey);
+        void scheduleAttendanceLocalNotification({
+          title: 'Absensi Segera Ditutup',
+          body: `${attendance.title} (${attendance.courseName}) akan segera ditutup. Segera isi sekarang.`,
+          kind: 'attendance_closing',
+          eventId: attendance.eventId,
+          triggerDate: new Date(closingTriggerUnix * 1000),
+        }).then((notificationId) => {
+          if (notificationId) {
+            markKey(closingKey);
+          }
+          pendingKeysRef.current.delete(closingKey);
+        });
+      }
+
       // ── attendance_open immediate ────────────────────────────────────────────
-      // Fire whenever an attendance is open (= not yet attended, since Moodle's
-      // upcoming view only surfaces unfinished events). Deduplicate once per day.
+      // Only recover immediately if the open time was crossed recently. This
+      // avoids blasting long-open sessions whenever the app refreshes.
       if (liveStatus === 'open' || liveStatus === 'available') {
         const key = `open-${attendance.eventId}-${today}`;
-        if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
+        const secondsSinceOpen = attendance.startsAt ? nowUnix - attendance.startsAt : 0;
+        const shouldRecoverImmediately =
+          !attendance.startsAt ||
+          (secondsSinceOpen >= 0 && secondsSinceOpen <= OPEN_FALLBACK_WINDOW_SECONDS);
+
+        if (shouldRecoverImmediately && !hasKey(key) && !pendingKeysRef.current.has(key)) {
           pendingKeysRef.current.add(key);
           void sendImmediateAttendanceNotification({
             title: 'Absensi Dibuka',
@@ -118,22 +155,21 @@ export function AttendanceNotificationSync() {
         }
       }
 
-      // ── attendance_closing ───────────────────────────────────────────────────
-      // Fire once when there are ≤ 30 minutes left. Use liveStatus so this works
-      // even if the cached status is still 'open'.
+      // ── attendance_closing immediate ────────────────────────────────────────
+      // Recover only when the app enters the last 30-minute window after missing
+      // the pre-scheduled notification.
       if (liveStatus === 'closing_soon') {
-        if (!attendance.closesAt) {
+        if (!attendance.closesAt || !closingKey) {
           continue;
         }
 
         const secondsLeft = attendance.closesAt - nowUnix;
-        if (secondsLeft < 0 || secondsLeft > 30 * 60) {
+        if (secondsLeft < 0 || secondsLeft > CLOSING_SOON_SECONDS) {
           continue;
         }
 
-        const key = `closing-${attendance.eventId}-${attendance.closesAt}`;
-        if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
-          pendingKeysRef.current.add(key);
+        if (!hasKey(closingKey) && !pendingKeysRef.current.has(closingKey)) {
+          pendingKeysRef.current.add(closingKey);
           void sendImmediateAttendanceNotification({
             title: 'Absensi Segera Ditutup',
             body: `${attendance.title} (${attendance.courseName}) akan ditutup dalam ${Math.ceil(secondsLeft / 60)} menit. Segera isi sekarang.`,
@@ -141,9 +177,9 @@ export function AttendanceNotificationSync() {
             eventId: attendance.eventId,
           }).then((didSchedule) => {
             if (didSchedule) {
-              markKey(key);
+              markKey(closingKey);
             }
-            pendingKeysRef.current.delete(key);
+            pendingKeysRef.current.delete(closingKey);
           });
         }
       }

@@ -28,6 +28,12 @@ export function TaskNotificationSync() {
   const dedupeHydrated = useNotificationDedupeStore((state) => state.hydrated);
   const hasKey = useNotificationDedupeStore((state) => state.hasKey);
   const markKey = useNotificationDedupeStore((state) => state.markKey);
+  const taskDiscoveryBaselineSeeded = useNotificationDedupeStore(
+    (state) => state.taskDiscoveryBaselineSeeded
+  );
+  const seedTaskDiscoveryBaseline = useNotificationDedupeStore(
+    (state) => state.seedTaskDiscoveryBaseline
+  );
   const pruneOlderThan = useNotificationDedupeStore((state) => state.pruneOlderThan);
   const pendingKeysRef = useRef(new Set<string>());
 
@@ -40,11 +46,19 @@ export function TaskNotificationSync() {
     }
 
     const nowUnix = Math.floor(Date.now() / 1000);
-    const OPEN_WINDOW_SECONDS = 24 * 60 * 60; // 24 hours — notify on the same calendar day the task opens
+    const OPEN_FALLBACK_WINDOW_SECONDS = 15 * 60; // keep recovery narrow so old tasks do not spam on app open
     const CLOSING_SOON_SECONDS = 30 * 60; // 30 minutes
     const retentionCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
     pruneOlderThan(retentionCutoff);
+
+    if (!taskDiscoveryBaselineSeeded && (assignmentsQuery.data?.length ?? 0) > 0) {
+      seedTaskDiscoveryBaseline(
+        (assignmentsQuery.data ?? []).map(
+          (task) => `task-new-${task.id}-${task.openDate ?? 0}-${task.dueDate}`
+        )
+      );
+    }
 
     for (const task of assignmentsQuery.data ?? []) {
       const withinMonitoredScope =
@@ -68,7 +82,7 @@ export function TaskNotificationSync() {
       // Notify once when a task is first discovered by the app.
       if (notifyNewTask) {
         const key = `task-new-${task.id}-${task.openDate ?? 0}-${task.dueDate}`;
-        if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
+        if (taskDiscoveryBaselineSeeded && !hasKey(key) && !pendingKeysRef.current.has(key)) {
           pendingKeysRef.current.add(key);
           void scheduleTaskLocalNotification(task, 'new_task').then((notificationId) => {
             if (notificationId) {
@@ -110,14 +124,27 @@ export function TaskNotificationSync() {
       }
 
       // ── task_open ──────────────────────────────────────────────────────────
-      // Notify once on the same calendar day the task opens (within 24 h of openDate).
-      // The dedupe key includes openDate so this fires at most once per task opening.
+      // Prefer scheduling at the actual open time; only fall back to immediate
+      // delivery when the open time was crossed very recently.
       if (notifyTaskOpen && task.openDate && task.openDate > 0) {
-        const secondsSinceOpen = nowUnix - task.openDate;
-        if (secondsSinceOpen >= 0 && secondsSinceOpen <= OPEN_WINDOW_SECONDS) {
-          const key = `task-open-${task.id}-${task.openDate}`;
-          if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
-            pendingKeysRef.current.add(key);
+        const key = `task-open-${task.id}-${task.openDate}`;
+        if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
+          pendingKeysRef.current.add(key);
+
+          if (task.openDate > nowUnix) {
+            void scheduleTaskLocalNotification(task, 'task_open', {
+              triggerDate: new Date(task.openDate * 1000),
+            }).then((notificationId) => {
+              if (notificationId) {
+                markKey(key);
+              }
+              pendingKeysRef.current.delete(key);
+            });
+            continue;
+          }
+
+          const secondsSinceOpen = nowUnix - task.openDate;
+          if (secondsSinceOpen >= 0 && secondsSinceOpen <= OPEN_FALLBACK_WINDOW_SECONDS) {
             void sendImmediateTaskNotification({
               title: 'Tugas Sudah Dibuka',
               body: `${task.name} (${task.courseName}) sudah bisa dikerjakan.`,
@@ -129,7 +156,14 @@ export function TaskNotificationSync() {
               }
               pendingKeysRef.current.delete(key);
             });
+            continue;
           }
+
+          if (secondsSinceOpen > OPEN_FALLBACK_WINDOW_SECONDS) {
+            markKey(key);
+          }
+
+          pendingKeysRef.current.delete(key);
         }
       }
 
@@ -184,6 +218,8 @@ export function TaskNotificationSync() {
     notifyNewTask,
     notifyTaskOpen,
     pruneOlderThan,
+    seedTaskDiscoveryBaseline,
+    taskDiscoveryBaselineSeeded,
   ]);
 
   return null;
