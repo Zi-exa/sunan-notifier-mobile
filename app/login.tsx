@@ -50,6 +50,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberCredentials, setRememberCredentials] = useState<boolean | null>(null);
+  const [rememberPromptRequested, setRememberPromptRequested] = useState(false);
   const [savedCredentials, setSavedCredentials] = useState<SavedCredentials | null>(null);
   const [showSavedSuggestion, setShowSavedSuggestion] = useState(false);
   const [maintenanceAlertVisible, setMaintenanceAlertVisible] = useState(false);
@@ -93,7 +94,7 @@ export default function LoginScreen() {
 
   const isLoading = status === 'loading';
   const hasSavedCredentials = savedCredentials !== null;
-  const shouldShowRememberPrompt = rememberCredentials === null;
+  const shouldShowRememberPrompt = rememberCredentials === null && rememberPromptRequested;
   const canShowSavedSuggestion =
     rememberCredentials === true && hasSavedCredentials && showSavedSuggestion;
   const isDark = mode === 'dark';
@@ -114,6 +115,7 @@ export default function LoginScreen() {
 
   const handleRememberCredentialsChange = async (nextValue: boolean) => {
     setRememberCredentials(nextValue);
+    setRememberPromptRequested(false);
     setShowSavedSuggestion(false);
     await setSecureItem(SECURE_KEYS.savedCredentialsPreference, String(nextValue));
 
@@ -123,12 +125,27 @@ export default function LoginScreen() {
     }
 
     if (error) clearError();
+
+    if (rememberPromptRequested) {
+      await login(nim, password, { rememberCredentials: nextValue });
+    }
   };
 
   const handleCredentialsFieldFocus = () => {
     if (rememberCredentials === true && hasSavedCredentials) {
       setShowSavedSuggestion(true);
     }
+  };
+
+  const handleLoginPress = () => {
+    if (rememberCredentials === null) {
+      setRememberPromptRequested(true);
+      setShowSavedSuggestion(false);
+      if (error) clearError();
+      return;
+    }
+
+    void login(nim, password, { rememberCredentials: rememberCredentials === true });
   };
 
   return (
@@ -347,7 +364,7 @@ export default function LoginScreen() {
                 { backgroundColor: isDark ? colors.accentBright : colors.accent },
                 isLoading && styles.buttonDisabled,
               ]}
-              onPress={() => login(nim, password, { rememberCredentials: rememberCredentials === true })}
+              onPress={handleLoginPress}
               disabled={isLoading}
             >
               {isLoading ? (
