@@ -1,7 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { scheduleTaskLocalNotification, sendImmediateTaskNotification } from '@/lib/notifications';
+import {
+  cancelScheduledNotificationsForKinds,
+  scheduleTaskLocalNotification,
+  sendImmediateTaskNotification,
+} from '@/lib/notifications';
 import { useAssignmentsQuery } from '@/lib/queries/useMoodleQueries';
 import { useNotificationDedupeStore } from '@/lib/stores/notificationDedupeStore';
+import { usePushTokenSyncStore } from '@/lib/stores/pushTokenSyncStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 
 /**
@@ -24,6 +29,7 @@ export function TaskNotificationSync() {
   const notifyDeadlineToday = useSettingsStore((state) => state.notifications.notifyDeadlineToday);
   const notifyTaskOpen = useSettingsStore((state) => state.notifications.notifyTaskOpen);
   const monitoredCourseIds = useSettingsStore((state) => state.monitoredCourseIds);
+  const pushStatus = usePushTokenSyncStore((state) => state.status);
   const assignmentsQuery = useAssignmentsQuery();
   const dedupeHydrated = useNotificationDedupeStore((state) => state.hydrated);
   const hasKey = useNotificationDedupeStore((state) => state.hasKey);
@@ -36,12 +42,31 @@ export function TaskNotificationSync() {
   );
   const pruneOlderThan = useNotificationDedupeStore((state) => state.pruneOlderThan);
   const pendingKeysRef = useRef(new Set<string>());
+  const remoteBackedKindsCancelledRef = useRef(false);
 
   useEffect(() => {
     if (
       !dedupeHydrated ||
       (!notifyNewTask && !notifyDeadlineH1 && !notifyDeadlineToday && !notifyTaskOpen)
     ) {
+      return;
+    }
+
+    if (pushStatus !== 'ready') {
+      remoteBackedKindsCancelledRef.current = false;
+    }
+
+    if (pushStatus === 'ready') {
+      if (!remoteBackedKindsCancelledRef.current) {
+        remoteBackedKindsCancelledRef.current = true;
+        void cancelScheduledNotificationsForKinds([
+          'new_task',
+          'deadline_h1',
+          'deadline_today',
+          'task_open',
+          'task_closing',
+        ]);
+      }
       return;
     }
 
@@ -84,7 +109,7 @@ export function TaskNotificationSync() {
         const key = `task-new-${task.id}-${task.openDate ?? 0}-${task.dueDate}`;
         if (taskDiscoveryBaselineSeeded && !hasKey(key) && !pendingKeysRef.current.has(key)) {
           pendingKeysRef.current.add(key);
-          void scheduleTaskLocalNotification(task, 'new_task').then((notificationId) => {
+          void scheduleTaskLocalNotification(task, 'new_task', { identifier: key }).then((notificationId) => {
             if (notificationId) {
               markKey(key);
             }
@@ -100,7 +125,7 @@ export function TaskNotificationSync() {
           const key = `task-deadline-h1-${task.id}-${task.dueDate}`;
           if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
             pendingKeysRef.current.add(key);
-            void scheduleTaskLocalNotification(task, 'deadline_h1').then((notificationId) => {
+            void scheduleTaskLocalNotification(task, 'deadline_h1', { identifier: key }).then((notificationId) => {
               if (notificationId) {
                 markKey(key);
               }
@@ -113,7 +138,7 @@ export function TaskNotificationSync() {
           const key = `task-deadline-today-${task.id}-${task.dueDate}`;
           if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
             pendingKeysRef.current.add(key);
-            void scheduleTaskLocalNotification(task, 'deadline_today').then((notificationId) => {
+            void scheduleTaskLocalNotification(task, 'deadline_today', { identifier: key }).then((notificationId) => {
               if (notificationId) {
                 markKey(key);
               }
@@ -134,6 +159,7 @@ export function TaskNotificationSync() {
           if (task.openDate > nowUnix) {
             void scheduleTaskLocalNotification(task, 'task_open', {
               triggerDate: new Date(task.openDate * 1000),
+              identifier: key,
             }).then((notificationId) => {
               if (notificationId) {
                 markKey(key);
@@ -150,6 +176,7 @@ export function TaskNotificationSync() {
               body: `${task.name} (${task.courseName}) sudah bisa dikerjakan.`,
               kind: 'task_open',
               taskId: task.id,
+              identifier: key,
             }).then((didSchedule) => {
               if (didSchedule) {
                 markKey(key);
@@ -196,7 +223,7 @@ export function TaskNotificationSync() {
                 pendingKeysRef.current.delete(key);
               });
             } else {
-              void scheduleTaskLocalNotification(task, 'task_closing').then((notificationId) => {
+              void scheduleTaskLocalNotification(task, 'task_closing', { identifier: key }).then((notificationId) => {
                 if (notificationId) {
                   markKey(key);
                 }
@@ -218,6 +245,7 @@ export function TaskNotificationSync() {
     notifyNewTask,
     notifyTaskOpen,
     pruneOlderThan,
+    pushStatus,
     seedTaskDiscoveryBaseline,
     taskDiscoveryBaselineSeeded,
   ]);

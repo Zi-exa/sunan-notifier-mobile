@@ -45,6 +45,10 @@
       "output": "static",
       "favicon": "./assets/images/sunan-notifier-mark.png"
     },
+    "notification": {
+      "icon": "./assets/images/notification-icon.png",
+      "color": "#2B7FFF"
+    },
     "updates": {
       "url": "https://u.expo.dev/eb508cc1-ec67-415f-a234-bb2cdf068286",
       "checkAutomatically": "ON_LOAD",
@@ -53,7 +57,14 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#2B7FFF",
+          "defaultChannel": "default"
+        }
+      ],
       [
         "expo-splash-screen",
         {

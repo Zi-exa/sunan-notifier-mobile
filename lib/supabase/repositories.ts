@@ -1,7 +1,10 @@
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { POLLING_INTERVAL_OPTIONS } from '@/lib/config';
 import type { PollingInterval } from '@/lib/config';
 import { supabase } from '@/lib/supabase/client';
+
+const DEVICE_KEY_STORAGE_KEY = 'sunan.device.key';
 
 export type SessionProfileInput = {
   moodleUserId: number;
@@ -56,6 +59,26 @@ type MobileDataResponseMap = {
     appUserId: string | null;
   };
 };
+
+function createDeviceKey(): string {
+  const randomId =
+    typeof globalThis.crypto?.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
+  return `${Platform.OS}-${randomId}`;
+}
+
+async function getOrCreateDeviceKey(): Promise<string> {
+  const existing = await AsyncStorage.getItem(DEVICE_KEY_STORAGE_KEY);
+  if (existing) {
+    return existing;
+  }
+
+  const next = createDeviceKey();
+  await AsyncStorage.setItem(DEVICE_KEY_STORAGE_KEY, next);
+  return next;
+}
 
 function coerceRemoteSettings(data: Record<string, unknown>): RemoteUserSettings {
   const pollIntervalMinutes = Number(data.pollIntervalMinutes);
@@ -132,6 +155,7 @@ export async function upsertDevicePushToken(input: {
     nim: input.nim,
     fullname: input.fullname,
     pushToken: input.pushToken,
+    deviceKey: await getOrCreateDeviceKey(),
     platform: Platform.OS,
   });
 

@@ -356,6 +356,7 @@ export async function scheduleTaskLocalNotification(
   kind: NotificationKind,
   options?: {
     triggerDate?: Date;
+    identifier?: string;
   }
 ): Promise<string | null> {
   const ready = await ensureLocalNotificationsReadyAsync();
@@ -372,6 +373,7 @@ export async function scheduleTaskLocalNotification(
 
   const content = buildNotificationContent(kind, task.name);
   return Notifications.scheduleNotificationAsync({
+    identifier: options?.identifier,
     content: {
       ...content,
       data: {
@@ -448,6 +450,35 @@ export async function setAppBadgeCount(count: number): Promise<void> {
   }
 }
 
+export async function cancelScheduledNotificationsForKinds(
+  kinds: NotificationKind[]
+): Promise<void> {
+  if (kinds.length === 0) {
+    return;
+  }
+
+  try {
+    const Notifications = ensureNotificationHandlerConfigured();
+    const scheduledNotifications =
+      (await Notifications.getAllScheduledNotificationsAsync?.()) ?? [];
+    const targetKinds = new Set(kinds);
+    const identifiersToCancel = scheduledNotifications
+      .filter((notification) => {
+        const payload = parseNotificationData(notification.content.data);
+        return payload.kind !== undefined && targetKinds.has(payload.kind);
+      })
+      .map((notification) => notification.identifier);
+
+    await Promise.all(
+      identifiersToCancel.map((identifier) =>
+        Notifications.cancelScheduledNotificationAsync(identifier)
+      )
+    );
+  } catch {
+    // Cleanup is best-effort; scheduling should continue to be resilient.
+  }
+}
+
 export async function sendImmediateAttendanceNotification(params: {
   title: string;
   body: string;
@@ -456,6 +487,7 @@ export async function sendImmediateAttendanceNotification(params: {
     'attendance_h1' | 'attendance_preopen' | 'attendance_open' | 'attendance_closing'
   >;
   eventId: number;
+  identifier?: string;
 }): Promise<boolean> {
   try {
     const ready = await ensureLocalNotificationsReadyAsync();
@@ -465,6 +497,7 @@ export async function sendImmediateAttendanceNotification(params: {
 
     const Notifications = ensureNotificationHandlerConfigured();
     await Notifications.scheduleNotificationAsync({
+      identifier: params.identifier,
       content: {
         title: params.title,
         body: params.body,
@@ -494,6 +527,7 @@ export async function scheduleAttendanceLocalNotification(params: {
   >;
   eventId: number;
   triggerDate: Date;
+  identifier?: string;
 }): Promise<string | null> {
   try {
     const ready = await ensureLocalNotificationsReadyAsync();
@@ -503,6 +537,7 @@ export async function scheduleAttendanceLocalNotification(params: {
 
     const Notifications = ensureNotificationHandlerConfigured();
     return Notifications.scheduleNotificationAsync({
+      identifier: params.identifier,
       content: {
         title: params.title,
         body: params.body,
@@ -527,6 +562,7 @@ export async function sendImmediateTaskNotification(params: {
   body: string;
   kind: Extract<NotificationKind, 'task_open' | 'task_closing'>;
   taskId: number;
+  identifier?: string;
 }): Promise<boolean> {
   try {
     const ready = await ensureLocalNotificationsReadyAsync();
@@ -536,6 +572,7 @@ export async function sendImmediateTaskNotification(params: {
 
     const Notifications = ensureNotificationHandlerConfigured();
     await Notifications.scheduleNotificationAsync({
+      identifier: params.identifier,
       content: {
         title: params.title,
         body: params.body,

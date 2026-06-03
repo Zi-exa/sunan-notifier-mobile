@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react';
 import {
+  cancelScheduledNotificationsForKinds,
   scheduleAttendanceLocalNotification,
   sendImmediateAttendanceNotification,
 } from '@/lib/notifications';
 import { useAttendanceSessionsQuery } from '@/lib/queries/useMoodleQueries';
 import { resolveAttendanceItemStatus } from '@/lib/utils/attendance';
 import { useNotificationDedupeStore } from '@/lib/stores/notificationDedupeStore';
+import { usePushTokenSyncStore } from '@/lib/stores/pushTokenSyncStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 
 function toLocalDateKeyFromUnix(unixSeconds: number): string {
@@ -38,16 +40,28 @@ function toLocalDateKeyFromUnix(unixSeconds: number): string {
 export function AttendanceNotificationSync() {
   const notifyAttendance = useSettingsStore((state) => state.notifications.notifyAttendance);
   const monitoredCourseIds = useSettingsStore((state) => state.monitoredCourseIds);
+  const pushStatus = usePushTokenSyncStore((state) => state.status);
   const attendanceQuery = useAttendanceSessionsQuery();
   const dedupeHydrated = useNotificationDedupeStore((state) => state.hydrated);
   const hasKey = useNotificationDedupeStore((state) => state.hasKey);
   const markKey = useNotificationDedupeStore((state) => state.markKey);
   const pruneOlderThan = useNotificationDedupeStore((state) => state.pruneOlderThan);
   const pendingKeysRef = useRef(new Set<string>());
+  const remoteBackedKindsCancelledRef = useRef(false);
 
   useEffect(() => {
     if (!notifyAttendance || !dedupeHydrated) {
       return;
+    }
+
+    const remotePushReady = pushStatus === 'ready';
+    if (!remotePushReady) {
+      remoteBackedKindsCancelledRef.current = false;
+    }
+
+    if (remotePushReady && !remoteBackedKindsCancelledRef.current) {
+      remoteBackedKindsCancelledRef.current = true;
+      void cancelScheduledNotificationsForKinds(['attendance_open', 'attendance_closing']);
     }
 
     const nowUnix = Math.floor(Date.now() / 1000);
@@ -103,6 +117,7 @@ export function AttendanceNotificationSync() {
             kind: 'attendance_h1',
             eventId: attendance.eventId,
             triggerDate: new Date(h1TriggerUnix * 1000),
+            identifier: reminderDayKey,
           }).then((notificationId) => {
             if (notificationId) {
               markKey(reminderDayKey);
@@ -123,6 +138,7 @@ export function AttendanceNotificationSync() {
             kind: 'attendance_preopen',
             eventId: attendance.eventId,
             triggerDate: new Date(preopenTriggerUnix * 1000),
+            identifier: reminderHourKey,
           }).then((notificationId) => {
             if (notificationId) {
               markKey(reminderHourKey);
@@ -131,7 +147,7 @@ export function AttendanceNotificationSync() {
           });
         }
 
-        if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
+        if (!remotePushReady && !hasKey(key) && !pendingKeysRef.current.has(key)) {
           pendingKeysRef.current.add(key);
           void scheduleAttendanceLocalNotification({
             title: 'Absensi Dibuka',
@@ -139,6 +155,7 @@ export function AttendanceNotificationSync() {
             kind: 'attendance_open',
             eventId: attendance.eventId,
             triggerDate: new Date(attendance.startsAt * 1000),
+            identifier: key,
           }).then((notificationId) => {
             if (notificationId) {
               markKey(key);
@@ -199,6 +216,7 @@ export function AttendanceNotificationSync() {
       // ── attendance_closing schedule ────────────────────────────────────────
       // If the close time is still far enough away, schedule it up front.
       if (
+        !remotePushReady &&
         closingKey &&
         closesAtUnix > 0 &&
         closingTriggerUnix > nowUnix &&
@@ -212,6 +230,7 @@ export function AttendanceNotificationSync() {
           kind: 'attendance_closing',
           eventId: attendance.eventId,
           triggerDate: new Date(closingTriggerUnix * 1000),
+          identifier: closingKey,
         }).then((notificationId) => {
           if (notificationId) {
             markKey(closingKey);
@@ -223,7 +242,7 @@ export function AttendanceNotificationSync() {
       // ── attendance_open immediate ────────────────────────────────────────────
       // Only recover immediately if the open time was crossed recently. This
       // avoids blasting long-open sessions whenever the app refreshes.
-      if (liveStatus === 'open' || liveStatus === 'available') {
+      if (!remotePushReady && (liveStatus === 'open' || liveStatus === 'available')) {
         const key = `open-${attendance.eventId}-${today}`;
         const secondsSinceOpen = attendance.startsAt ? nowUnix - attendance.startsAt : 0;
         const shouldRecoverImmediately =
@@ -237,6 +256,7 @@ export function AttendanceNotificationSync() {
             body: `${attendance.title} (${attendance.courseName}) sudah dibuka. Segera isi sekarang.`,
             kind: 'attendance_open',
             eventId: attendance.eventId,
+            identifier: key,
           }).then((didSchedule) => {
             if (didSchedule) {
               markKey(key);
@@ -249,7 +269,7 @@ export function AttendanceNotificationSync() {
       // ── attendance_closing immediate ────────────────────────────────────────
       // Recover only when the app enters the last 30-minute window after missing
       // the pre-scheduled notification.
-      if (liveStatus === 'closing_soon') {
+      if (!remotePushReady && liveStatus === 'closing_soon') {
         if (!attendance.closesAt || !closingKey) {
           continue;
         }
@@ -266,6 +286,7 @@ export function AttendanceNotificationSync() {
             body: `${attendance.title} (${attendance.courseName}) akan ditutup dalam ${Math.ceil(secondsLeft / 60)} menit. Segera isi sekarang.`,
             kind: 'attendance_closing',
             eventId: attendance.eventId,
+            identifier: closingKey,
           }).then((didSchedule) => {
             if (didSchedule) {
               markKey(closingKey);
@@ -275,7 +296,16 @@ export function AttendanceNotificationSync() {
         }
       }
     }
-  }, [attendanceQuery.data, dedupeHydrated, hasKey, markKey, monitoredCourseIds, notifyAttendance, pruneOlderThan]);
+  }, [
+    attendanceQuery.data,
+    dedupeHydrated,
+    hasKey,
+    markKey,
+    monitoredCourseIds,
+    notifyAttendance,
+    pruneOlderThan,
+    pushStatus,
+  ]);
 
   return null;
 }
