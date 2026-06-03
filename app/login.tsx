@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -46,6 +46,9 @@ export default function LoginScreen() {
   const clearLogoutNotice = useAuthStore((state) => state.clearLogoutNotice);
   const login = useAuthStore((state) => state.login);
 
+  const scrollViewRef = useRef<ScrollView>(null);
+  const passwordFocusScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [nim, setNim] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -83,6 +86,14 @@ export default function LoginScreen() {
       setMaintenanceAlertVisible(true);
     }
   }, [error]);
+
+  useEffect(() => {
+    return () => {
+      if (passwordFocusScrollTimeoutRef.current) {
+        clearTimeout(passwordFocusScrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!hydrated) {
     return null;
@@ -137,6 +148,26 @@ export default function LoginScreen() {
     }
   };
 
+  const scrollPasswordFieldIntoView = () => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    if (passwordFocusScrollTimeoutRef.current) {
+      clearTimeout(passwordFocusScrollTimeoutRef.current);
+    }
+
+    passwordFocusScrollTimeoutRef.current = setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+      passwordFocusScrollTimeoutRef.current = null;
+    }, 220);
+  };
+
+  const handlePasswordFieldFocus = () => {
+    handleCredentialsFieldFocus();
+    scrollPasswordFieldIntoView();
+  };
+
   const handleLoginPress = () => {
     if (rememberCredentials === null) {
       setRememberPromptRequested(true);
@@ -152,9 +183,10 @@ export default function LoginScreen() {
     <>
       <KeyboardAvoidingView
         style={[styles.screen, { backgroundColor: colors.bgBase }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -334,7 +366,7 @@ export default function LoginScreen() {
                 <TextInput
                   value={password}
                   onChangeText={(v) => handleChange(setPassword, v)}
-                  onFocus={handleCredentialsFieldFocus}
+                  onFocus={handlePasswordFieldFocus}
                   style={[styles.input, styles.passwordInput, { color: colors.textPrimary }]}
                   secureTextEntry={!showPassword}
                   placeholder="Masukkan password SUNAN"
