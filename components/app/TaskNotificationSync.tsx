@@ -52,11 +52,14 @@ export function TaskNotificationSync() {
       return;
     }
 
-    if (pushStatus !== 'ready') {
+    const remotePushOwnsTaskNotifications =
+      pushStatus === 'idle' || pushStatus === 'syncing' || pushStatus === 'ready';
+
+    if (!remotePushOwnsTaskNotifications) {
       remoteBackedKindsCancelledRef.current = false;
     }
 
-    if (pushStatus === 'ready') {
+    if (remotePushOwnsTaskNotifications) {
       if (!remoteBackedKindsCancelledRef.current) {
         remoteBackedKindsCancelledRef.current = true;
         void cancelScheduledNotificationsForKinds([
