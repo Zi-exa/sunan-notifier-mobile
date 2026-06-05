@@ -12,6 +12,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import 'react-native-reanimated';
 import { AppState, Appearance } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/components/Redesign';
 import { AppUpdateCoordinator } from '@/components/app/AppUpdateCoordinator';
@@ -19,11 +20,13 @@ import { AppUpdateCoordinator } from '@/components/app/AppUpdateCoordinator';
 
 import {
   attachNotificationNavigationListener,
+  cancelAllScheduledSunanNotifications,
   ensureLocalNotificationsReadyAsync,
   getLastNotificationNavigationPayloadAsync,
   registerForPushNotificationsDetailedAsync,
 } from '@/lib/notifications';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { useNotificationDedupeStore } from '@/lib/stores/notificationDedupeStore';
 import { usePushTokenSyncStore } from '@/lib/stores/pushTokenSyncStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 import { useTabsBootStore } from '@/lib/stores/tabsBootStore';
@@ -41,6 +44,8 @@ export const unstable_settings = {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+const LOCAL_NOTIFICATION_OWNER_KEY = 'sunan.notification.owner';
+
 function AppBootstrap() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -49,6 +54,7 @@ function AppBootstrap() {
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
   const hydrateSession = useAuthStore((state) => state.hydrateSession);
+  const resetNotificationDedupe = useNotificationDedupeStore((state) => state.reset);
   const resetTabsBootStatus = useTabsBootStore((state) => state.reset);
   const applyRemoteSettings = useSettingsStore((state) => state.applyRemoteSettings);
   const unauthClearedRef = useRef(false);
@@ -72,6 +78,38 @@ function AppBootstrap() {
       SplashScreen.hideAsync();
     }
   }, [hydrated, status]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function reconcileLocalNotificationOwner() {
+      if (!hydrated || status === 'loading') {
+        return;
+      }
+
+      if (status !== 'authenticated' || !user?.id) {
+        await AsyncStorage.removeItem(LOCAL_NOTIFICATION_OWNER_KEY);
+        return;
+      }
+
+      const nextOwner = String(user.id);
+      const previousOwner = await AsyncStorage.getItem(LOCAL_NOTIFICATION_OWNER_KEY);
+
+      if (cancelled || previousOwner === nextOwner) {
+        return;
+      }
+
+      await cancelAllScheduledSunanNotifications();
+      resetNotificationDedupe();
+      await AsyncStorage.setItem(LOCAL_NOTIFICATION_OWNER_KEY, nextOwner);
+    }
+
+    void reconcileLocalNotificationOwner();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, resetNotificationDedupe, status, user?.id]);
 
   useEffect(() => {
     if (status === 'unauthenticated') {

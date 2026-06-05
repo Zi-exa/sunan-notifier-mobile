@@ -40,7 +40,8 @@ type MobileDataAction =
   | 'sync-profile'
   | 'load-settings'
   | 'save-settings'
-  | 'upsert-device';
+  | 'upsert-device'
+  | 'deactivate-device';
 
 type MobileDataResponseMap = {
   'sync-profile': {
@@ -58,6 +59,10 @@ type MobileDataResponseMap = {
     ok: boolean;
     appUserId: string | null;
   };
+  'deactivate-device': {
+    ok: boolean;
+    appUserId: string | null;
+  };
 };
 
 function createDeviceKey(): string {
@@ -70,7 +75,7 @@ function createDeviceKey(): string {
 }
 
 async function getOrCreateDeviceKey(): Promise<string> {
-  const existing = await AsyncStorage.getItem(DEVICE_KEY_STORAGE_KEY);
+  const existing = await getExistingDeviceKey();
   if (existing) {
     return existing;
   }
@@ -78,6 +83,10 @@ async function getOrCreateDeviceKey(): Promise<string> {
   const next = createDeviceKey();
   await AsyncStorage.setItem(DEVICE_KEY_STORAGE_KEY, next);
   return next;
+}
+
+async function getExistingDeviceKey(): Promise<string | null> {
+  return AsyncStorage.getItem(DEVICE_KEY_STORAGE_KEY);
 }
 
 function coerceRemoteSettings(data: Record<string, unknown>): RemoteUserSettings {
@@ -156,6 +165,28 @@ export async function upsertDevicePushToken(input: {
     fullname: input.fullname,
     pushToken: input.pushToken,
     deviceKey: await getOrCreateDeviceKey(),
+    platform: Platform.OS,
+  });
+
+  return response.appUserId ?? null;
+}
+
+export async function deactivateDevicePushToken(input: SessionProfileInput): Promise<string | null> {
+  if (!supabase) {
+    return null;
+  }
+
+  const deviceKey = await getExistingDeviceKey();
+  if (!deviceKey) {
+    return null;
+  }
+
+  const response = await invokeMobileData('deactivate-device', {
+    moodleToken: input.moodleToken,
+    moodleUserId: input.moodleUserId,
+    nim: input.nim,
+    fullname: input.fullname,
+    deviceKey,
     platform: Platform.OS,
   });
 

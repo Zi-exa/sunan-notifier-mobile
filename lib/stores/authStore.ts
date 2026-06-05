@@ -3,8 +3,10 @@ import { SECURE_KEYS } from '@/lib/config';
 import { CONFIG } from '@/lib/config';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { getAuthenticatedMoodleFileUrl, requestMoodleTokenPayload, getSiteInfo } from '@/lib/moodle/client';
+import { cancelAllScheduledSunanNotifications } from '@/lib/notifications';
 import { getSecureItem, removeSecureItem, setSecureItem } from '@/lib/storage/secureStore';
-import { syncUserProfile } from '@/lib/supabase/repositories';
+import { useNotificationDedupeStore } from '@/lib/stores/notificationDedupeStore';
+import { deactivateDevicePushToken, syncUserProfile } from '@/lib/supabase/repositories';
 
 export type AuthUser = {
   id: number;
@@ -237,6 +239,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: nextUser });
   },
   expireSession: async (reason = 'Silakan login lagi untuk melanjutkan.') => {
+    await cancelAllScheduledSunanNotifications();
+    useNotificationDedupeStore.getState().reset();
     await removeSecureItem(SECURE_KEYS.authSession);
 
     set({
@@ -255,6 +259,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ logoutNotice: null });
   },
   logout: async () => {
+    const { token, user } = get();
+
+    if (token && user) {
+      try {
+        await deactivateDevicePushToken({
+          moodleToken: token,
+          moodleUserId: user.id,
+          nim: user.nim,
+          fullname: user.fullname,
+        });
+      } catch {
+        // Logout must still work even if the cleanup endpoint is unreachable.
+      }
+    }
+
+    await cancelAllScheduledSunanNotifications();
+    useNotificationDedupeStore.getState().reset();
     await removeSecureItem(SECURE_KEYS.authSession);
     set({
       status: 'unauthenticated',

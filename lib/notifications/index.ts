@@ -479,6 +479,25 @@ export async function cancelScheduledNotificationsForKinds(
   }
 }
 
+export async function cancelAllScheduledSunanNotifications(): Promise<void> {
+  try {
+    const Notifications = ensureNotificationHandlerConfigured();
+    const scheduledNotifications =
+      (await Notifications.getAllScheduledNotificationsAsync?.()) ?? [];
+    const identifiersToCancel = scheduledNotifications
+      .filter((notification) => parseNotificationData(notification.content.data).kind !== undefined)
+      .map((notification) => notification.identifier);
+
+    await Promise.all(
+      identifiersToCancel.map((identifier) =>
+        Notifications.cancelScheduledNotificationAsync(identifier)
+      )
+    );
+  } catch {
+    // Cleanup is best-effort; stale local notifications must not break app boot.
+  }
+}
+
 export async function sendImmediateAttendanceNotification(params: {
   title: string;
   body: string;

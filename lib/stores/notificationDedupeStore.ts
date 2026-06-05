@@ -11,6 +11,7 @@ type NotificationDedupeState = {
   markKey: (key: string, timestamp?: number) => void;
   seedTaskDiscoveryBaseline: (keys: string[]) => void;
   pruneOlderThan: (cutoffTimestamp: number) => void;
+  reset: () => void;
 };
 
 export const useNotificationDedupeStore = create<NotificationDedupeState>()(
@@ -54,6 +55,11 @@ export const useNotificationDedupeStore = create<NotificationDedupeState>()(
             Object.entries(state.sentKeys).filter(([, timestamp]) => timestamp >= cutoffTimestamp)
           ),
         })),
+      reset: () =>
+        set({
+          sentKeys: {},
+          taskDiscoveryBaselineSeeded: false,
+        }),
     }),
     {
       name: 'sunan.notification.dedupe',
