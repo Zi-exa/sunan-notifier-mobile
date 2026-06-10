@@ -177,6 +177,13 @@ export async function registerForPushNotificationsDetailedAsync(): Promise<PushR
 
   const Notifications = ensureNotificationHandlerConfigured();
 
+  if (Platform.OS === 'android') {
+    const nativeResult = await getNativeDevicePushTokenAsync(Notifications);
+    if (nativeResult.status === 'registered') {
+      return nativeResult;
+    }
+  }
+
   const projectId = getExpoProjectId();
   if (!projectId) {
     return getNativeDevicePushTokenAsync(Notifications);
