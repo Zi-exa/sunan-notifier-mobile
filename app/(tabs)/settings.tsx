@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   UIManager,
   View,
 } from 'react-native';
@@ -26,6 +27,16 @@ import { useAppUpdateStore } from '@/lib/stores/appUpdateStore';
 import { useSettingsStore } from '@/lib/stores/settingsStore';
 import { saveUserSettings, syncUserProfile } from '@/lib/supabase/repositories';
 import { checkForAvailableAppUpdateAsync } from '@/lib/updates';
+import {
+  isQuietHoursConfigurationValid,
+  normalizeQuietHours,
+  type QuietHours,
+} from '@/lib/utils/quietHours';
+import {
+  getAvatarInitial,
+  isNimLike,
+  resolveFullname,
+} from '@/lib/utils/displayName';
 
 const THEME_OPTIONS: {
   value: ThemeMode;
@@ -118,15 +129,18 @@ export default function SettingsScreen() {
   const notifications = useSettingsStore((state) => state.notifications);
   const pollingInterval = useSettingsStore((state) => state.pollingInterval);
   const monitoredCourseIds = useSettingsStore((state) => state.monitoredCourseIds);
+  const quietHours = useSettingsStore((state) => state.quietHours);
   const themeMode = useSettingsStore((state) => state.themeMode);
   const setNotification = useSettingsStore((state) => state.setNotification);
   const setPollingInterval = useSettingsStore((state) => state.setPollingInterval);
   const setMonitoredCourseIds = useSettingsStore((state) => state.setMonitoredCourseIds);
+  const setQuietHours = useSettingsStore((state) => state.setQuietHours);
   const setThemeMode = useSettingsStore((state) => state.setThemeMode);
 
   const [draftNotifications, setDraftNotifications] = useState(notifications);
   const [draftPollingInterval, setDraftPollingInterval] = useState(pollingInterval);
   const [draftMonitoredCourseIds, setDraftMonitoredCourseIds] = useState(monitoredCourseIds);
+  const [draftQuietHours, setDraftQuietHours] = useState(quietHours);
   const [syncState, setSyncState] = useState<'idle' | 'syncing'>('idle');
   const [dialogState, setDialogState] = useState<{
     tone: 'success' | 'info' | 'warning';
@@ -147,10 +161,13 @@ export default function SettingsScreen() {
     (count, option) => count + (draftNotifications[option.key] ? 1 : 0),
     0
   );
+  const quietHoursSummary = draftQuietHours.enabled
+    ? `${draftQuietHours.start}–${draftQuietHours.end} WIB`
+    : 'Jam diam nonaktif';
   const notificationSummary =
     enabledNotificationCount === 0
-      ? 'Semua notifikasi nonaktif'
-      : `${enabledNotificationCount} notifikasi aktif`;
+      ? `Semua notifikasi nonaktif · ${quietHoursSummary}`
+      : `${enabledNotificationCount} notifikasi aktif · ${quietHoursSummary}`;
   const monitoredLabel =
     draftMonitoredCourseIds.length === 0
       ? 'Semua mata kuliah'
@@ -168,7 +185,18 @@ export default function SettingsScreen() {
   const updateButtonIcon: React.ComponentProps<typeof FontAwesome>['name'] = effectiveAvailableUpdate
     ? 'info-circle'
     : 'refresh';
-  const accountName = user?.fullname ?? 'Belum ada sesi login';
+  const resolvedAccountName = resolveFullname({
+    fullname: user?.fullname,
+    firstname: user?.firstname,
+    lastname: user?.lastname,
+    nim: user?.nim,
+    username: user?.username,
+  });
+  const accountName = !user
+    ? 'Belum ada sesi login'
+    : resolvedAccountName && !isNimLike(resolvedAccountName, user?.nim)
+      ? resolvedAccountName
+      : 'Mahasiswa';
   const contentBottomPadding = getDockContentPadding(insets.bottom);
 
   useEffect(() => {
@@ -181,7 +209,8 @@ export default function SettingsScreen() {
     setDraftNotifications(notifications);
     setDraftPollingInterval(pollingInterval);
     setDraftMonitoredCourseIds(monitoredCourseIds);
-  }, [notifications, pollingInterval, monitoredCourseIds]);
+    setDraftQuietHours(quietHours);
+  }, [notifications, pollingInterval, monitoredCourseIds, quietHours]);
 
   const hasChanges = useMemo(() => {
     const notificationsChanged =
@@ -196,11 +225,16 @@ export default function SettingsScreen() {
     const monitoredCoursesChanged =
       sortedDraftCourses.length !== sortedSavedCourses.length ||
       sortedDraftCourses.some((courseId, index) => courseId !== sortedSavedCourses[index]);
+    const quietHoursChanged =
+      draftQuietHours.enabled !== quietHours.enabled ||
+      draftQuietHours.start !== quietHours.start ||
+      draftQuietHours.end !== quietHours.end;
 
     return (
       notificationsChanged ||
       draftPollingInterval !== pollingInterval ||
-      monitoredCoursesChanged
+      monitoredCoursesChanged ||
+      quietHoursChanged
     );
   }, [
     draftNotifications,
@@ -209,6 +243,8 @@ export default function SettingsScreen() {
     pollingInterval,
     draftMonitoredCourseIds,
     monitoredCourseIds,
+    draftQuietHours,
+    quietHours,
   ]);
 
   const toggleDraftCourse = (courseId: number) => {
@@ -231,6 +267,11 @@ export default function SettingsScreen() {
       ...current,
       [key]: value,
     }));
+    setSyncState('idle');
+  };
+
+  const updateDraftQuietHours = (update: Partial<QuietHours>) => {
+    setDraftQuietHours((current) => ({ ...current, ...update }));
     setSyncState('idle');
   };
 
@@ -295,15 +336,28 @@ export default function SettingsScreen() {
       return;
     }
 
+    if (!isQuietHoursConfigurationValid(draftQuietHours)) {
+      openDialog({
+        tone: 'warning',
+        title: 'Jam diam belum valid',
+        message:
+          'Gunakan format 24 jam HH:mm dan pilih waktu mulai serta selesai yang berbeda, misalnya 22:00–07:00.',
+      });
+      return;
+    }
+
+    if (!token || !user) {
+      openDialog({
+        tone: 'warning',
+        title: 'Sesi tidak tersedia',
+        message: 'Silakan login ulang sebelum menyimpan pengaturan.',
+      });
+      return;
+    }
+
     try {
       setSyncState('syncing');
-      setNotification('notifyNewTask', draftNotifications.notifyNewTask);
-      setNotification('notifyDeadlineH1', draftNotifications.notifyDeadlineH1);
-      setNotification('notifyDeadlineToday', draftNotifications.notifyDeadlineToday);
-      setNotification('notifyTaskOpen', draftNotifications.notifyTaskOpen);
-      setNotification('notifyAttendance', draftNotifications.notifyAttendance);
-      setPollingInterval(draftPollingInterval);
-      setMonitoredCourseIds(draftMonitoredCourseIds);
+      const normalizedQuietHours = normalizeQuietHours(draftQuietHours);
 
       const settingsPayload = {
         notifyNewTask: draftNotifications.notifyNewTask,
@@ -313,11 +367,12 @@ export default function SettingsScreen() {
         notifyAttendance: draftNotifications.notifyAttendance,
         pollIntervalMinutes: draftPollingInterval,
         monitoredCourseIds: draftMonitoredCourseIds,
+        quietHours: normalizedQuietHours,
       };
 
       let resolvedAppUserId = user?.appUserId ?? null;
 
-      if (!resolvedAppUserId && token && user) {
+      if (!resolvedAppUserId) {
         try {
           const syncedAppUserId = await syncUserProfile({
             moodleUserId: user.id,
@@ -335,10 +390,6 @@ export default function SettingsScreen() {
         }
       }
 
-      if (!token || !user) {
-        throw new Error('Sesi login tidak tersedia.');
-      }
-
       const saveResponse = await saveUserSettings({
         moodleToken: token,
         moodleUserId: user.id,
@@ -352,38 +403,33 @@ export default function SettingsScreen() {
         await setAppUserId(saveResponse.appUserId);
       }
 
-      if (saveResponse.result === 'skipped') {
-        setSyncState('idle');
-        openDialog({
-          tone: 'success',
-          title: SETTINGS_SAVED_TITLE,
-          message: SETTINGS_SAVED_MESSAGE,
-        });
-        return;
-      }
-
-      if (saveResponse.result === 'legacy-notify-task-open') {
-        setSyncState('idle');
-        openDialog({
-          tone: 'success',
-          title: SETTINGS_SAVED_TITLE,
-          message: SETTINGS_SAVED_MESSAGE,
-        });
-        return;
-      }
+      setNotification('notifyNewTask', draftNotifications.notifyNewTask);
+      setNotification('notifyDeadlineH1', draftNotifications.notifyDeadlineH1);
+      setNotification('notifyDeadlineToday', draftNotifications.notifyDeadlineToday);
+      setNotification('notifyTaskOpen', draftNotifications.notifyTaskOpen);
+      setNotification('notifyAttendance', draftNotifications.notifyAttendance);
+      setPollingInterval(draftPollingInterval);
+      setMonitoredCourseIds(draftMonitoredCourseIds);
+      setQuietHours(normalizedQuietHours);
 
       setSyncState('idle');
       openDialog({
         tone: 'success',
         title: SETTINGS_SAVED_TITLE,
-        message: SETTINGS_SAVED_MESSAGE,
+        message:
+          saveResponse.result === 'skipped'
+            ? 'Pengaturan disimpan di perangkat ini. Sinkronisasi server belum dikonfigurasi.'
+            : SETTINGS_SAVED_MESSAGE,
       });
-    } catch {
+    } catch (error) {
       setSyncState('idle');
       openDialog({
-        tone: 'success',
-        title: SETTINGS_SAVED_TITLE,
-        message: SETTINGS_SAVED_MESSAGE,
+        tone: 'warning',
+        title: 'Pengaturan belum tersimpan',
+        message:
+          error instanceof Error && error.message
+            ? `${error.message} Perubahan Anda tetap ada di halaman ini.`
+            : 'Coba lagi setelah koneksi ke SUNAN dan layanan sinkronisasi tersedia. Perubahan Anda tetap ada di halaman ini.',
       });
     }
   };
@@ -481,7 +527,13 @@ export default function SettingsScreen() {
                       { color: ACCOUNT_CARD_PALETTE.accent },
                     ]}
                   >
-                    {user?.fullname?.charAt(0)?.toUpperCase() ?? '?'}
+                    {getAvatarInitial({
+                      fullname: user?.fullname,
+                      firstname: user?.firstname,
+                      lastname: user?.lastname,
+                      nim: user?.nim,
+                      username: user?.username,
+                    })}
                   </Text>
                 </View>
               )}
@@ -637,6 +689,66 @@ export default function SettingsScreen() {
               />
             </View>
           ))}
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+          <SettingSwitchRow
+            icon="moon-o"
+            label="Jam diam"
+            value={draftQuietHours.enabled}
+            onValueChange={(enabled) => updateDraftQuietHours({ enabled })}
+          />
+          {draftQuietHours.enabled ? (
+            <View style={styles.quietHoursStack}>
+              <Text style={[styles.quietHoursHint, { color: colors.textSecondary }]}>
+                Notifikasi yang masuk pada rentang ini ditunda sampai jam selesai. Waktu memakai WIB (Asia/Jakarta).
+              </Text>
+              <View style={styles.timeRow}>
+                <View style={styles.timeInputGroup}>
+                  <Text style={[styles.timeFieldLabel, { color: colors.textSecondary }]}>Mulai</Text>
+                  <TextInput
+                    value={draftQuietHours.start}
+                    onChangeText={(start) => updateDraftQuietHours({ start })}
+                    placeholder="22:00"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="numbers-and-punctuation"
+                    maxLength={5}
+                    accessibilityLabel="Jam mulai jam diam"
+                    style={[
+                      styles.timeInput,
+                      {
+                        color: colors.textPrimary,
+                        backgroundColor: colors.bgCardHover,
+                        borderColor: colors.borderSubtle,
+                      },
+                    ]}
+                  />
+                </View>
+                <View style={styles.timeInputGroup}>
+                  <Text style={[styles.timeFieldLabel, { color: colors.textSecondary }]}>Selesai</Text>
+                  <TextInput
+                    value={draftQuietHours.end}
+                    onChangeText={(end) => updateDraftQuietHours({ end })}
+                    placeholder="07:00"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="numbers-and-punctuation"
+                    maxLength={5}
+                    accessibilityLabel="Jam selesai jam diam"
+                    style={[
+                      styles.timeInput,
+                      {
+                        color: colors.textPrimary,
+                        backgroundColor: colors.bgCardHover,
+                        borderColor: colors.borderSubtle,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            </View>
+          ) : null}
         </SectionCard>
 
         <SectionCard
@@ -1432,6 +1544,14 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     fontSize: 14,
     fontWeight: '600',
+  },
+  quietHoursStack: {
+    gap: 10,
+    paddingTop: 2,
+  },
+  quietHoursHint: {
+    fontSize: 12.5,
+    lineHeight: 18,
   },
   loadingRow: {
     flexDirection: 'row',

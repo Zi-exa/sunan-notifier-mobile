@@ -12,6 +12,7 @@ type TaskCardProps = {
   task: AssignmentItem;
   onPress?: (task: AssignmentItem) => void;
   detailLabel?: string;
+  showPreview?: boolean;
 };
 
 const STATUS_BADGE_VARIANT: Record<
@@ -70,7 +71,7 @@ function buildTaskPreview(intro: string | undefined) {
   return `${compact.slice(0, maxLength).trimEnd()}...`;
 }
 
-export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
+export function TaskCard({ task, onPress, detailLabel, showPreview = true }: TaskCardProps) {
   const { colors } = useTheme();
   const statusVariant = STATUS_BADGE_VARIANT[task.status];
   const statusLabel = STATUS_BADGE_LABEL[task.status];
@@ -79,7 +80,7 @@ export function TaskCard({ task, onPress, detailLabel }: TaskCardProps) {
   const openBadge = getOpenBadge(task.openDate);
   const showDetailAction = Boolean(detailLabel);
   const useThreeColumnTiles = task.openDate != null && task.openDate > 0;
-  const preview = buildTaskPreview(task.intro);
+  const preview = showPreview ? buildTaskPreview(task.intro) : undefined;
 
   const metaTiles: React.ReactElement<React.ComponentProps<typeof CardInfoTile>>[] = [
     <CardInfoTile

@@ -4,6 +4,7 @@ import { CONFIG } from '@/lib/config';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { getAuthenticatedMoodleFileUrl, requestMoodleTokenPayload, getSiteInfo } from '@/lib/moodle/client';
 import { cancelAllScheduledSunanNotifications } from '@/lib/notifications';
+import { resolveFullname } from '@/lib/utils/displayName';
 import { getSecureItem, removeSecureItem, setSecureItem } from '@/lib/storage/secureStore';
 import { useNotificationDedupeStore } from '@/lib/stores/notificationDedupeStore';
 import { deactivateDevicePushToken, syncUserProfile } from '@/lib/supabase/repositories';
@@ -13,6 +14,8 @@ export type AuthUser = {
   nim: string;
   username: string;
   fullname: string;
+  firstname?: string | null;
+  lastname?: string | null;
   siteUrl: string;
   pictureUrl?: string;
   appUserId?: string | null;
@@ -41,6 +44,7 @@ type AuthState = {
     options?: { rememberCredentials?: boolean }
   ) => Promise<void>;
   setAppUserId: (appUserId: string | null) => Promise<void>;
+  refreshProfile: () => Promise<void>;
   expireSession: (reason?: string) => Promise<void>;
   clearError: () => void;
   clearLogoutNotice: () => void;
@@ -156,7 +160,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         id: siteInfo.userid,
         nim: normalizedNim,
         username: siteInfo.username,
-        fullname: siteInfo.fullname,
+        fullname: resolveFullname({
+          fullname: siteInfo.fullname,
+          firstname: siteInfo.firstname,
+          lastname: siteInfo.lastname,
+          nim: normalizedNim,
+          username: siteInfo.username,
+        }) || siteInfo.fullname,
+        firstname: siteInfo.firstname ?? null,
+        lastname: siteInfo.lastname ?? null,
         siteUrl: siteInfo.siteurl,
         pictureUrl: getAuthenticatedMoodleFileUrl(token, siteInfo.userpictureurl, siteInfo.siteurl),
       };
@@ -166,7 +178,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         appUserId = await syncUserProfile({
           moodleUserId: siteInfo.userid,
           nim: normalizedNim,
-          fullname: siteInfo.fullname,
+          fullname: baseUser.fullname,
           moodleToken: token,
         });
       } catch {
@@ -237,6 +249,50 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     );
 
     set({ user: nextUser });
+  },
+  refreshProfile: async () => {
+    const { token, privateToken, user } = get();
+
+    if (!token || !user) {
+      return;
+    }
+
+    try {
+      const siteInfo = await getSiteInfo(token);
+      const resolved = resolveFullname({
+        fullname: siteInfo.fullname,
+        firstname: siteInfo.firstname,
+        lastname: siteInfo.lastname,
+        nim: user.nim,
+        username: siteInfo.username,
+      });
+
+      const nextUser: AuthUser = {
+        ...user,
+        username: siteInfo.username || user.username,
+        fullname: resolved || user.fullname,
+        firstname: siteInfo.firstname ?? user.firstname ?? null,
+        lastname: siteInfo.lastname ?? user.lastname ?? null,
+        pictureUrl: getAuthenticatedMoodleFileUrl(
+          token,
+          siteInfo.userpictureurl,
+          siteInfo.siteurl
+        ),
+      };
+
+      await setSecureItem(
+        SECURE_KEYS.authSession,
+        JSON.stringify({
+          token,
+          privateToken: privateToken ?? undefined,
+          user: nextUser,
+        })
+      );
+
+      set({ user: nextUser });
+    } catch {
+      // Silent: display layer already falls back to "Mahasiswa" instead of NIM.
+    }
   },
   expireSession: async (reason = 'Silakan login lagi untuk melanjutkan.') => {
     await cancelAllScheduledSunanNotifications();

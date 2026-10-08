@@ -129,7 +129,6 @@ export default function TaskDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.headerCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
-          <View style={[styles.accentBar, { backgroundColor: statusColor }]} />
           <View style={styles.headerBody}>
             <Text style={[styles.course, { color: colors.textSecondary }]}>{task.courseName}</Text>
             <View style={[styles.activityBadge, { backgroundColor: isQuizTask ? colors.purpleDim : colors.accentDim }]}>
@@ -341,8 +340,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.2,
   },
-  headerCard: { borderRadius: Radius.lg, borderWidth: 1, overflow: 'hidden', ...Shadow.card },
-  accentBar: { height: 4, width: '100%' },
+  headerCard: { borderRadius: Radius.lg, borderWidth: 1, ...Shadow.card },
   headerBody: { padding: 16, gap: 6 },
   course: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   activityBadge: { alignSelf: 'flex-start', borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 3 },

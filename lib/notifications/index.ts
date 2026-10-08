@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import { LogBox, Platform } from 'react-native';
 import { AssignmentItem, NotificationKind } from '@/types/moodle';
+import { deferNotificationForQuietHours, type QuietHours } from '@/lib/utils/quietHours';
 
 const EXPO_GO_PUSH_ANDROID_WARNING =
   'expo-notifications: Android Push notifications (remote notifications) functionality provided by expo-notifications was removed from Expo Go with the release of SDK 53. Use a development build instead of Expo Go. Read more at https://docs.expo.dev/develop/development-builds/introduction/.';
@@ -364,6 +365,7 @@ export async function scheduleTaskLocalNotification(
   options?: {
     triggerDate?: Date;
     identifier?: string;
+    quietHours?: QuietHours;
   }
 ): Promise<string | null> {
   const ready = await ensureLocalNotificationsReadyAsync();
@@ -372,7 +374,8 @@ export async function scheduleTaskLocalNotification(
   }
 
   const Notifications = ensureNotificationHandlerConfigured();
-  const triggerDate = options?.triggerDate ?? buildScheduleDate(kind, task.dueDate);
+  const intendedTriggerDate = options?.triggerDate ?? buildScheduleDate(kind, task.dueDate);
+  const triggerDate = deferNotificationForQuietHours(intendedTriggerDate, options?.quietHours);
 
   if (triggerDate.getTime() <= Date.now()) {
     return null;
@@ -514,6 +517,7 @@ export async function sendImmediateAttendanceNotification(params: {
   >;
   eventId: number;
   identifier?: string;
+  quietHours?: QuietHours;
 }): Promise<boolean> {
   try {
     const ready = await ensureLocalNotificationsReadyAsync();
@@ -522,6 +526,9 @@ export async function sendImmediateAttendanceNotification(params: {
     }
 
     const Notifications = ensureNotificationHandlerConfigured();
+    const triggerDate = deferNotificationForQuietHours(new Date(), params.quietHours);
+    const shouldDefer = triggerDate.getTime() > Date.now() + 500;
+
     await Notifications.scheduleNotificationAsync({
       identifier: params.identifier,
       content: {
@@ -532,10 +539,15 @@ export async function sendImmediateAttendanceNotification(params: {
           attendanceEventId: params.eventId,
         } satisfies NotificationNavigationPayload,
       },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: 1,
-      },
+      trigger: shouldDefer
+        ? {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: triggerDate,
+          }
+        : {
+            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+            seconds: 1,
+          },
     });
     return true;
   } catch {
@@ -554,10 +566,12 @@ export async function scheduleAttendanceLocalNotification(params: {
   eventId: number;
   triggerDate: Date;
   identifier?: string;
+  quietHours?: QuietHours;
 }): Promise<string | null> {
   try {
     const ready = await ensureLocalNotificationsReadyAsync();
-    if (!ready || params.triggerDate.getTime() <= Date.now()) {
+    const triggerDate = deferNotificationForQuietHours(params.triggerDate, params.quietHours);
+    if (!ready || triggerDate.getTime() <= Date.now()) {
       return null;
     }
 
@@ -574,7 +588,7 @@ export async function scheduleAttendanceLocalNotification(params: {
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: params.triggerDate,
+        date: triggerDate,
       },
     });
   } catch {
@@ -589,6 +603,7 @@ export async function sendImmediateTaskNotification(params: {
   kind: Extract<NotificationKind, 'task_open' | 'task_closing'>;
   taskId: number;
   identifier?: string;
+  quietHours?: QuietHours;
 }): Promise<boolean> {
   try {
     const ready = await ensureLocalNotificationsReadyAsync();
@@ -597,6 +612,9 @@ export async function sendImmediateTaskNotification(params: {
     }
 
     const Notifications = ensureNotificationHandlerConfigured();
+    const triggerDate = deferNotificationForQuietHours(new Date(), params.quietHours);
+    const shouldDefer = triggerDate.getTime() > Date.now() + 500;
+
     await Notifications.scheduleNotificationAsync({
       identifier: params.identifier,
       content: {
@@ -607,10 +625,15 @@ export async function sendImmediateTaskNotification(params: {
           kind: params.kind,
         } satisfies NotificationNavigationPayload,
       },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: 1,
-      },
+      trigger: shouldDefer
+        ? {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: triggerDate,
+          }
+        : {
+            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+            seconds: 1,
+          },
     });
     return true;
   } catch {

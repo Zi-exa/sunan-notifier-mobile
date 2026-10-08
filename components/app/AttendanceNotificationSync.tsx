@@ -40,6 +40,7 @@ function toLocalDateKeyFromUnix(unixSeconds: number): string {
 export function AttendanceNotificationSync() {
   const notifyAttendance = useSettingsStore((state) => state.notifications.notifyAttendance);
   const monitoredCourseIds = useSettingsStore((state) => state.monitoredCourseIds);
+  const quietHours = useSettingsStore((state) => state.quietHours);
   const pushStatus = usePushTokenSyncStore((state) => state.status);
   const attendanceQuery = useAttendanceSessionsQuery();
   const dedupeHydrated = useNotificationDedupeStore((state) => state.hydrated);
@@ -118,6 +119,7 @@ export function AttendanceNotificationSync() {
             eventId: attendance.eventId,
             triggerDate: new Date(h1TriggerUnix * 1000),
             identifier: reminderDayKey,
+            quietHours,
           }).then((notificationId) => {
             if (notificationId) {
               markKey(reminderDayKey);
@@ -139,6 +141,7 @@ export function AttendanceNotificationSync() {
             eventId: attendance.eventId,
             triggerDate: new Date(preopenTriggerUnix * 1000),
             identifier: reminderHourKey,
+            quietHours,
           }).then((notificationId) => {
             if (notificationId) {
               markKey(reminderHourKey);
@@ -156,6 +159,7 @@ export function AttendanceNotificationSync() {
             eventId: attendance.eventId,
             triggerDate: new Date(attendance.startsAt * 1000),
             identifier: key,
+            quietHours,
           }).then((notificationId) => {
             if (notificationId) {
               markKey(key);
@@ -177,6 +181,7 @@ export function AttendanceNotificationSync() {
             body: `${attendance.title} (${attendance.courseName}) dibuka besok. Siapkan absensi Anda.`,
             kind: 'attendance_h1',
             eventId: attendance.eventId,
+            quietHours,
           }).then((didSchedule) => {
             if (didSchedule) {
               markKey(reminderDayKey);
@@ -198,6 +203,7 @@ export function AttendanceNotificationSync() {
             body: `${attendance.title} (${attendance.courseName}) dibuka 1 jam lagi.`,
             kind: 'attendance_preopen',
             eventId: attendance.eventId,
+            quietHours,
           }).then((didSchedule) => {
             if (didSchedule) {
               markKey(reminderHourKey);
@@ -231,6 +237,7 @@ export function AttendanceNotificationSync() {
           eventId: attendance.eventId,
           triggerDate: new Date(closingTriggerUnix * 1000),
           identifier: closingKey,
+          quietHours,
         }).then((notificationId) => {
           if (notificationId) {
             markKey(closingKey);
@@ -257,6 +264,7 @@ export function AttendanceNotificationSync() {
             kind: 'attendance_open',
             eventId: attendance.eventId,
             identifier: key,
+            quietHours,
           }).then((didSchedule) => {
             if (didSchedule) {
               markKey(key);
@@ -287,6 +295,7 @@ export function AttendanceNotificationSync() {
             kind: 'attendance_closing',
             eventId: attendance.eventId,
             identifier: closingKey,
+            quietHours,
           }).then((didSchedule) => {
             if (didSchedule) {
               markKey(closingKey);
@@ -305,6 +314,7 @@ export function AttendanceNotificationSync() {
     notifyAttendance,
     pruneOlderThan,
     pushStatus,
+    quietHours,
   ]);
 
   return null;

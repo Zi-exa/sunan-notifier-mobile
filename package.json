@@ -19,6 +19,7 @@
     "build:local:apk": "npm run prebuild:android:production && cd android && gradlew.bat app:assembleRelease",
     "build:local:aab": "npm run prebuild:android:production && cd android && gradlew.bat app:bundleRelease",
     "typecheck": "tsc --noEmit",
+    "test:notification-policy": "node scripts/test-notification-policy.mjs",
     "lint": "expo lint",
     "build:apk": "npx eas build --platform android --profile preview",
     "build:aab": "npx eas build --platform android --profile production"

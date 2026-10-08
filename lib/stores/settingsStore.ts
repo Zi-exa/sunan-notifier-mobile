@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { PollingInterval } from '@/lib/config';
 import { ThemeMode } from '@/components/Redesign/theme';
 import type { RemoteUserSettings } from '@/lib/supabase/repositories';
+import { DEFAULT_QUIET_HOURS, normalizeQuietHours, type QuietHours } from '@/lib/utils/quietHours';
 
 export type NotificationSettings = {
   notifyNewTask: boolean;
@@ -18,12 +19,14 @@ type SettingsState = {
   notifications: NotificationSettings;
   pollingInterval: PollingInterval;
   monitoredCourseIds: number[];
+  quietHours: QuietHours;
   themeMode: ThemeMode;
   setHydrated: (value: boolean) => void;
   setNotification: (key: keyof NotificationSettings, value: boolean) => void;
   setPollingInterval: (value: PollingInterval) => void;
   toggleCourse: (courseId: number) => void;
   setMonitoredCourseIds: (courseIds: number[]) => void;
+  setQuietHours: (quietHours: QuietHours) => void;
   setThemeMode: (mode: ThemeMode) => void;
   applyRemoteSettings: (settings: RemoteUserSettings) => void;
 };
@@ -41,6 +44,7 @@ export const useSettingsStore = create<SettingsState>()(
       },
       pollingInterval: 15,
       monitoredCourseIds: [],
+      quietHours: DEFAULT_QUIET_HOURS,
       themeMode: 'system' as ThemeMode,
       setHydrated: (value) => set({ hydrated: value }),
       setNotification: (key, value) =>
@@ -66,6 +70,7 @@ export const useSettingsStore = create<SettingsState>()(
           };
         }),
       setMonitoredCourseIds: (courseIds) => set({ monitoredCourseIds: courseIds }),
+      setQuietHours: (quietHours) => set({ quietHours }),
       setThemeMode: (mode) => set({ themeMode: mode }),
       applyRemoteSettings: (settings) =>
         set((state) => ({
@@ -81,6 +86,7 @@ export const useSettingsStore = create<SettingsState>()(
           },
           pollingInterval: settings.pollIntervalMinutes,
           monitoredCourseIds: settings.monitoredCourseIds,
+          quietHours: normalizeQuietHours(settings.quietHours),
         })),
     }),
     {
@@ -93,6 +99,7 @@ export const useSettingsStore = create<SettingsState>()(
         notifications: state.notifications,
         pollingInterval: state.pollingInterval,
         monitoredCourseIds: state.monitoredCourseIds,
+        quietHours: state.quietHours,
         themeMode: state.themeMode,
       }),
     }

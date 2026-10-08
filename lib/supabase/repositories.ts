@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { POLLING_INTERVAL_OPTIONS } from '@/lib/config';
 import type { PollingInterval } from '@/lib/config';
 import { supabase } from '@/lib/supabase/client';
+import { normalizeQuietHours, type QuietHours } from '@/lib/utils/quietHours';
 
 const DEVICE_KEY_STORAGE_KEY = 'sunan.device.key';
 
@@ -21,10 +22,12 @@ export type UserSettingsInput = {
   notifyAttendance: boolean;
   pollIntervalMinutes: PollingInterval;
   monitoredCourseIds: number[];
+  quietHours: QuietHours;
 };
 
-export type RemoteUserSettings = Omit<UserSettingsInput, 'notifyTaskOpen'> & {
+export type RemoteUserSettings = Omit<UserSettingsInput, 'notifyTaskOpen' | 'quietHours'> & {
   notifyTaskOpen?: boolean;
+  quietHours?: Partial<QuietHours> | null;
 };
 
 export type SaveUserSettingsResult = 'full' | 'legacy-notify-task-open' | 'skipped';
@@ -107,6 +110,15 @@ function coerceRemoteSettings(data: Record<string, unknown>): RemoteUserSettings
           .map((value) => Number(value))
           .filter((value) => Number.isFinite(value))
       : [],
+    quietHours: normalizeQuietHours(
+      data.quietHours && typeof data.quietHours === 'object'
+        ? (data.quietHours as Partial<QuietHours>)
+        : {
+            enabled: data.quietHoursEnabled === true,
+            start: typeof data.quietHoursStart === 'string' ? data.quietHoursStart : undefined,
+            end: typeof data.quietHoursEnd === 'string' ? data.quietHoursEnd : undefined,
+          }
+    ),
   };
 }
 

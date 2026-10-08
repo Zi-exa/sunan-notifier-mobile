@@ -29,6 +29,7 @@ export function TaskNotificationSync() {
   const notifyDeadlineToday = useSettingsStore((state) => state.notifications.notifyDeadlineToday);
   const notifyTaskOpen = useSettingsStore((state) => state.notifications.notifyTaskOpen);
   const monitoredCourseIds = useSettingsStore((state) => state.monitoredCourseIds);
+  const quietHours = useSettingsStore((state) => state.quietHours);
   const pushStatus = usePushTokenSyncStore((state) => state.status);
   const assignmentsQuery = useAssignmentsQuery();
   const dedupeHydrated = useNotificationDedupeStore((state) => state.hydrated);
@@ -112,7 +113,10 @@ export function TaskNotificationSync() {
         const key = `task-new-${task.id}-${task.openDate ?? 0}-${task.dueDate}`;
         if (taskDiscoveryBaselineSeeded && !hasKey(key) && !pendingKeysRef.current.has(key)) {
           pendingKeysRef.current.add(key);
-          void scheduleTaskLocalNotification(task, 'new_task', { identifier: key }).then((notificationId) => {
+          void scheduleTaskLocalNotification(task, 'new_task', {
+            identifier: key,
+            quietHours,
+          }).then((notificationId) => {
             if (notificationId) {
               markKey(key);
             }
@@ -128,7 +132,10 @@ export function TaskNotificationSync() {
           const key = `task-deadline-h1-${task.id}-${task.dueDate}`;
           if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
             pendingKeysRef.current.add(key);
-            void scheduleTaskLocalNotification(task, 'deadline_h1', { identifier: key }).then((notificationId) => {
+            void scheduleTaskLocalNotification(task, 'deadline_h1', {
+              identifier: key,
+              quietHours,
+            }).then((notificationId) => {
               if (notificationId) {
                 markKey(key);
               }
@@ -141,7 +148,10 @@ export function TaskNotificationSync() {
           const key = `task-deadline-today-${task.id}-${task.dueDate}`;
           if (!hasKey(key) && !pendingKeysRef.current.has(key)) {
             pendingKeysRef.current.add(key);
-            void scheduleTaskLocalNotification(task, 'deadline_today', { identifier: key }).then((notificationId) => {
+            void scheduleTaskLocalNotification(task, 'deadline_today', {
+              identifier: key,
+              quietHours,
+            }).then((notificationId) => {
               if (notificationId) {
                 markKey(key);
               }
@@ -163,6 +173,7 @@ export function TaskNotificationSync() {
             void scheduleTaskLocalNotification(task, 'task_open', {
               triggerDate: new Date(task.openDate * 1000),
               identifier: key,
+              quietHours,
             }).then((notificationId) => {
               if (notificationId) {
                 markKey(key);
@@ -180,6 +191,7 @@ export function TaskNotificationSync() {
               kind: 'task_open',
               taskId: task.id,
               identifier: key,
+              quietHours,
             }).then((didSchedule) => {
               if (didSchedule) {
                 markKey(key);
@@ -219,6 +231,7 @@ export function TaskNotificationSync() {
                 body: `${task.name} (${task.courseName}) akan ditutup dalam ${minutesLeft} menit. Segera kirim tugas Anda.`,
                 kind: 'task_closing',
                 taskId: task.id,
+                quietHours,
               }).then((didSchedule) => {
                 if (didSchedule) {
                   markKey(key);
@@ -226,7 +239,10 @@ export function TaskNotificationSync() {
                 pendingKeysRef.current.delete(key);
               });
             } else {
-              void scheduleTaskLocalNotification(task, 'task_closing', { identifier: key }).then((notificationId) => {
+              void scheduleTaskLocalNotification(task, 'task_closing', {
+                identifier: key,
+                quietHours,
+              }).then((notificationId) => {
                 if (notificationId) {
                   markKey(key);
                 }
@@ -249,6 +265,7 @@ export function TaskNotificationSync() {
     notifyTaskOpen,
     pruneOlderThan,
     pushStatus,
+    quietHours,
     seedTaskDiscoveryBaseline,
     taskDiscoveryBaselineSeeded,
   ]);
