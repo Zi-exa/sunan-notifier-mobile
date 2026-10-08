@@ -12,6 +12,7 @@ export type NotificationSettings = {
   notifyDeadlineToday: boolean;
   notifyTaskOpen: boolean;
   notifyAttendance: boolean;
+  notifyMateriBaru: boolean;
 };
 
 type SettingsState = {
@@ -41,6 +42,7 @@ export const useSettingsStore = create<SettingsState>()(
         notifyDeadlineToday: true,
         notifyTaskOpen: true,
         notifyAttendance: true,
+        notifyMateriBaru: true,
       },
       pollingInterval: 15,
       monitoredCourseIds: [],
@@ -83,6 +85,7 @@ export const useSettingsStore = create<SettingsState>()(
                 ? settings.notifyTaskOpen
                 : state.notifications.notifyTaskOpen,
             notifyAttendance: settings.notifyAttendance,
+            notifyMateriBaru: settings.notifyMateriBaru !== false,
           },
           pollingInterval: settings.pollIntervalMinutes,
           monitoredCourseIds: settings.monitoredCourseIds,

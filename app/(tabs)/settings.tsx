@@ -78,6 +78,11 @@ const NOTIFICATION_OPTIONS: {
     label: 'Absensi',
     icon: 'check-square-o',
   },
+  {
+    key: 'notifyMateriBaru',
+    label: 'Materi baru',
+    icon: 'book',
+  },
 ];
 
 type SettingsSectionKey = 'theme' | 'sync' | 'notifications' | 'courses' | 'about';
@@ -218,7 +223,8 @@ export default function SettingsScreen() {
       draftNotifications.notifyDeadlineH1 !== notifications.notifyDeadlineH1 ||
       draftNotifications.notifyDeadlineToday !== notifications.notifyDeadlineToday ||
       draftNotifications.notifyTaskOpen !== notifications.notifyTaskOpen ||
-      draftNotifications.notifyAttendance !== notifications.notifyAttendance;
+      draftNotifications.notifyAttendance !== notifications.notifyAttendance ||
+      draftNotifications.notifyMateriBaru !== notifications.notifyMateriBaru;
 
     const sortedDraftCourses = [...draftMonitoredCourseIds].sort((a, b) => a - b);
     const sortedSavedCourses = [...monitoredCourseIds].sort((a, b) => a - b);
@@ -365,6 +371,7 @@ export default function SettingsScreen() {
         notifyDeadlineToday: draftNotifications.notifyDeadlineToday,
         notifyTaskOpen: draftNotifications.notifyTaskOpen,
         notifyAttendance: draftNotifications.notifyAttendance,
+        notifyMateriBaru: draftNotifications.notifyMateriBaru,
         pollIntervalMinutes: draftPollingInterval,
         monitoredCourseIds: draftMonitoredCourseIds,
         quietHours: normalizedQuietHours,
@@ -408,6 +415,7 @@ export default function SettingsScreen() {
       setNotification('notifyDeadlineToday', draftNotifications.notifyDeadlineToday);
       setNotification('notifyTaskOpen', draftNotifications.notifyTaskOpen);
       setNotification('notifyAttendance', draftNotifications.notifyAttendance);
+      setNotification('notifyMateriBaru', draftNotifications.notifyMateriBaru);
       setPollingInterval(draftPollingInterval);
       setMonitoredCourseIds(draftMonitoredCourseIds);
       setQuietHours(normalizedQuietHours);

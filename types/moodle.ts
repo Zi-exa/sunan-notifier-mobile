@@ -163,4 +163,5 @@ export type NotificationKind =
   | 'attendance_h1'
   | 'attendance_preopen'
   | 'attendance_open'
-  | 'attendance_closing';
+  | 'attendance_closing'
+  | 'materi_baru';

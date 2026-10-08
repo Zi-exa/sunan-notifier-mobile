@@ -20,6 +20,7 @@ export type UserSettingsInput = {
   notifyDeadlineToday: boolean;
   notifyTaskOpen: boolean;
   notifyAttendance: boolean;
+  notifyMateriBaru: boolean;
   pollIntervalMinutes: PollingInterval;
   monitoredCourseIds: number[];
   quietHours: QuietHours;
@@ -102,6 +103,7 @@ function coerceRemoteSettings(data: Record<string, unknown>): RemoteUserSettings
     notifyTaskOpen:
       typeof data.notifyTaskOpen === 'boolean' ? data.notifyTaskOpen : undefined,
     notifyAttendance: Boolean(data.notifyAttendance),
+    notifyMateriBaru: data.notifyMateriBaru !== false,
     pollIntervalMinutes: POLLING_INTERVAL_OPTIONS.includes(pollIntervalMinutes as PollingInterval)
       ? (pollIntervalMinutes as PollingInterval)
       : 15,

@@ -25,6 +25,7 @@ import {
   getLastNotificationNavigationPayloadAsync,
   registerForPushNotificationsDetailedAsync,
 } from '@/lib/notifications';
+import { openSunanLink } from '@/lib/moodle/openSunanLink';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useNotificationDedupeStore } from '@/lib/stores/notificationDedupeStore';
 import { usePushTokenSyncStore } from '@/lib/stores/pushTokenSyncStore';
@@ -184,7 +185,7 @@ function AppBootstrap() {
     const buildPayloadKey = (
       payload: NonNullable<Awaited<ReturnType<typeof getLastNotificationNavigationPayloadAsync>>>
     ) =>
-      `${payload.kind ?? 'unknown'}:${payload.taskId ?? 'na'}:${payload.attendanceEventId ?? 'na'}`;
+      `${payload.kind ?? 'unknown'}:${payload.taskId ?? 'na'}:${payload.attendanceEventId ?? 'na'}:${payload.quickLink ?? 'na'}`;
 
     const routeFromNotification = (
       payload: NonNullable<Awaited<ReturnType<typeof getLastNotificationNavigationPayloadAsync>>>
@@ -230,6 +231,16 @@ function AppBootstrap() {
 
       if (typeof payload.taskId === 'number') {
         router.push(`/task/${payload.taskId}`);
+      }
+
+      if (payload.kind === 'materi_baru' && typeof payload.quickLink === 'string') {
+        const session = useAuthStore.getState();
+        void openSunanLink({
+          url: payload.quickLink,
+          token: session.token,
+          userId: session.user?.id ?? null,
+          privateToken: session.privateToken,
+        });
       }
     };
 
@@ -288,6 +299,16 @@ function AppBootstrap() {
 
     if (typeof payload.taskId === 'number') {
       router.push(`/task/${payload.taskId}`);
+    }
+
+    if (payload.kind === 'materi_baru' && typeof payload.quickLink === 'string') {
+      const session = useAuthStore.getState();
+      void openSunanLink({
+        url: payload.quickLink,
+        token: session.token,
+        userId: session.user?.id ?? null,
+        privateToken: session.privateToken,
+      });
     }
   }, [router, status]);
 

@@ -2,7 +2,7 @@
   "expo": {
     "name": "SUNAN Notifier",
     "slug": "sunan-notifier",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -35,7 +35,7 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE"
       ],
-      "versionCode": 2,
+      "versionCode": 3,
       "package": "id.umk.sunannotifier",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
