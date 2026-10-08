@@ -1,4 +1,6 @@
 import Constants from 'expo-constants';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as IntentLauncher from 'expo-intent-launcher';
 import * as Linking from 'expo-linking';
 import * as Updates from 'expo-updates';
 import { Platform } from 'react-native';
@@ -210,6 +212,51 @@ export async function checkForRemoteApkUpdateAsync(): Promise<RemoteApkUpdateMan
 
 export async function openRemoteApkUpdateUrl(apkUrl: string): Promise<void> {
   await Linking.openURL(apkUrl);
+}
+
+export type ApkDownloadProgress = {
+  written: number;
+  total: number;
+};
+
+/**
+ * Unduh APK update lalu buka installer sistem Android, semua dari aplikasi.
+ * Sistem tetap meminta persetujuan install sekali (izin "install unknown apps").
+ */
+export async function downloadAndInstallApkUpdateAsync(
+  apkUrl: string,
+  onProgress?: (progress: ApkDownloadProgress) => void
+): Promise<void> {
+  if (Platform.OS !== 'android') {
+    throw new Error('Install APK dalam aplikasi hanya didukung di Android.');
+  }
+
+  const cacheDir = FileSystem.cacheDirectory;
+  if (!cacheDir) {
+    throw new Error('Penyimpanan unduhan tidak tersedia.');
+  }
+
+  const fileUri = `${cacheDir}sunan-notifier-update.apk`;
+  await FileSystem.deleteAsync(fileUri, { idempotent: true });
+
+  const task = FileSystem.createDownloadResumable(apkUrl, fileUri, {}, (data) => {
+    onProgress?.({
+      written: data.totalBytesWritten,
+      total: data.totalBytesExpectedToWrite,
+    });
+  });
+
+  const result = await task.downloadAsync();
+  if (!result || result.status !== 200) {
+    throw new Error(`Unduhan APK gagal (status ${result?.status ?? 'unknown'}).`);
+  }
+
+  const contentUri = await FileSystem.getContentUriAsync(result.uri);
+  await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+    data: contentUri,
+    flags: 1,
+    type: 'application/vnd.android.package-archive',
+  });
 }
 
 function isExpoGoRuntime(): boolean {

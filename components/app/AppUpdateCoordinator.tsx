@@ -6,8 +6,10 @@ import {
   buildPostUpdateNoticeForApk,
   buildPostUpdateNoticeForEas,
   checkForAvailableAppUpdateAsync,
+  downloadAndInstallApkUpdateAsync,
   extractUpdateNotesFromManifest,
   getCurrentAppVersion,
+  openRemoteApkUpdateUrl,
   type RemoteApkUpdateManifest,
 } from '@/lib/updates';
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -21,7 +23,7 @@ type UpdateDialogErrorState = {
 };
 
 function buildRemoteApkMessage(manifest: RemoteApkUpdateManifest): string {
-  const base = `Versi ${manifest.version} sudah tersedia. Aplikasi akan membuka halaman update.`;
+  const base = `Versi ${manifest.version} sudah tersedia dan bisa dipasang langsung dari aplikasi.`;
   const notes = manifest.notes?.trim();
 
   return notes ? `${base}\n\n${notes}` : base;
@@ -56,6 +58,7 @@ export function AppUpdateCoordinator() {
   const lastActivatedNoticeRef = useRef<number | null>(null);
   const [errorDialog, setErrorDialog] = useState<UpdateDialogErrorState | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [apkDownloadPercent, setApkDownloadPercent] = useState<number | null>(null);
   const currentAppVersion = getCurrentAppVersion();
 
   const bootReady =
@@ -194,11 +197,22 @@ export function AppUpdateCoordinator() {
     if (availableUpdate.kind === 'apk') {
       const title = availableUpdate.manifest.title?.trim() || 'Versi baru tersedia';
 
+      if (apkDownloadPercent !== null) {
+        return {
+          tone: 'info' as const,
+          title: 'Mengunduh update',
+          message: `Mengunduh versi ${availableUpdate.manifest.version}... ${apkDownloadPercent}%. Tetap di halaman ini sampai unduhan selesai.`,
+          confirmLabel: `Mengunduh... ${apkDownloadPercent}%`,
+          cancelLabel: undefined,
+          dismissDisabled: true,
+        };
+      }
+
       return {
         tone: 'info' as const,
         title,
         message: buildRemoteApkMessage(availableUpdate.manifest),
-        confirmLabel: 'Buka update',
+        confirmLabel: 'Update sekarang',
         cancelLabel: availableUpdate.manifest.mandatory ? undefined : 'Nanti',
         dismissDisabled: availableUpdate.manifest.mandatory ?? false,
       };
@@ -217,7 +231,7 @@ export function AppUpdateCoordinator() {
     }
 
     return null;
-  }, [activePostUpdateNotice, availableUpdate, dialogVisible, errorDialog]);
+  }, [activePostUpdateNotice, apkDownloadPercent, availableUpdate, dialogVisible, errorDialog]);
 
   async function handleConfirm() {
     if (errorDialog) {
@@ -230,7 +244,7 @@ export function AppUpdateCoordinator() {
       return;
     }
 
-    if (!availableUpdate) {
+    if (!availableUpdate || apkDownloadPercent !== null) {
       return;
     }
 
@@ -241,8 +255,27 @@ export function AppUpdateCoordinator() {
         queuePostUpdateNotice(
           buildPostUpdateNoticeForApk(availableUpdate.manifest, currentAppVersion)
         );
-      } else {
-        queuePostUpdateNotice(
+
+        // Update besar langsung dari aplikasi: unduh + buka installer sistem.
+        // Fallback ke browser bila unduhan/install langsung gagal.
+        try {
+          setApkDownloadPercent(0);
+          await downloadAndInstallApkUpdateAsync(availableUpdate.manifest.apkUrl, (progress) => {
+            setApkDownloadPercent(
+              progress.total > 0 ? Math.min(99, Math.round((progress.written / progress.total) * 100)) : 0
+            );
+          });
+          setApkDownloadPercent(null);
+          hideDialog();
+        } catch {
+          setApkDownloadPercent(null);
+          await openRemoteApkUpdateUrl(availableUpdate.manifest.apkUrl);
+          hideDialog();
+        }
+        return;
+      }
+
+      queuePostUpdateNotice(
           buildPostUpdateNoticeForEas({
             sourceUpdateId: currentlyRunning.updateId,
             sourceCreatedAt: currentlyRunning.createdAt?.toISOString(),
@@ -256,7 +289,6 @@ export function AppUpdateCoordinator() {
               extractUpdateNotesFromManifest(nativeAvailableUpdate?.manifest),
           })
         );
-      }
 
       await applyAvailableAppUpdateAsync(availableUpdate);
       hideDialog();
@@ -267,7 +299,7 @@ export function AppUpdateCoordinator() {
         title: 'Belum bisa dibuka',
         message:
           availableUpdate.kind === 'apk'
-            ? 'Halaman update belum bisa dibuka sekarang. Coba lagi beberapa saat.'
+            ? 'Update belum bisa diunduh sekarang. Coba lagi beberapa saat.'
             : 'Pembaruan belum bisa dipasang sekarang. Tutup lalu buka lagi aplikasi ini, lalu coba lagi.',
       });
     } finally {
@@ -284,7 +316,7 @@ export function AppUpdateCoordinator() {
       confirmLabel={dialogCopy?.confirmLabel}
       cancelLabel={dialogCopy?.cancelLabel}
       dismissDisabled={dialogCopy?.dismissDisabled}
-      confirmDisabled={submitting}
+      confirmDisabled={submitting || apkDownloadPercent !== null}
       onConfirm={handleConfirm}
       onClose={() => {
         if (!submitting) {
