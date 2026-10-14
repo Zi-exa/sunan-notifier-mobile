@@ -263,6 +263,6 @@ const styles = StyleSheet.create({
   stateDescription: { fontSize: 13, lineHeight: 20, textAlign: 'center' },
   eventItem: { borderRadius: Radius.md, borderWidth: 1, padding: 12, gap: 4 },
   eventTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  eventTitle: { fontSize: 14, fontWeight: '700' },
+  eventTitle: { fontSize: 15, fontWeight: '800' },
   eventDescription: { fontSize: 13, lineHeight: 19 },
 });
