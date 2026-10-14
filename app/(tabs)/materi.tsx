@@ -303,7 +303,7 @@ export default function MateriScreen() {
                       value={formatUploadDate(getMateriDisplayIso(item))}
                       tone="accent"
                       compact
-                      style={styles.tileColumnHalf}
+                      style={styles.tileColumnDate}
                     />
                     <CardInfoTile
                       icon={modnameIcon(item.modname)}
@@ -311,7 +311,7 @@ export default function MateriScreen() {
                       value={item.files.length > 0 ? `${item.files.length} file` : 'Lihat detail'}
                       tone="muted"
                       compact
-                      style={styles.tileColumnHalf}
+                      style={styles.tileColumnCount}
                     />
                   </View>
                 </View>
@@ -592,10 +592,15 @@ const styles = StyleSheet.create({
   tileGridTwoColumn: {
     gap: 4,
   },
-  tileColumnHalf: {
+  tileColumnDate: {
+    flexBasis: '38%',
+    maxWidth: '38%',
     flexGrow: 0,
-    flexBasis: 'auto',
-    maxWidth: '70%',
+  },
+  tileColumnCount: {
+    flexBasis: '30%',
+    maxWidth: '30%',
+    flexGrow: 0,
   },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(3, 8, 20, 0.68)' },
   overlayRoot: {
