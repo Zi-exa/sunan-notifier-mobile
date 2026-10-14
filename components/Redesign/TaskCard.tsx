@@ -168,7 +168,7 @@ export function TaskCard({ task, onPress, detailLabel, showPreview = true }: Tas
         <View style={[styles.tileGrid, useThreeColumnTiles && styles.tileGridThreeColumn]}>
           {metaTiles.map((tile, index) =>
             React.cloneElement(tile, {
-              compact: useThreeColumnTiles,
+              compact: true,
               style: useThreeColumnTiles
                 ? index === 0
                   ? styles.tileColumnNarrow
