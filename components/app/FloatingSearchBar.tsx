@@ -53,6 +53,8 @@ export function FloatingSearchBar({
   const barOpacity = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
   const barTranslateY = progress.interpolate({ inputRange: [0, 1], outputRange: [14, 0] });
   const barScale = progress.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] });
+  const fabScale = progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
+  const fabOpacity = progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
 
   const toggle = () => {
     if (open) {
@@ -100,6 +102,10 @@ export function FloatingSearchBar({
         pointerEvents="box-none"
         style={[styles.fabAnchor, { right: 20, bottom: bottomOffset + SEARCH_FAB_SIZE + FAB_GAP }]}
       >
+        <Animated.View
+          pointerEvents={open ? 'none' : 'auto'}
+          style={{ opacity: fabOpacity, transform: [{ scale: fabScale }] }}
+        >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={open ? 'Tutup pencarian' : 'Cari materi'}
@@ -127,6 +133,7 @@ export function FloatingSearchBar({
             />
           ) : null}
         </Pressable>
+        </Animated.View>
       </View>
     </View>
   );
