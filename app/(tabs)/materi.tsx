@@ -21,6 +21,7 @@ import { getFloatingFilterContentPadding } from '@/components/app/floatingLayout
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { openSunanLink } from '@/lib/moodle/openSunanLink';
 import { useMateriListQuery, isMateriDisplayRecent, getMateriDisplayIso, type MateriItem } from '@/lib/queries/useMateriQuery';
+import { cleanUploaderName } from '@/lib/supabase/repositories';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { downloadAndOpenMateriFileAsync } from '@/lib/materi/files';
 
@@ -302,6 +303,11 @@ export default function MateriScreen() {
                                   .filter(Boolean)
                                   .join(' • ')}
                         </Text>
+                        {!!cleanUploaderName(file.uploader) && (
+                          <Text style={[styles.fileMeta, { color: colors.textMuted }]} numberOfLines={1}>
+                            Oleh {cleanUploaderName(file.uploader)}
+                          </Text>
+                        )}
                       </View>
                       {busy ? (
                         <ActivityIndicator size="small" color={colors.accent} />

@@ -39,7 +39,14 @@ export type MateriFileItem = {
   size: number | null;
   changedAt: number | null;
   url: string | null;
+  uploader: string | null;
 };
+
+export function cleanUploaderName(raw: string | null): string | null {
+  if (!raw) return null;
+  const cleaned = raw.trim().replace(/^\d+\s+/, '').replace(/\s+/g, ' ');
+  return cleaned || null;
+}
 
 export type MateriItem = {
   moduleId: number;
