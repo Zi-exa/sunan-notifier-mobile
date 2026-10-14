@@ -279,6 +279,12 @@ export default function MateriScreen() {
                         {item.courseName}
                       </Text>
                     </View>
+                    <View style={styles.detailLinkRow}>
+                      <Text style={[styles.detailLinkText, { color: colors.accentBright }]}>
+                        Detail
+                      </Text>
+                      <FontAwesome name="angle-right" size={16} color={colors.accentBright} />
+                    </View>
                   </View>
                   <View style={styles.heroRow}>
                     <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={2}>
@@ -540,6 +546,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     minWidth: 0,
+  },
+  detailLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  detailLinkText: {
+    fontSize: 10.5,
+    fontWeight: '700',
   },
   course: {
     flex: 1,
