@@ -9,6 +9,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import { Shadow } from '@/components/Redesign/theme';
 import { useTheme } from '@/components/Redesign/ThemeContext';
 
 export type StatSegment = {
@@ -203,6 +204,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 16,
     padding: 4,
+    ...Shadow.card,
   },
   thumb: {
     position: 'absolute',
@@ -240,6 +242,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Shadow.card,
   },
   pager: {
     height: 148,
