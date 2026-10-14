@@ -23,7 +23,7 @@ export type StatSegment = {
   alertWhenPositive?: boolean;
 };
 
-function useCountUp(target: number | string, duration = 450): string | number {
+function useCountUp(target: number | string, duration = 650, replayKey = 0): string | number {
   const [display, setDisplay] = useState<number | string>(target);
 
   useEffect(() => {
@@ -33,6 +33,7 @@ function useCountUp(target: number | string, duration = 450): string | number {
     }
 
     let raf = 0;
+    setDisplay(0);
     const startedAt = Date.now();
     const tick = () => {
       const progress = Math.min(1, (Date.now() - startedAt) / duration);
@@ -44,7 +45,7 @@ function useCountUp(target: number | string, duration = 450): string | number {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [target, duration]);
+  }, [target, duration, replayKey]);
 
   return display;
 }
@@ -63,13 +64,15 @@ function AlertDot({ color }: { color: string }) {
 function StatDetailPanel({
   segment,
   colors,
+  replayKey,
   onNavigate,
 }: {
   segment: StatSegment;
   colors: { bgCard: string; borderSubtle: string; danger: string; textPrimary: string; textSecondary: string };
+  replayKey?: number;
   onNavigate?: (target: string) => void;
 }) {
-  const displayValue = useCountUp(segment.value);
+  const displayValue = useCountUp(segment.value, 650, replayKey ?? 0);
   const isAlert = Boolean(segment.alertWhenPositive && typeof segment.value === 'number' && segment.value > 0);
 
   return (
@@ -97,9 +100,11 @@ function StatDetailPanel({
 
 export function StatSegmented({
   segments,
+  replayKey,
   onNavigate,
 }: {
   segments: StatSegment[];
+  replayKey?: number;
   onNavigate?: (target: string) => void;
 }) {
   const { colors } = useTheme();
@@ -188,7 +193,7 @@ export function StatSegmented({
         >
           {segments.map((segment) => (
             <View key={segment.key} style={styles.page} collapsable={false}>
-              <StatDetailPanel segment={segment} colors={colors} onNavigate={onNavigate} />
+              <StatDetailPanel segment={segment} colors={colors} replayKey={replayKey} onNavigate={onNavigate} />
             </View>
           ))}
         </PagerView>

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { router } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -79,6 +79,7 @@ export default function DashboardScreen() {
   const contentBottomPadding = getDockContentPadding(insets.bottom);
   const dashboardError = coursesQuery.error ?? assignmentsQuery.error ?? attendanceQuery.error;
   const [now, setNow] = useState(() => new Date());
+  const [focusTick, setFocusTick] = useState(0);
   const greeting = getTimeBasedGreeting(now);
   const dateLabel = new Intl.DateTimeFormat('id-ID', {
     weekday: 'long',
@@ -92,6 +93,13 @@ export default function DashboardScreen() {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // Putar ulang animasi angka tiap dashboard dibuka.
+  useFocusEffect(
+    useCallback(() => {
+      setFocusTick((tick) => tick + 1);
+    }, [])
+  );
 
   // Self-heal sesi lama yang fullname-nya masih NIM: refresh sekali dari Moodle.
   useEffect(() => {
@@ -232,6 +240,7 @@ export default function DashboardScreen() {
 
       {/* Statistik segmented */}
       <StatSegmented
+        replayKey={focusTick}
         segments={[
           { key: 'matkul', label: 'Matkul', value: courses.length, title: 'Mata kuliah semester ini' },
           { key: 'belum', label: 'Belum', value: pendingCount, title: 'Belum dikerjakan', target: '/tasks' },
