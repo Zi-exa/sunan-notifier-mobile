@@ -245,11 +245,13 @@ const styles = StyleSheet.create({
     ...Shadow.card,
   },
   pager: {
-    height: 148,
+    height: 172,
     marginTop: 10,
   },
   page: {
     flex: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 9,
   },
   value: {
     fontSize: 52,
