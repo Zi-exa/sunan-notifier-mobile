@@ -10,10 +10,13 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, useTheme } from '@/components/Redesign';
-import { Radius } from '@/components/Redesign/theme';
+import { Badge } from '@/components/Redesign/Badge';
+import { CardIconBubble, CardInfoTile } from '@/components/Redesign/CardInfoTile';
+import { Radius, Shadow } from '@/components/Redesign/theme';
 import { FloatingFilterMenu, type FloatingFilterOption } from '@/components/app/FloatingFilterMenu';
 import { FloatingSearchBar } from '@/components/app/FloatingSearchBar';
 import { TabScreenHeader } from '@/components/app/TabScreenHeader';
@@ -32,6 +35,18 @@ const MODNAME_ICON: Record<string, React.ComponentProps<typeof FontAwesome>['nam
   book: 'book',
   folder: 'folder-o',
 };
+
+const MODNAME_LABEL: Record<string, string> = {
+  resource: 'File',
+  url: 'Tautan',
+  page: 'Halaman',
+  book: 'Buku',
+  folder: 'Folder',
+};
+
+function modnameLabel(modname: string): string {
+  return MODNAME_LABEL[modname] ?? 'Materi';
+}
 
 function modnameIcon(modname: string): React.ComponentProps<typeof FontAwesome>['name'] {
   return MODNAME_ICON[modname] ?? 'file-o';
@@ -70,6 +85,7 @@ export function formatRelativeTime(iso: string): string {
 export default function MateriScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const params = useLocalSearchParams<{ moduleId?: string; courseId?: string }>();
   const token = useAuthStore((state) => state.token);
   const userId = useAuthStore((state) => state.user?.id ?? null);
@@ -85,6 +101,7 @@ export default function MateriScreen() {
   const contentBottomPadding = getFloatingFilterContentPadding(insets.bottom);
 
   const highlightModuleId = Number(params.moduleId);
+  const modalMaxHeight = Math.max(420, windowHeight - insets.top - insets.bottom - 48);
 
   const filterOptions = useMemo<FloatingFilterOption<string>[]>(() => {
     const map = new Map<number, string>();
@@ -244,34 +261,50 @@ export default function MateriScreen() {
               <Pressable
                 key={`${item.courseId}-${item.moduleId}`}
                 onPress={() => handleSelectMateri(item)}
-                style={[
+                android_ripple={{ color: colors.borderMuted, borderless: false }}
+                style={({ pressed }) => [
                   styles.item,
                   {
                     backgroundColor: colors.bgCard,
                     borderColor: highlighted ? colors.accent : colors.borderSubtle,
                   },
+                  pressed && styles.pressed,
                 ]}
               >
-                <View style={[styles.iconWrap, { backgroundColor: colors.accentDim }]}>
-                  <FontAwesome name={modnameIcon(item.modname)} size={20} color={colors.accent} />
-                </View>
                 <View style={styles.itemBody}>
-                  <Text style={[styles.course, { color: colors.textSecondary }]} numberOfLines={1}>
-                    {item.courseName}
-                  </Text>
-                  <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={2}>
-                    {item.moduleName}
-                  </Text>
-                  <Text style={[styles.meta, { color: colors.textMuted }]}>
-                    {formatUploadDate(getMateriDisplayIso(item))}
-                    {item.files.length > 0 ? ` • ${item.files.length} berkas` : ''}
-                  </Text>
-                </View>
-                {recent && (
-                  <View style={[styles.badge, { backgroundColor: colors.accentDim }]}>
-                    <Text style={[styles.badgeText, { color: colors.accent }]}>BARU</Text>
+                  <View style={styles.topRow}>
+                    <View style={styles.courseWrap}>
+                      <CardIconBubble icon="graduation-cap" tone="accent" size="xs" />
+                      <Text style={[styles.course, { color: colors.textSecondary }]} numberOfLines={1}>
+                        {item.courseName}
+                      </Text>
+                    </View>
                   </View>
-                )}
+                  <View style={styles.heroRow}>
+                    <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={2}>
+                      {item.moduleName}
+                    </Text>
+                    <View style={styles.heroBadges}>
+                      {recent ? <Badge variant="accent" label="BARU" showDot /> : null}
+                      <Badge variant="available" label={modnameLabel(item.modname)} />
+                    </View>
+                  </View>
+                  <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+                  <View style={styles.tileGrid}>
+                    <CardInfoTile
+                      icon="calendar-o"
+                      title="Diunggah"
+                      value={formatUploadDate(getMateriDisplayIso(item))}
+                      tone="accent"
+                    />
+                    <CardInfoTile
+                      icon={modnameIcon(item.modname)}
+                      title="Berkas"
+                      value={item.files.length > 0 ? `${item.files.length} file` : 'Lihat detail'}
+                      tone="muted"
+                    />
+                  </View>
+                </View>
               </Pressable>
             );
           })
@@ -291,45 +324,93 @@ export default function MateriScreen() {
       />
 
       <Modal visible={selected !== null} transparent animationType="fade" onRequestClose={() => setSelected(null)}>
-        <Pressable style={styles.backdrop} onPress={() => setSelected(null)} />
-        <View style={styles.modalWrap} pointerEvents="box-none">
-          <View style={[styles.modal, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
-            <Text style={[styles.modalCourse, { color: colors.textSecondary }]} numberOfLines={1}>
-              {selected?.courseName}
-            </Text>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{selected?.moduleName}</Text>
-            {!!selected && (
-              <View style={styles.modalMetaRow}>
-                <FontAwesome name="calendar-o" size={12} color={colors.textMuted} />
-                <Text style={[styles.modalMeta, { color: colors.textSecondary }]}>
-                  Diunggah {formatUploadDate(getMateriDisplayIso(selected), true)}
-                </Text>
+        <View style={styles.overlayRoot}>
+          <Pressable style={styles.backdrop} onPress={() => setSelected(null)} />
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderSubtle,
+                marginTop: insets.top + 24,
+                marginBottom: Math.max(insets.bottom + 24, 32),
+                maxHeight: modalMaxHeight,
+              },
+            ]}
+          >
+            <View style={[styles.modalHeader, { borderBottomColor: colors.borderSubtle }]}>
+              <View style={styles.headerCopy}>
+                <Text style={[styles.modalEyebrow, { color: colors.textMuted }]}>RINGKASAN</Text>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Detail Materi</Text>
               </View>
-            )}
-            {!!selected?.sectionName && (
-              <View style={styles.modalMetaRow}>
-                <FontAwesome name="folder-o" size={12} color={colors.textMuted} />
-                <Text style={[styles.modalMeta, { color: colors.textSecondary }]} numberOfLines={1}>
-                  {selected.sectionName}
-                </Text>
+              <Pressable
+                onPress={() => setSelected(null)}
+                style={({ pressed }) => [
+                  styles.closeButton,
+                  { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle },
+                  pressed && { opacity: 0.82 },
+                ]}
+              >
+                <FontAwesome name="close" size={16} color={colors.textPrimary} />
+              </Pressable>
+            </View>
+
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={[styles.headerCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+                <View style={styles.headerBody}>
+                  <Text style={[styles.course, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {selected?.courseName}
+                  </Text>
+                  <View style={styles.heroBadges}>
+                    <Badge variant="available" label={modnameLabel(selected?.modname ?? '')} />
+                    {selected && isMateriDisplayRecent(selected) ? (
+                      <Badge variant="accent" label="BARU" showDot />
+                    ) : null}
+                  </View>
+                  <Text style={[styles.detailTitle, { color: colors.textPrimary }]}>
+                    {selected?.moduleName}
+                  </Text>
+                  {!!selected && (
+                    <MateriMetaRow
+                      icon="calendar-o"
+                      label="Diunggah"
+                      value={formatUploadDate(getMateriDisplayIso(selected), true)}
+                    />
+                  )}
+                  {!!selected?.sectionName && (
+                    <MateriMetaRow icon="folder-o" label="Topik" value={selected.sectionName} />
+                  )}
+                  {!!firstUploader && (
+                    <MateriMetaRow icon="user-o" label="Dosen" value={firstUploader} />
+                  )}
+                </View>
               </View>
-            )}
-            {!!selected?.description && (
-              <Text style={[styles.modalDescription, { color: colors.textSecondary }]} numberOfLines={3}>
-                {selected.description}
-              </Text>
-            )}
-            {!!firstUploader && (
-              <View style={styles.modalMetaRow}>
-                <FontAwesome name="user-o" size={12} color={colors.textMuted} />
-                <Text style={[styles.modalMeta, { color: colors.textSecondary }]} numberOfLines={1}>
-                  {firstUploader}
-                </Text>
-              </View>
-            )}
-            {selected && selected.files.length > 0 && (
-              <View style={styles.fileList}>
-                {selected.files.slice(0, 5).map((file, index) => {
+
+              {!!selected?.description && (
+                <View style={[styles.bodyCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+                  <View style={styles.sectionLabelRow}>
+                    <FontAwesome name="align-left" size={12} color={colors.textMuted} />
+                    <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>DESKRIPSI</Text>
+                  </View>
+                  <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={3}>
+                    {selected.description}
+                  </Text>
+                </View>
+              )}
+
+              {selected && selected.files.length > 0 && (
+                <View style={[styles.bodyCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+                  <View style={styles.sectionLabelRow}>
+                    <FontAwesome name="file-o" size={12} color={colors.textMuted} />
+                    <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+                      BERKAS ({selected.files.length})
+                    </Text>
+                  </View>
+                  {selected.files.slice(0, 5).map((file, index) => {
                   const state = fileStates[index];
                   const busy = state?.status === 'busy';
                   return (
@@ -370,31 +451,48 @@ export default function MateriScreen() {
                 })}
               </View>
             )}
-            <View style={styles.modalActions}>
-              <Pressable
-                onPress={() => setSelected(null)}
-                style={[styles.modalButton, { borderColor: colors.borderSubtle }]}
-              >
-                <Text style={[styles.modalButtonText, { color: colors.textPrimary }]}>Tutup</Text>
-              </Pressable>
-              <Pressable
-                disabled={openingLink || !selected?.quickLink}
-                onPress={() => selected && void handleOpenMateri(selected)}
-                style={[
-                  styles.modalButton,
-                  styles.modalPrimary,
-                  { backgroundColor: colors.accent },
-                  (openingLink || !selected?.quickLink) && { opacity: 0.6 },
-                ]}
-              >
-                <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
-                  {openingLink ? 'Membuka...' : 'Buka di SUNAN'}
+
+            <Pressable
+              disabled={openingLink || !selected?.quickLink}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                { backgroundColor: colors.accent },
+                openingLink && { opacity: 0.68 },
+                pressed && { opacity: 0.82 },
+              ]}
+              onPress={() => selected && void handleOpenMateri(selected)}
+            >
+              <View style={styles.primaryButtonContent}>
+                <FontAwesome name="external-link" size={14} color="#FFFFFF" />
+                <Text style={styles.primaryButtonText}>
+                  {openingLink ? 'Membuka...' : 'Buka Materi di SUNAN'}
                 </Text>
-              </Pressable>
-            </View>
-          </View>
+              </View>
+            </Pressable>
+          </ScrollView>
         </View>
+      </View>
       </Modal>
+    </View>
+  );
+}
+
+type MateriMetaRowProps = {
+  icon: React.ComponentProps<typeof FontAwesome>['name'];
+  label: string;
+  value: string;
+};
+
+function MateriMetaRow({ icon, label, value }: MateriMetaRowProps) {
+  const { colors } = useTheme();
+
+  return (
+    <View style={styles.metaRow}>
+      <View style={styles.metaLabelRow}>
+        <FontAwesome name={icon} size={12} color={colors.textSecondary} />
+        <Text style={[styles.metaText, { color: colors.textSecondary }]}>{label}:</Text>
+      </View>
+      <Text style={[styles.metaText, { color: colors.textSecondary }]}>{value}</Text>
     </View>
   );
 }
@@ -412,36 +510,126 @@ const styles = StyleSheet.create({
   },
   stateTitle: { fontSize: 16, fontWeight: '700' },
   item: {
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    overflow: 'hidden',
+    ...Shadow.card,
+  },
+  pressed: {
+    opacity: 0.9,
+  },
+  itemBody: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 8,
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 6,
+  },
+  courseWrap: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderRadius: Radius.md,
-    padding: 14,
+    gap: 8,
+    minWidth: 0,
   },
-  iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+  course: {
+    flex: 1,
+    fontSize: 10.5,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.2,
+  },
+  heroRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
+  },
+  name: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '800',
+  },
+  heroBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     flexShrink: 0,
   },
-  itemBody: { flex: 1, gap: 2 },
-  course: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
-  name: { fontSize: 14, fontWeight: '700', lineHeight: 20 },
-  meta: { fontSize: 11, marginTop: 2 },
-  badge: { borderRadius: Radius.full, paddingHorizontal: 9, paddingVertical: 4, flexShrink: 0 },
-  badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  divider: {
+    height: 1,
+    opacity: 0.9,
+  },
+  tileGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(3, 8, 20, 0.68)' },
-  modalWrap: { flex: 1, justifyContent: 'center', paddingHorizontal: 24 },
-  modal: { borderWidth: 1, borderRadius: Radius.lg, padding: 18, gap: 8 },
-  modalCourse: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
-  modalTitle: { fontSize: 18, fontWeight: '800', lineHeight: 26 },
-  modalMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  modalMeta: { fontSize: 12, fontWeight: '600', flex: 1 },
-  modalDescription: { fontSize: 13, lineHeight: 20 },
-  fileList: { gap: 8, marginTop: 4 },
+  overlayRoot: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  modalCard: {
+    borderWidth: 1,
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
+    ...Shadow.card,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  headerCopy: {
+    gap: 2,
+    flexShrink: 1,
+  },
+  modalEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.3,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  modalScroll: {
+    flexGrow: 0,
+  },
+  modalScrollContent: {
+    padding: 16,
+    gap: 12,
+    paddingBottom: 18,
+  },
+  headerCard: { borderRadius: Radius.lg, borderWidth: 1, ...Shadow.card },
+  headerBody: { padding: 16, gap: 6 },
+  detailTitle: { fontSize: 22, fontWeight: '800', lineHeight: 30 },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  metaLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  metaText: { fontSize: 13 },
+  bodyCard: { borderRadius: Radius.md, borderWidth: 1, padding: 14, gap: 8, ...Shadow.subtle },
+  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sectionLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase' },
+  description: { fontSize: 14, lineHeight: 22 },
+  fileList: { gap: 8 },
   fileRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -454,14 +642,7 @@ const styles = StyleSheet.create({
   fileBody: { flex: 1, gap: 2 },
   fileName: { fontSize: 13, fontWeight: '700' },
   fileMeta: { fontSize: 11 },
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  modalButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: Radius.md,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  modalPrimary: { borderWidth: 0 },
-  modalButtonText: { fontSize: 14, fontWeight: '800' },
+  primaryButton: { borderRadius: Radius.md, paddingVertical: 14, alignItems: 'center', ...Shadow.subtle },
+  primaryButtonContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  primaryButtonText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14, letterSpacing: 0.2 },
 });
