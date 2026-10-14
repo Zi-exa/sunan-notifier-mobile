@@ -18,7 +18,7 @@ import {
   useAttendanceSessionsQuery,
   useCoursesQuery,
 } from '@/lib/queries/useMoodleQueries';
-import { isMateriRecent, useMateriListQuery } from '@/lib/queries/useMateriQuery';
+import { isMateriDisplayRecent, getMateriDisplayIso, useMateriListQuery } from '@/lib/queries/useMateriQuery';
 import { formatRelativeTime } from './materi';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
@@ -67,7 +67,7 @@ export default function DashboardScreen() {
   const overdueCount = assignmentsReady ? assignments.filter((item) => item.status === 'overdue').length : 0;
   const submittedCount = assignmentsReady ? assignments.filter((item) => item.status === 'submitted').length : 0;
   const materiItems = materiQuery.data ?? [];
-  const recentMateriCount = materiItems.filter((item) => isMateriRecent(item.updatedAt)).length;
+  const recentMateriCount = materiItems.filter((item) => isMateriDisplayRecent(item)).length;
   const latestMateri = materiItems.slice(0, 2);
   const displayName = getDisplayFirstName({
     fullname: user?.fullname,
@@ -290,10 +290,10 @@ export default function DashboardScreen() {
                   {item.moduleName}
                 </Text>
                 <Text style={[styles.materiMeta, { color: colors.textMuted }]}>
-                  {formatRelativeTime(item.updatedAt)}
+                  {formatRelativeTime(getMateriDisplayIso(item))}
                 </Text>
               </View>
-              {isMateriRecent(item.updatedAt) && (
+              {isMateriDisplayRecent(item) && (
                 <View style={[styles.materiBadge, { backgroundColor: colors.accentDim }]}>
                   <Text style={[styles.materiBadgeText, { color: colors.accent }]}>BARU</Text>
                 </View>

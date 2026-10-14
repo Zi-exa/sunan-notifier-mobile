@@ -1,25 +1,29 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   ActivityIndicator,
+  LayoutAnimation,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  UIManager,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, useTheme } from '@/components/Redesign';
 import { Radius } from '@/components/Redesign/theme';
+import { FloatingFilterMenu, type FloatingFilterOption } from '@/components/app/FloatingFilterMenu';
 import { TabScreenHeader } from '@/components/app/TabScreenHeader';
-import { getDockContentPadding } from '@/components/app/floatingLayout';
+import { getFloatingFilterContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { openSunanLink } from '@/lib/moodle/openSunanLink';
-import { useMateriListQuery, isMateriRecent, type MateriItem } from '@/lib/queries/useMateriQuery';
+import { useMateriListQuery, isMateriDisplayRecent, getMateriDisplayIso, type MateriItem } from '@/lib/queries/useMateriQuery';
 import { useAuthStore } from '@/lib/stores/authStore';
 
 const MODNAME_ICON: Record<string, React.ComponentProps<typeof FontAwesome>['name']> = {
@@ -54,25 +58,51 @@ export default function MateriScreen() {
   const privateToken = useAuthStore((state) => state.privateToken);
   const materiQuery = useMateriListQuery();
   const [query, setQuery] = useState('');
-  const [courseFilter, setCourseFilter] = useState<number | 'all'>('all');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [courseFilter, setCourseFilter] = useState<string>('all');
   const [selected, setSelected] = useState<MateriItem | null>(null);
   const [openingLink, setOpeningLink] = useState(false);
-  const contentBottomPadding = getDockContentPadding(insets.bottom);
+  const contentBottomPadding = getFloatingFilterContentPadding(insets.bottom);
+
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
+
+  const toggleSearch = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (searchOpen) setQuery('');
+    setSearchOpen(!searchOpen);
+  };
 
   const highlightModuleId = Number(params.moduleId);
 
-  const courses = useMemo(() => {
+  const filterOptions = useMemo<FloatingFilterOption<string>[]>(() => {
     const map = new Map<number, string>();
     (materiQuery.data ?? []).forEach((item) => {
       if (!map.has(item.courseId)) map.set(item.courseId, item.courseName);
     });
-    return [...map.entries()];
+    return [
+      { key: 'all', label: 'Semua', icon: 'th-large' },
+      ...[...map.entries()].map(([id, name]) => ({
+        key: String(id),
+        label: name.length > 24 ? `${name.slice(0, 24)}…` : name,
+        icon: 'book' as const,
+      })),
+    ];
   }, [materiQuery.data]);
+
+  useEffect(() => {
+    if (!filterOptions.some((option) => option.key === courseFilter)) {
+      setCourseFilter('all');
+    }
+  }, [filterOptions, courseFilter]);
 
   const visibleItems = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (materiQuery.data ?? []).filter((item) => {
-      if (courseFilter !== 'all' && item.courseId !== courseFilter) return false;
+      if (courseFilter !== 'all' && String(item.courseId) !== courseFilter) return false;
       if (!q) return true;
       return (
         item.moduleName.toLowerCase().includes(q) ||
@@ -106,67 +136,31 @@ export default function MateriScreen() {
           />
         }
       >
-        <View style={[styles.searchBox, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
-          <FontAwesome name="search" size={14} color={colors.textMuted} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Cari materi atau matkul..."
-            placeholderTextColor={colors.textMuted}
-            style={[styles.searchInput, { color: colors.textPrimary }]}
-          />
-          {query.length > 0 && (
-            <Pressable onPress={() => setQuery('')} hitSlop={8}>
+        {searchOpen ? (
+          <View style={[styles.searchBox, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
+            <FontAwesome name="search" size={14} color={colors.textMuted} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Cari materi atau matkul..."
+              placeholderTextColor={colors.textMuted}
+              style={[styles.searchInput, { color: colors.textPrimary }]}
+              autoFocus
+            />
+            <Pressable onPress={toggleSearch} hitSlop={8}>
               <FontAwesome name="close" size={14} color={colors.textMuted} />
             </Pressable>
-          )}
-        </View>
-
-        {courses.length > 1 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+          </View>
+        ) : (
+          <View style={styles.searchCollapsedRow}>
             <Pressable
-              onPress={() => setCourseFilter('all')}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: courseFilter === 'all' ? colors.accent : colors.bgCard,
-                  borderColor: colors.borderSubtle,
-                },
-              ]}
+              onPress={toggleSearch}
+              accessibilityLabel="Cari materi"
+              style={[styles.searchFab, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}
             >
-              <Text
-                style={[
-                  styles.chipText,
-                  { color: courseFilter === 'all' ? colors.textInverse : colors.textSecondary },
-                ]}
-              >
-                Semua
-              </Text>
+              <FontAwesome name="search" size={15} color={colors.accent} />
             </Pressable>
-            {courses.map(([id, name]) => (
-              <Pressable
-                key={id}
-                onPress={() => setCourseFilter(courseFilter === id ? 'all' : id)}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: courseFilter === id ? colors.accent : colors.bgCard,
-                    borderColor: colors.borderSubtle,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    { color: courseFilter === id ? colors.textInverse : colors.textSecondary },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {name}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+          </View>
         )}
 
         {materiQuery.isLoading ? (
@@ -194,7 +188,7 @@ export default function MateriScreen() {
           visibleItems.map((item) => {
             const highlighted =
               Number.isFinite(highlightModuleId) && item.moduleId === highlightModuleId;
-            const recent = isMateriRecent(item.updatedAt);
+            const recent = isMateriDisplayRecent(item);
             return (
               <Pressable
                 key={`${item.courseId}-${item.moduleId}`}
@@ -218,7 +212,7 @@ export default function MateriScreen() {
                     {item.moduleName}
                   </Text>
                   <Text style={[styles.meta, { color: colors.textMuted }]}>
-                    {formatRelativeTime(item.updatedAt)}
+                    {formatRelativeTime(getMateriDisplayIso(item))}
                     {item.files.length > 0 ? ` • ${item.files.length} berkas` : ''}
                   </Text>
                 </View>
@@ -232,6 +226,13 @@ export default function MateriScreen() {
           })
         )}
       </ScrollView>
+      <FloatingFilterMenu
+        title="Filter Matkul"
+        options={filterOptions}
+        selected={courseFilter}
+        onSelect={setCourseFilter}
+        allKey="all"
+      />
 
       <Modal visible={selected !== null} transparent animationType="fade" onRequestClose={() => setSelected(null)}>
         <Pressable style={styles.backdrop} onPress={() => setSelected(null)} />
@@ -292,15 +293,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   searchInput: { flex: 1, fontSize: 14 },
-  chips: { gap: 8, paddingVertical: 2 },
-  chip: {
+  searchCollapsedRow: { flexDirection: 'row', justifyContent: 'flex-end' },
+  searchFab: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1,
-    borderRadius: Radius.full,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    maxWidth: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  chipText: { fontSize: 12, fontWeight: '700' },
   stateCard: {
     minHeight: 260,
     borderWidth: 1,

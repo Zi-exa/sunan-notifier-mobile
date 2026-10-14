@@ -12,6 +12,25 @@ export function isMateriRecent(updatedAt: string, nowMs = Date.now()): boolean {
   return nowMs - time < 7 * 24 * 60 * 60 * 1000;
 }
 
+/**
+ * Tanggal tampil materi: pakai tanggal ubah berkas dari SUNAN bila ada,
+ * fallback ke waktu snapshot. Ini tanggal upload yang sebenarnya,
+ * bukan jadwal cron.
+ */
+export function getMateriDisplayIso(item: MateriItem): string {
+  const fileTimes = (item.files ?? [])
+    .map((file) => file.changedAt)
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  if (fileTimes.length > 0) {
+    return new Date(Math.max(...fileTimes) * 1000).toISOString();
+  }
+  return item.updatedAt;
+}
+
+export function isMateriDisplayRecent(item: MateriItem, nowMs = Date.now()): boolean {
+  return isMateriRecent(getMateriDisplayIso(item), nowMs);
+}
+
 export function useMateriListQuery() {
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);

@@ -37,6 +37,7 @@ export type MateriFileItem = {
   name: string;
   mimetype: string | null;
   size: number | null;
+  changedAt: number | null;
 };
 
 export type MateriItem = {
