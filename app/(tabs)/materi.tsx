@@ -453,6 +453,16 @@ export default function MateriScreen() {
                             ? `Mengunduh... ${state.percent}%`
                             : (state?.status === 'error' ? state.message : formatFileSize(file.size))}
                         </Text>
+                        {busy && (
+                          <View style={[styles.dlBar, { backgroundColor: colors.borderSubtle }]}>
+                            <View
+                              style={[
+                                styles.dlFill,
+                                { backgroundColor: colors.accent, width: `${state.percent}%` },
+                              ]}
+                            />
+                          </View>
+                        )}
                       </View>
                       {busy ? (
                         <Pressable
@@ -683,6 +693,8 @@ const styles = StyleSheet.create({
   fileBody: { flex: 1, gap: 2 },
   fileName: { fontSize: 13, fontWeight: '700' },
   fileMeta: { fontSize: 11 },
+  dlBar: { height: 5, borderRadius: 99, overflow: 'hidden', marginTop: 4 },
+  dlFill: { height: '100%', borderRadius: 99 },
   primaryButton: { borderRadius: Radius.md, paddingVertical: 14, alignItems: 'center', ...Shadow.subtle },
   primaryButtonContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   primaryButtonText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14, letterSpacing: 0.2 },
