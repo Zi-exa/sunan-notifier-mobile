@@ -25,7 +25,6 @@ import {
   getLastNotificationNavigationPayloadAsync,
   registerForPushNotificationsDetailedAsync,
 } from '@/lib/notifications';
-import { openSunanLink } from '@/lib/moodle/openSunanLink';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useNotificationDedupeStore } from '@/lib/stores/notificationDedupeStore';
 import { usePushTokenSyncStore } from '@/lib/stores/pushTokenSyncStore';
@@ -233,14 +232,11 @@ function AppBootstrap() {
         router.push(`/task/${payload.taskId}`);
       }
 
-      if (payload.kind === 'materi_baru' && typeof payload.quickLink === 'string') {
-        const session = useAuthStore.getState();
-        void openSunanLink({
-          url: payload.quickLink,
-          token: session.token,
-          userId: session.user?.id ?? null,
-          privateToken: session.privateToken,
-        });
+      if (payload.kind === 'materi_baru') {
+        const params: Record<string, string> = {};
+        if (typeof payload.moduleId === 'number') params.moduleId = String(payload.moduleId);
+        if (typeof payload.courseId === 'number') params.courseId = String(payload.courseId);
+        router.push({ pathname: '/materi', params });
       }
     };
 
@@ -301,14 +297,11 @@ function AppBootstrap() {
       router.push(`/task/${payload.taskId}`);
     }
 
-    if (payload.kind === 'materi_baru' && typeof payload.quickLink === 'string') {
-      const session = useAuthStore.getState();
-      void openSunanLink({
-        url: payload.quickLink,
-        token: session.token,
-        userId: session.user?.id ?? null,
-        privateToken: session.privateToken,
-      });
+    if (payload.kind === 'materi_baru') {
+      const params: Record<string, string> = {};
+      if (typeof payload.moduleId === 'number') params.moduleId = String(payload.moduleId);
+      if (typeof payload.courseId === 'number') params.courseId = String(payload.courseId);
+      router.push({ pathname: '/materi', params });
     }
   }, [router, status]);
 

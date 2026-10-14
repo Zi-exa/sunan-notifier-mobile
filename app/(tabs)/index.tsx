@@ -1,23 +1,25 @@
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AttendanceCard,
   EmptyState,
-  KpiGrid,
   LoadingView,
   SectionCard,
   TaskCard,
   useTheme,
 } from '@/components/Redesign';
 import { getDockContentPadding } from '@/components/app/floatingLayout';
+import { StatSegmented } from '@/components/app/StatSegmented';
 import { TabScreenHeader } from '@/components/app/TabScreenHeader';
 import {
   useAssignmentsQuery,
   useAttendanceSessionsQuery,
   useCoursesQuery,
 } from '@/lib/queries/useMoodleQueries';
+import { isMateriRecent, useMateriListQuery } from '@/lib/queries/useMateriQuery';
+import { formatRelativeTime } from './materi';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { getAvatarInitial, getDisplayFirstName, getTimeBasedGreeting } from '@/lib/utils/displayName';
@@ -42,6 +44,7 @@ export default function DashboardScreen() {
   const coursesQuery = useCoursesQuery();
   const assignmentsQuery = useAssignmentsQuery();
   const attendanceQuery = useAttendanceSessionsQuery();
+  const materiQuery = useMateriListQuery();
 
   const courses = coursesQuery.data ?? [];
   const assignments = assignmentsQuery.data ?? [];
@@ -60,9 +63,12 @@ export default function DashboardScreen() {
   const closingSoonAttendanceCount = attendances.filter(
     (item) => item.status === 'closing_soon'
   ).length;
-  const pendingCount = assignmentsReady ? countPendingAssignments(assignments) : '...';
-  const overdueCount = assignmentsReady ? assignments.filter((item) => item.status === 'overdue').length : '...';
-  const submittedCount = assignmentsReady ? assignments.filter((item) => item.status === 'submitted').length : '...';
+  const pendingCount = assignmentsReady ? countPendingAssignments(assignments) : 0;
+  const overdueCount = assignmentsReady ? assignments.filter((item) => item.status === 'overdue').length : 0;
+  const submittedCount = assignmentsReady ? assignments.filter((item) => item.status === 'submitted').length : 0;
+  const materiItems = materiQuery.data ?? [];
+  const recentMateriCount = materiItems.filter((item) => isMateriRecent(item.updatedAt)).length;
+  const latestMateri = materiItems.slice(0, 2);
   const displayName = getDisplayFirstName({
     fullname: user?.fullname,
     firstname: user?.firstname,
@@ -110,12 +116,14 @@ export default function DashboardScreen() {
               refreshing={
                 coursesQuery.isRefetching ||
                 assignmentsQuery.isRefetching ||
-                attendanceQuery.isRefetching
+                attendanceQuery.isRefetching ||
+                materiQuery.isRefetching
               }
               onRefresh={() => {
                 coursesQuery.refetch();
                 assignmentsQuery.refetch();
                 attendanceQuery.refetch();
+                materiQuery.refetch();
               }}
               tintColor={colors.accent}
             />
@@ -142,12 +150,14 @@ export default function DashboardScreen() {
             refreshing={
               coursesQuery.isRefetching ||
               assignmentsQuery.isRefetching ||
-              attendanceQuery.isRefetching
+              attendanceQuery.isRefetching ||
+              materiQuery.isRefetching
             }
             onRefresh={() => {
               coursesQuery.refetch();
               assignmentsQuery.refetch();
               attendanceQuery.refetch();
+              materiQuery.refetch();
             }}
             tintColor={colors.accent}
           />
@@ -220,67 +230,75 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      {/* KPI Grid */}
-      <KpiGrid
-        items={[
+      {/* Statistik segmented */}
+      <StatSegmented
+        segments={[
+          { key: 'matkul', label: 'Matkul', value: courses.length, title: 'Mata kuliah aktif' },
+          { key: 'belum', label: 'Belum', value: pendingCount, title: 'Belum dikerjakan', target: '/tasks' },
           {
-            label: 'Matkul Aktif',
-            value: courses.length,
-            icon: 'book',
-            iconColor: colors.accent,
-            iconBackground: colors.accentDim,
-          },
-          {
-            label: 'Belum Dikerjakan',
-            value: pendingCount,
-            icon: 'clipboard',
-            iconColor: colors.success,
-            iconBackground: colors.successDim,
-            valueColor:
-              assignmentsReady && typeof pendingCount === 'number' && pendingCount > 0
-                ? colors.textPrimary
-                : colors.textPrimary,
-          },
-          {
+            key: 'overdue',
             label: 'Overdue',
             value: overdueCount,
-            icon: 'clock-o',
-            iconColor: colors.danger,
-            iconBackground: colors.dangerDim,
-            valueColor:
-              assignmentsReady && typeof overdueCount === 'number' && overdueCount > 0
-                ? colors.textPrimary
-                : colors.textPrimary,
+            title: 'Overdue',
+            target: '/tasks',
+            alertWhenPositive: true,
           },
-          {
-            label: 'Terkumpul',
-            value: submittedCount,
-            icon: 'check-circle',
-            iconColor: colors.success,
-            iconBackground: colors.successDim,
-            valueColor:
-              assignmentsReady && typeof submittedCount === 'number' && submittedCount > 0
-                ? colors.textPrimary
-                : colors.textPrimary,
-          },
+          { key: 'terkumpul', label: 'Terkumpul', value: submittedCount, title: 'Sudah terkumpul', target: '/tasks' },
+          { key: 'materi', label: 'Materi', value: recentMateriCount, title: 'Materi baru', target: '/materi' },
         ]}
+        onNavigate={(target) => router.push(target as '/tasks' | '/materi')}
       />
 
-      {/* Absensi aktif */}
+      {/* Materi terbaru */}
       <SectionCard
-        title="Absensi Aktif"
-        icon="check-square-o"
-        subtitle={`Dibuka: ${openAttendanceCount} · Segera tutup: ${closingSoonAttendanceCount}`}
+        title="Materi Terbaru"
+        icon="book"
+        headerRight={
+          <Text onPress={() => router.push('/materi')} style={[styles.seeAll, { color: colors.accent }]}>
+            Lihat semua
+          </Text>
+        }
       >
-        {attendanceHighlights.length === 0 ? (
-          <EmptyState
-            title="Belum ada absensi aktif"
-            description="Belum ada absensi tersedia."
-            icon="check-circle-o"
-          />
+        {materiQuery.isLoading ? (
+          <View style={styles.inlineLoading}>
+            <ActivityIndicator color={colors.accent} />
+          </View>
+        ) : materiQuery.isError ? (
+          <Text style={[styles.inlineNote, { color: colors.textSecondary }]}>
+            Materi belum bisa dimuat.
+          </Text>
+        ) : latestMateri.length === 0 ? (
+          <Text style={[styles.inlineNote, { color: colors.textSecondary }]}>
+            Materi baru dari dosen akan muncul di sini.
+          </Text>
         ) : (
-          attendanceHighlights.map((attendance) => (
-            <AttendanceCard key={attendance.eventId} attendance={attendance} />
+          latestMateri.map((item) => (
+            <Pressable
+              key={`${item.courseId}-${item.moduleId}`}
+              onPress={() => router.push({ pathname: '/materi', params: { moduleId: String(item.moduleId) } })}
+              style={({ pressed }) => [
+                styles.materiRow,
+                { backgroundColor: colors.bgCardHover, borderColor: colors.borderSubtle },
+                pressed && { opacity: 0.82 },
+              ]}
+            >
+              <View style={styles.materiBody}>
+                <Text style={[styles.materiCourse, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {item.courseName}
+                </Text>
+                <Text style={[styles.materiName, { color: colors.textPrimary }]} numberOfLines={1}>
+                  {item.moduleName}
+                </Text>
+                <Text style={[styles.materiMeta, { color: colors.textMuted }]}>
+                  {formatRelativeTime(item.updatedAt)}
+                </Text>
+              </View>
+              {isMateriRecent(item.updatedAt) && (
+                <View style={[styles.materiBadge, { backgroundColor: colors.accentDim }]}>
+                  <Text style={[styles.materiBadgeText, { color: colors.accent }]}>BARU</Text>
+                </View>
+              )}
+            </Pressable>
           ))
         )}
       </SectionCard>
@@ -290,6 +308,11 @@ export default function DashboardScreen() {
           title="Deadline Terdekat"
           icon="graduation-cap"
           subtitle={assignmentsReady ? undefined : 'Memuat tugas…'}
+          headerRight={
+            <Text onPress={() => router.push('/tasks')} style={[styles.seeAll, { color: colors.accent }]}>
+              Lihat semua
+            </Text>
+          }
         >
           {!assignmentsReady ? (
             <View style={styles.inlineLoading}>
@@ -312,6 +335,30 @@ export default function DashboardScreen() {
             ))
           )}
         </SectionCard>
+
+      {/* Absensi aktif */}
+      <SectionCard
+        title="Absensi Aktif"
+        icon="check-square-o"
+        subtitle={`Dibuka: ${openAttendanceCount} · Segera tutup: ${closingSoonAttendanceCount}`}
+        headerRight={
+          <Text onPress={() => router.push('/attendance')} style={[styles.seeAll, { color: colors.accent }]}>
+            Lihat semua
+          </Text>
+        }
+      >
+        {attendanceHighlights.length === 0 ? (
+          <EmptyState
+            title="Belum ada absensi aktif"
+            description="Belum ada absensi tersedia."
+            icon="check-circle-o"
+          />
+        ) : (
+          attendanceHighlights.map((attendance) => (
+            <AttendanceCard key={attendance.eventId} attendance={attendance} />
+          ))
+        )}
+      </SectionCard>
       </ScrollView>
     </View>
   );
@@ -331,6 +378,23 @@ const styles = StyleSheet.create({
   heroGreeting: { fontSize: 24, fontWeight: '800' },
   heroDate: { fontSize: 12, fontWeight: '600' },
   inlineLoading: { alignItems: 'flex-start', paddingVertical: 8 },
+  inlineNote: { fontSize: 13, lineHeight: 20 },
+  seeAll: { fontSize: 12, fontWeight: '700' },
+  materiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  materiBody: { flex: 1, gap: 2 },
+  materiCourse: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
+  materiName: { fontSize: 13.5, fontWeight: '700', lineHeight: 19 },
+  materiMeta: { fontSize: 11 },
+  materiBadge: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, flexShrink: 0 },
+  materiBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
   // Avatar
   avatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2 },
   avatarFallback: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },

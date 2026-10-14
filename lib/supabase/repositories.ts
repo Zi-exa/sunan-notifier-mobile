@@ -33,6 +33,23 @@ export type RemoteUserSettings = Omit<UserSettingsInput, 'notifyTaskOpen' | 'qui
 
 export type SaveUserSettingsResult = 'full' | 'legacy-notify-task-open' | 'skipped';
 
+export type MateriFileItem = {
+  name: string;
+  mimetype: string | null;
+  size: number | null;
+};
+
+export type MateriItem = {
+  moduleId: number;
+  courseId: number;
+  courseName: string;
+  moduleName: string;
+  modname: string;
+  quickLink: string | null;
+  updatedAt: string;
+  files: MateriFileItem[];
+};
+
 type MobileDataAuthPayload = {
   moodleToken: string;
   moodleUserId: number;
@@ -45,7 +62,8 @@ type MobileDataAction =
   | 'load-settings'
   | 'save-settings'
   | 'upsert-device'
-  | 'deactivate-device';
+  | 'deactivate-device'
+  | 'list-materi';
 
 type MobileDataResponseMap = {
   'sync-profile': {
@@ -65,6 +83,10 @@ type MobileDataResponseMap = {
   };
   'deactivate-device': {
     ok: boolean;
+    appUserId: string | null;
+  };
+  'list-materi': {
+    items: MateriItem[] | null;
     appUserId: string | null;
   };
 };
@@ -260,6 +282,32 @@ export async function loadUserSettings(input: {
       response.settings && typeof response.settings === 'object'
         ? coerceRemoteSettings(response.settings as Record<string, unknown>)
         : null,
+    appUserId: response.appUserId ?? null,
+  };
+}
+
+export async function loadMateriList(input: {
+  moodleToken: string;
+  moodleUserId: number;
+  nim: string;
+  fullname: string;
+}): Promise<{ items: MateriItem[]; appUserId: string | null }> {
+  if (!supabase) {
+    return {
+      items: [],
+      appUserId: null,
+    };
+  }
+
+  const response = await invokeMobileData('list-materi', {
+    moodleToken: input.moodleToken,
+    moodleUserId: input.moodleUserId,
+    nim: input.nim,
+    fullname: input.fullname,
+  });
+
+  return {
+    items: Array.isArray(response.items) ? response.items : [],
     appUserId: response.appUserId ?? null,
   };
 }

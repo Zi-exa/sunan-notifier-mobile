@@ -1,4 +1,4 @@
-export type AppTabRouteKey = 'index' | 'tasks' | 'attendance' | 'calendar' | 'settings';
+export type AppTabRouteKey = 'index' | 'tasks' | 'materi' | 'attendance' | 'calendar' | 'settings';
 
 type AppTabMeta = {
   title: string;
@@ -7,7 +7,7 @@ type AppTabMeta = {
   tabIcon: string;
 };
 
-export const APP_TAB_ORDER: AppTabRouteKey[] = ['index', 'tasks', 'attendance', 'calendar', 'settings'];
+export const APP_TAB_ORDER: AppTabRouteKey[] = ['index', 'tasks', 'materi', 'attendance', 'calendar', 'settings'];
 
 export const APP_TAB_META: Record<AppTabRouteKey, AppTabMeta> = {
   index: {
@@ -21,6 +21,12 @@ export const APP_TAB_META: Record<AppTabRouteKey, AppTabMeta> = {
     tabLabel: 'Tugas',
     headerIcon: 'tasks',
     tabIcon: 'list-alt',
+  },
+  materi: {
+    title: 'Materi',
+    tabLabel: 'Materi',
+    headerIcon: 'book',
+    tabIcon: 'book',
   },
   attendance: {
     title: 'Absensi',
@@ -61,6 +67,10 @@ export function getAppTabRouteKeyFromPathname(pathname: string | null | undefine
 
   if (pathname.includes('/tasks')) {
     return 'tasks';
+  }
+
+  if (pathname.includes('/materi')) {
+    return 'materi';
   }
 
   if (pathname.includes('/attendance')) {

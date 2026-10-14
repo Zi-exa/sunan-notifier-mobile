@@ -105,7 +105,7 @@ export function toNetworkAwareError(error: unknown, fallbackMessage: string): Ap
 
 export function getReadableErrorMessage(
   error: unknown,
-  context: 'login' | 'dashboard' | 'tasks' | 'calendar' | 'attendance' | 'generic' = 'generic'
+  context: 'login' | 'dashboard' | 'tasks' | 'calendar' | 'attendance' | 'materi' | 'generic' = 'generic'
 ): string {
   if (!isAppError(error)) {
     return context === 'login'

@@ -64,6 +64,8 @@ export type NotificationNavigationPayload = {
   attendanceEventId?: number;
   kind?: NotificationKind;
   quickLink?: string;
+  courseId?: number;
+  moduleId?: number;
 };
 
 function parseNumericField(value: unknown): number | undefined {
@@ -94,6 +96,8 @@ function parseNotificationData(data: unknown): NotificationNavigationPayload {
     attendanceEventId: parseNumericField(payload.attendanceEventId ?? payload.eventId),
     kind,
     quickLink: typeof payload.quickLink === 'string' && payload.quickLink.length > 0 ? payload.quickLink : undefined,
+    courseId: parseNumericField(payload.courseId),
+    moduleId: parseNumericField(payload.moduleId),
   };
 }
 
