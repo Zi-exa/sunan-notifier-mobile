@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Animated, Easing, Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,22 +23,21 @@ export function FloatingSearchBar({
   const [open, setOpen] = useState(false);
   const [renderBar, setRenderBar] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
-  const keyboardShift = useRef(new Animated.Value(0)).current;
+  const keyboardShiftRaw = useRef(new Animated.Value(0)).current;
   const inputRef = useRef<TextInput>(null);
   const bottomOffset = getFloatingFilterBottomOffset(insets.bottom);
   const hasQuery = query.trim().length > 0;
 
-  // Angkat bar + tombol mengikuti keyboard agar tidak tertutup.
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', (event) => {
-      Animated.timing(keyboardShift, {
+      Animated.timing(keyboardShiftRaw, {
         toValue: event.endCoordinates.height,
         duration: 250,
         useNativeDriver: true,
       }).start();
     });
     const hide = Keyboard.addListener('keyboardDidHide', () => {
-      Animated.timing(keyboardShift, {
+      Animated.timing(keyboardShiftRaw, {
         toValue: 0,
         duration: 200,
         useNativeDriver: true,
@@ -48,7 +47,20 @@ export function FloatingSearchBar({
       show.remove();
       hide.remove();
     };
-  }, [keyboardShift]);
+  }, [keyboardShiftRaw]);
+
+  // Angkat bar + tombol mengikuti keyboard, tapi buang clearance dock/tumpukan
+  // tombol saat keyboard buka sehingga gap sisa 12px saja.
+  const keyboardClearance = 12;
+  const keyboardShift = useMemo(() => {
+    const baseLift =
+      bottomOffset + SEARCH_FAB_SIZE + FAB_GAP + SEARCH_FAB_SIZE + FAB_GAP - keyboardClearance;
+    return keyboardShiftRaw.interpolate({
+      inputRange: [0, baseLift, 1200],
+      outputRange: [0, 0, -(1200 - baseLift)],
+      extrapolate: 'clamp',
+    });
+  }, [bottomOffset, keyboardShiftRaw]);
 
   useEffect(() => {
     if (open) {
@@ -91,7 +103,7 @@ export function FloatingSearchBar({
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <Animated.View
         pointerEvents="box-none"
-        style={[StyleSheet.absoluteFill, { transform: [{ translateY: Animated.multiply(keyboardShift, -1) }] }]}
+        style={[StyleSheet.absoluteFill, { transform: [{ translateY: keyboardShift }] }]}
       >
       {renderBar ? (
         <Animated.View
