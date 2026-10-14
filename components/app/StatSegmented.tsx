@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import PagerView from 'react-native-pager-view';
 import Animated, {
   Easing,
   FadeIn,
@@ -58,6 +59,41 @@ function AlertDot({ color }: { color: string }) {
   return <Animated.View style={[styles.alertDot, { backgroundColor: color }, style]} />;
 }
 
+function StatDetailPanel({
+  segment,
+  colors,
+  onNavigate,
+}: {
+  segment: StatSegment;
+  colors: { bgCard: string; borderSubtle: string; danger: string; textPrimary: string; textSecondary: string };
+  onNavigate?: (target: string) => void;
+}) {
+  const displayValue = useCountUp(segment.value);
+  const isAlert = Boolean(segment.alertWhenPositive && typeof segment.value === 'number' && segment.value > 0);
+
+  return (
+    <Pressable
+      disabled={!segment.target}
+      onPress={() => {
+        if (segment.target && onNavigate) onNavigate(segment.target);
+      }}
+      style={({ pressed }) => [
+        styles.detail,
+        {
+          backgroundColor: colors.bgCard,
+          borderColor: isAlert ? colors.danger : colors.borderSubtle,
+          opacity: !segment.target || pressed ? (pressed ? 0.82 : 1) : 1,
+        },
+      ]}
+    >
+      <Text style={[styles.value, { color: isAlert ? colors.danger : colors.textPrimary }]}>
+        {displayValue}
+      </Text>
+      <Text style={[styles.title, { color: colors.textSecondary }]}>{segment.title}</Text>
+    </Pressable>
+  );
+}
+
 export function StatSegmented({
   segments,
   onNavigate,
@@ -67,13 +103,18 @@ export function StatSegmented({
 }) {
   const { colors } = useTheme();
   const [active, setActive] = useState(0);
+  const pagerRef = useRef<PagerView>(null);
   const [layouts, setLayouts] = useState<Record<string, { x: number; width: number }>>({});
   const thumbX = useSharedValue(0);
   const thumbWidth = useSharedValue(0);
 
   const current = segments[Math.min(active, segments.length - 1)];
-  const displayValue = useCountUp(current?.value ?? 0);
   const isAlert = Boolean(current?.alertWhenPositive && typeof current.value === 'number' && current.value > 0);
+
+  const goToPage = (index: number) => {
+    setActive(index);
+    pagerRef.current?.setPage(index);
+  };
 
   useEffect(() => {
     const layout = current ? layouts[current.key] : undefined;
@@ -118,7 +159,7 @@ export function StatSegmented({
             return (
               <Pressable
                 key={segment.key}
-                onPress={() => setActive(index)}
+                onPress={() => goToPage(index)}
                 onLayout={handleLayout(segment.key)}
                 style={styles.segment}
                 accessibilityRole="tab"
@@ -138,29 +179,18 @@ export function StatSegmented({
       </Animated.View>
 
       <Animated.View entering={FadeIn.delay(60).duration(300)}>
-        <Pressable
-          disabled={!current.target}
-          onPress={() => {
-            if (current.target) {
-              if (onNavigate) onNavigate(current.target);
-            }
-          }}
-          style={({ pressed }) => [
-            styles.detail,
-            {
-              backgroundColor: colors.bgCard,
-              borderColor: isAlert ? colors.danger : colors.borderSubtle,
-              opacity: !current.target || pressed ? (pressed ? 0.82 : 1) : 1,
-            },
-          ]}
+        <PagerView
+          ref={pagerRef}
+          style={styles.pager}
+          initialPage={0}
+          onPageSelected={(event) => setActive(event.nativeEvent.position)}
         >
-          <Animated.View key={current.key} entering={FadeIn.duration(200)}>
-            <Text style={[styles.value, { color: isAlert ? colors.danger : colors.textPrimary }]}>
-              {displayValue}
-            </Text>
-            <Text style={[styles.title, { color: colors.textSecondary }]}>{current.title}</Text>
-          </Animated.View>
-        </Pressable>
+          {segments.map((segment) => (
+            <View key={segment.key} style={styles.page} collapsable={false}>
+              <StatDetailPanel segment={segment} colors={colors} onNavigate={onNavigate} />
+            </View>
+          ))}
+        </PagerView>
       </Animated.View>
     </View>
   );
@@ -203,12 +233,20 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   detail: {
+    flex: 1,
     borderWidth: 1,
     borderRadius: 20,
     paddingVertical: 20,
     paddingHorizontal: 18,
-    marginTop: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pager: {
+    height: 148,
+    marginTop: 10,
+  },
+  page: {
+    flex: 1,
   },
   value: {
     fontSize: 52,
