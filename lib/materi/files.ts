@@ -8,6 +8,28 @@ export type MateriDownloadProgress = {
   total: number;
 };
 
+type CancellableDownload = {
+  cancelAsync: () => Promise<unknown>;
+};
+
+const activeDownloads = new Map<string, { task: CancellableDownload; fileUri: string }>();
+
+export async function cancelMateriDownload(tag: string): Promise<void> {
+  const entry = activeDownloads.get(tag);
+  if (!entry) return;
+  activeDownloads.delete(tag);
+  try {
+    await entry.task.cancelAsync();
+  } catch {
+    // Unduhan mungkin sudah selesai/gagal sendiri.
+  }
+  try {
+    await FileSystem.deleteAsync(entry.fileUri, { idempotent: true });
+  } catch {
+    // Berkas parsial tidak wajib bersih.
+  }
+}
+
 function sanitizeFileName(name: string, fallback = 'materi-sunan'): string {
   const cleaned = name.replace(/[^\w.\-() ]+/g, '').trim().replace(/\s+/g, '_');
   return cleaned.length > 0 ? cleaned.slice(0, 120) : fallback;
@@ -23,6 +45,7 @@ export async function downloadAndOpenMateriFileAsync(options: {
   mimetype?: string | null;
   token?: string | null;
   siteUrl?: string;
+  tag?: string;
   onProgress?: (progress: MateriDownloadProgress) => void;
 }): Promise<void> {
   if (Platform.OS !== 'android') {
@@ -53,14 +76,24 @@ export async function downloadAndOpenMateriFileAsync(options: {
       total: data.totalBytesExpectedToWrite,
     });
   });
+  const tag = options.tag ?? fileUri;
 
-  const result = await task.downloadAsync();
-  if (!result || result.status !== 200) {
-    throw new Error(`Unduhan gagal (status ${result?.status ?? 'unknown'}).`);
+  if (activeDownloads.has(tag)) {
+    throw new Error('Unduhan berkas ini sedang berjalan.');
   }
+  activeDownloads.set(tag, { task, fileUri });
 
-  await Sharing.shareAsync(result.uri, {
-    mimeType: options.mimetype ?? undefined,
-    dialogTitle: `Buka ${options.fileName}`,
-  });
+  try {
+    const result = await task.downloadAsync();
+    if (!result || result.status !== 200) {
+      throw new Error(`Unduhan gagal (status ${result?.status ?? 'unknown'}).`);
+    }
+
+    await Sharing.shareAsync(result.uri, {
+      mimeType: options.mimetype ?? undefined,
+      dialogTitle: `Buka ${options.fileName}`,
+    });
+  } finally {
+    activeDownloads.delete(tag);
+  }
 }

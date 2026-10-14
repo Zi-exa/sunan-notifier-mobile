@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
@@ -23,7 +23,7 @@ import { openSunanLink } from '@/lib/moodle/openSunanLink';
 import { useMateriListQuery, isMateriDisplayRecent, getMateriDisplayIso, type MateriItem } from '@/lib/queries/useMateriQuery';
 import { cleanUploaderName } from '@/lib/supabase/repositories';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { downloadAndOpenMateriFileAsync } from '@/lib/materi/files';
+import { downloadAndOpenMateriFileAsync, cancelMateriDownload } from '@/lib/materi/files';
 
 const MODNAME_ICON: Record<string, React.ComponentProps<typeof FontAwesome>['name']> = {
   resource: 'file-text-o',
@@ -71,6 +71,7 @@ export default function MateriScreen() {
   const [selected, setSelected] = useState<MateriItem | null>(null);
   const [openingLink, setOpeningLink] = useState(false);
   const [fileStates, setFileStates] = useState<Record<number, FileDownloadState>>({});
+  const cancelledTagsRef = useRef<Set<string>>(new Set());
   const contentBottomPadding = getFloatingFilterContentPadding(insets.bottom);
 
   const highlightModuleId = Number(params.moduleId);
@@ -122,6 +123,8 @@ export default function MateriScreen() {
   const handleDownloadFile = async (fileIndex: number) => {
     const file = selected?.files[fileIndex];
     if (!file || fileStates[fileIndex]?.status === 'busy') return;
+    const tag = `${selected?.moduleId ?? 'materi'}-${fileIndex}`;
+    cancelledTagsRef.current.delete(tag);
     setFileStates((prev) => ({ ...prev, [fileIndex]: { status: 'busy', percent: 0 } }));
     try {
       await downloadAndOpenMateriFileAsync({
@@ -130,6 +133,7 @@ export default function MateriScreen() {
         mimetype: file.mimetype,
         token,
         siteUrl,
+        tag,
         onProgress: (progress) => {
           setFileStates((prev) => ({
             ...prev,
@@ -147,6 +151,15 @@ export default function MateriScreen() {
         return next;
       });
     } catch (error) {
+      if (cancelledTagsRef.current.has(tag)) {
+        cancelledTagsRef.current.delete(tag);
+        setFileStates((prev) => {
+          const next = { ...prev };
+          delete next[fileIndex];
+          return next;
+        });
+        return;
+      }
       setFileStates((prev) => ({
         ...prev,
         [fileIndex]: {
@@ -155,6 +168,17 @@ export default function MateriScreen() {
         },
       }));
     }
+  };
+
+  const handleCancelDownload = async (fileIndex: number) => {
+    const tag = `${selected?.moduleId ?? 'materi'}-${fileIndex}`;
+    cancelledTagsRef.current.add(tag);
+    await cancelMateriDownload(tag);
+    setFileStates((prev) => {
+      const next = { ...prev };
+      delete next[fileIndex];
+      return next;
+    });
   };
 
   const handleSelectMateri = (item: MateriItem) => {
@@ -310,7 +334,13 @@ export default function MateriScreen() {
                         )}
                       </View>
                       {busy ? (
-                        <ActivityIndicator size="small" color={colors.accent} />
+                        <Pressable
+                          onPress={() => void handleCancelDownload(index)}
+                          hitSlop={10}
+                          accessibilityLabel="Batalkan unduhan"
+                        >
+                          <FontAwesome name="close" size={15} color={colors.danger} />
+                        </Pressable>
                       ) : (
                         <FontAwesome name="download" size={14} color={colors.textMuted} />
                       )}
