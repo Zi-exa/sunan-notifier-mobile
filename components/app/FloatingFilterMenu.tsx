@@ -202,6 +202,8 @@ export function FloatingFilterMenu<T extends string>({
                             styles.optionLabel,
                             { color: active ? colors.accent : colors.textPrimary },
                           ]}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
                         >
                           {option.label}
                         </Text>
