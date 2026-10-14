@@ -233,13 +233,13 @@ export default function DashboardScreen() {
       {/* Statistik segmented */}
       <StatSegmented
         segments={[
-          { key: 'matkul', label: 'Matkul', value: courses.length, title: 'Mata kuliah aktif' },
+          { key: 'matkul', label: 'Matkul', value: courses.length, title: 'Mata kuliah semester ini' },
           { key: 'belum', label: 'Belum', value: pendingCount, title: 'Belum dikerjakan', target: '/tasks' },
           {
             key: 'overdue',
-            label: 'Overdue',
+            label: 'Terlambat',
             value: overdueCount,
-            title: 'Overdue',
+            title: 'Terlambat',
             target: '/tasks',
             alertWhenPositive: true,
           },
