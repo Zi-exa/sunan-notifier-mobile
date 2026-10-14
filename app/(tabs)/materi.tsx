@@ -290,18 +290,22 @@ export default function MateriScreen() {
                     </View>
                   </View>
                   <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-                  <View style={styles.tileGrid}>
+                  <View style={[styles.tileGrid, styles.tileGridTwoColumn]}>
                     <CardInfoTile
                       icon="calendar-o"
                       title="Diunggah"
                       value={formatUploadDate(getMateriDisplayIso(item))}
                       tone="accent"
+                      compact
+                      style={styles.tileColumnHalf}
                     />
                     <CardInfoTile
                       icon={modnameIcon(item.modname)}
                       title="Berkas"
                       value={item.files.length > 0 ? `${item.files.length} file` : 'Lihat detail'}
                       tone="muted"
+                      compact
+                      style={styles.tileColumnHalf}
                     />
                   </View>
                 </View>
@@ -569,6 +573,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+  },
+  tileGridTwoColumn: {
+    gap: 4,
+  },
+  tileColumnHalf: {
+    flexBasis: '49%',
+    maxWidth: '49%',
+    flexGrow: 0,
   },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(3, 8, 20, 0.68)' },
   overlayRoot: {
