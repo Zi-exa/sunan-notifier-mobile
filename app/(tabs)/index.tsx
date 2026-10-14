@@ -67,7 +67,7 @@ export default function DashboardScreen() {
   const overdueCount = assignmentsReady ? assignments.filter((item) => item.status === 'overdue').length : 0;
   const submittedCount = assignmentsReady ? assignments.filter((item) => item.status === 'submitted').length : 0;
   const materiItems = materiQuery.data ?? [];
-  const recentMateriCount = materiItems.filter((item) => isMateriDisplayRecent(item)).length;
+  const totalMateriCount = materiItems.length;
   const latestMateri = materiItems.slice(0, 2);
   const displayName = getDisplayFirstName({
     fullname: user?.fullname,
@@ -244,7 +244,7 @@ export default function DashboardScreen() {
             alertWhenPositive: true,
           },
           { key: 'terkumpul', label: 'Terkumpul', value: submittedCount, title: 'Sudah terkumpul', target: '/tasks' },
-          { key: 'materi', label: 'Materi', value: recentMateriCount, title: 'Materi baru', target: '/materi' },
+          { key: 'materi', label: 'Materi', value: totalMateriCount, title: 'Materi semester ini', target: '/materi' },
         ]}
         onNavigate={(target) => router.push(target as '/tasks' | '/materi')}
       />
