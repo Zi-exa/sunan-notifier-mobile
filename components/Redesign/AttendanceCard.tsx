@@ -141,7 +141,7 @@ export function AttendanceCard({ attendance, highlight = false }: AttendanceCard
         </View>
 
         <View style={styles.heroRow}>
-          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
+          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
             {attendance.title}
           </Text>
           <View style={styles.heroBadges}>

@@ -148,7 +148,7 @@ export function TaskCard({ task, onPress, detailLabel, showPreview = true }: Tas
         </View>
 
         <View style={styles.heroRow}>
-          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
+          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
             {task.name}
           </Text>
           <View style={styles.heroBadges}>

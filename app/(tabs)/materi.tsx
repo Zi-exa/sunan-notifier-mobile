@@ -287,7 +287,7 @@ export default function MateriScreen() {
                     </View>
                   </View>
                   <View style={styles.heroRow}>
-                    <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={2}>
+                    <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
                       {item.moduleName}
                     </Text>
                     <View style={styles.heroBadges}>
