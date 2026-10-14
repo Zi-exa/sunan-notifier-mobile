@@ -47,6 +47,8 @@ export type MateriItem = {
   courseName: string;
   moduleName: string;
   modname: string;
+  sectionName: string | null;
+  description: string | null;
   quickLink: string | null;
   updatedAt: string;
   files: MateriFileItem[];

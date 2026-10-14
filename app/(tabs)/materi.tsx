@@ -259,6 +259,19 @@ export default function MateriScreen() {
               {selected?.courseName}
             </Text>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{selected?.moduleName}</Text>
+            {!!selected?.sectionName && (
+              <View style={styles.modalMetaRow}>
+                <FontAwesome name="folder-o" size={12} color={colors.textMuted} />
+                <Text style={[styles.modalMeta, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {selected.sectionName}
+                </Text>
+              </View>
+            )}
+            {!!selected?.description && (
+              <Text style={[styles.modalDescription, { color: colors.textSecondary }]} numberOfLines={4}>
+                {selected.description}
+              </Text>
+            )}
             {selected && selected.files.length > 0 && (
               <View style={styles.fileList}>
                 {selected.files.slice(0, 5).map((file, index) => {
@@ -368,6 +381,9 @@ const styles = StyleSheet.create({
   modal: { borderWidth: 1, borderRadius: Radius.lg, padding: 18, gap: 8 },
   modalCourse: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
   modalTitle: { fontSize: 18, fontWeight: '800', lineHeight: 26 },
+  modalMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  modalMeta: { fontSize: 12, fontWeight: '600', flex: 1 },
+  modalDescription: { fontSize: 13, lineHeight: 20 },
   fileList: { gap: 8, marginTop: 4 },
   fileRow: {
     flexDirection: 'row',

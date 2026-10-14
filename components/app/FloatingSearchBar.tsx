@@ -30,8 +30,6 @@ export function FloatingSearchBar({
   useEffect(() => {
     if (open) {
       setRenderBar(true);
-      const timer = setTimeout(() => inputRef.current?.focus(), 220);
-      return () => clearTimeout(timer);
     }
   }, [open ]);
 
@@ -74,8 +72,8 @@ export function FloatingSearchBar({
             {
               backgroundColor: colors.bgSurface,
               borderColor: colors.borderSubtle,
-              left: 20,
-              right: SEARCH_FAB_SIZE + 20 + FAB_GAP + 12,
+              left: 16,
+              right: 16,
               bottom: bottomOffset + SEARCH_FAB_SIZE + FAB_GAP + SEARCH_FAB_SIZE + FAB_GAP,
               opacity: barOpacity,
               transform: [{ translateY: barTranslateY }, { scale: barScale }],
@@ -110,17 +108,17 @@ export function FloatingSearchBar({
             styles.fab,
             Shadow.card,
             {
-              backgroundColor: open || hasQuery ? colors.accent : colors.bgSurface,
-              borderColor: open || hasQuery ? colors.accent : colors.tabBorder,
+              backgroundColor: hasQuery ? colors.accent : colors.bgSurface,
+              borderColor: hasQuery ? colors.accent : colors.tabBorder,
             },
           ]}
         >
           <FontAwesome
-            name={open ? 'close' : 'search'}
+            name="search"
             size={20}
-            color={open || hasQuery ? colors.textInverse : colors.accent}
+            color={hasQuery ? colors.textInverse : colors.accent}
           />
-          {!open && hasQuery ? (
+          {hasQuery ? (
             <View
               style={[
                 styles.badge,
