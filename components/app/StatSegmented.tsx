@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  Easing,
   FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { useTheme } from '@/components/Redesign/ThemeContext';
@@ -78,8 +78,9 @@ export function StatSegmented({
   useEffect(() => {
     const layout = current ? layouts[current.key] : undefined;
     if (layout) {
-      thumbX.value = withSpring(layout.x, { damping: 26, stiffness: 210 });
-      thumbWidth.value = withSpring(layout.width, { damping: 26, stiffness: 210 });
+      const timing = { duration: 260, easing: Easing.out(Easing.cubic) };
+      thumbX.value = withTiming(layout.x, timing);
+      thumbWidth.value = withTiming(layout.width, timing);
     }
   }, [active, current, layouts, thumbX, thumbWidth]);
 
@@ -190,8 +191,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   segmentLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
+    flexShrink: 1,
   },
   alertDot: {
     position: 'absolute',
