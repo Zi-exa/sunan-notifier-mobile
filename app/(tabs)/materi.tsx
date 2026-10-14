@@ -291,6 +291,22 @@ export default function MateriScreen() {
                       {item.moduleName}
                     </Text>
                     <View style={styles.heroBadges}>
+                      <Pressable
+                        onPress={() => handleSelectMateri(item)}
+                        style={({ pressed }) => [
+                          styles.materiPill,
+                          {
+                            backgroundColor: colors.accentDim,
+                            borderColor: colors.borderSubtle,
+                          },
+                          pressed && { opacity: 0.82 },
+                        ]}
+                      >
+                        <Text style={[styles.materiPillText, { color: colors.accent }]}>
+                          Materi
+                        </Text>
+                        <FontAwesome name="angle-right" size={13} color={colors.accent} />
+                      </Pressable>
                       {recent ? <Badge variant="accent" label="BARU" showDot /> : null}
                       <Badge variant="available" label={modnameLabel(item.modname)} />
                     </View>
@@ -579,6 +595,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     flexShrink: 0,
+  },
+  materiPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  materiPillText: {
+    fontSize: 10,
+    fontWeight: '800',
   },
   divider: {
     height: 1,
