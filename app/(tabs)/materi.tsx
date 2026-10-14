@@ -291,35 +291,28 @@ export default function MateriScreen() {
                       {item.moduleName}
                     </Text>
                     <View style={styles.heroBadges}>
-                      <Pressable
-                        onPress={() => handleSelectMateri(item)}
-                        style={({ pressed }) => [
-                          styles.materiPill,
-                          {
-                            backgroundColor: colors.accentDim,
-                            borderColor: colors.borderSubtle,
-                          },
-                          pressed && { opacity: 0.82 },
-                        ]}
-                      >
-                        <Text style={[styles.materiPillText, { color: colors.accent }]}>
-                          Materi
-                        </Text>
-                        <FontAwesome name="angle-right" size={13} color={colors.accent} />
-                      </Pressable>
                       {recent ? <Badge variant="accent" label="BARU" showDot /> : null}
                       <Badge variant="available" label={modnameLabel(item.modname)} />
                     </View>
                   </View>
                   <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-                  <View style={[styles.tileGrid, styles.tileGridTwoColumn]}>
+                  <View style={[styles.tileGrid, styles.tileGridThreeColumn]}>
+                    <CardInfoTile
+                      icon="book"
+                      title="Materi"
+                      trailingChevron
+                      tone="accent"
+                      compact
+                      style={styles.tileColumnNarrow}
+                      onPress={() => handleSelectMateri(item)}
+                    />
                     <CardInfoTile
                       icon="calendar-o"
                       title="Diunggah"
                       value={formatUploadDate(getMateriDisplayIso(item))}
                       tone="accent"
                       compact
-                      style={styles.tileColumnDate}
+                      style={styles.tileColumnWide}
                     />
                     <CardInfoTile
                       icon={modnameIcon(item.modname)}
@@ -327,7 +320,7 @@ export default function MateriScreen() {
                       value={item.files.length > 0 ? `${item.files.length} file` : 'Lihat detail'}
                       tone="muted"
                       compact
-                      style={styles.tileColumnCount}
+                      style={styles.tileColumnWide}
                     />
                   </View>
                 </View>
@@ -596,19 +589,6 @@ const styles = StyleSheet.create({
     gap: 5,
     flexShrink: 0,
   },
-  materiPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-  },
-  materiPillText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
   divider: {
     height: 1,
     opacity: 0.9,
@@ -618,17 +598,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
   },
-  tileGridTwoColumn: {
+  tileGridThreeColumn: {
     gap: 4,
   },
-  tileColumnDate: {
-    flexBasis: '38%',
-    maxWidth: '38%',
+  tileColumnNarrow: {
+    flexBasis: '26.5%',
+    maxWidth: '26.5%',
     flexGrow: 0,
   },
-  tileColumnCount: {
-    flexBasis: '30%',
-    maxWidth: '30%',
+  tileColumnWide: {
+    flexBasis: '34.5%',
+    maxWidth: '34.5%',
     flexGrow: 0,
   },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(3, 8, 20, 0.68)' },
