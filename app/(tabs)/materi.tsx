@@ -110,6 +110,10 @@ export default function MateriScreen() {
     });
   }, [materiQuery.data, query, courseFilter]);
 
+  const firstUploader = selected
+    ? cleanUploaderName(selected.files.find((file) => !!file.uploader)?.uploader ?? null)
+    : null;
+
   const handleOpenMateri = async (item: MateriItem) => {
     if (openingLink || !item.quickLink) return;
     setOpeningLink(true);
@@ -293,9 +297,17 @@ export default function MateriScreen() {
               </View>
             )}
             {!!selected?.description && (
-              <Text style={[styles.modalDescription, { color: colors.textSecondary }]} numberOfLines={4}>
+              <Text style={[styles.modalDescription, { color: colors.textSecondary }]} numberOfLines={3}>
                 {selected.description}
               </Text>
+            )}
+            {!!firstUploader && (
+              <View style={styles.modalMetaRow}>
+                <FontAwesome name="user-o" size={12} color={colors.textMuted} />
+                <Text style={[styles.modalMeta, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {firstUploader}
+                </Text>
+              </View>
             )}
             {selected && selected.files.length > 0 && (
               <View style={styles.fileList}>
@@ -321,17 +333,8 @@ export default function MateriScreen() {
                         <Text style={[styles.fileMeta, { color: colors.textMuted }]}>
                           {busy
                             ? `Mengunduh... ${state.percent}%`
-                            : state?.status === 'error'
-                              ? state.message
-                              : [formatFileSize(file.size), 'Ketuk untuk unduh & buka']
-                                  .filter(Boolean)
-                                  .join(' • ')}
+                            : (state?.status === 'error' ? state.message : formatFileSize(file.size))}
                         </Text>
-                        {!!cleanUploaderName(file.uploader) && (
-                          <Text style={[styles.fileMeta, { color: colors.textMuted }]} numberOfLines={1}>
-                            Oleh {cleanUploaderName(file.uploader)}
-                          </Text>
-                        )}
                       </View>
                       {busy ? (
                         <Pressable
