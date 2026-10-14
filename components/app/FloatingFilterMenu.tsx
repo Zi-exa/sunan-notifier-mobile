@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { ComponentProps } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Radius, Shadow, Spacing, useTheme } from '@/components/Redesign';
@@ -146,7 +146,11 @@ export function FloatingFilterMenu<T extends string>({
               </Text>
             </Animated.View>
 
-            <View style={styles.optionList}>
+            <ScrollView
+              style={styles.optionList}
+              contentContainerStyle={styles.optionListContent}
+              showsVerticalScrollIndicator={false}
+            >
               {options.map((option, index) => {
                 const active = option.key === selected;
                 const optionStart = Math.min(0.2 + index * 0.1, 0.72);
@@ -211,7 +215,7 @@ export function FloatingFilterMenu<T extends string>({
                   </Animated.View>
                 );
               })}
-            </View>
+            </ScrollView>
           </Animated.View>
         ) : null}
 
@@ -293,6 +297,9 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   optionList: {
+    maxHeight: 340,
+  },
+  optionListContent: {
     gap: 8,
   },
   option: {
