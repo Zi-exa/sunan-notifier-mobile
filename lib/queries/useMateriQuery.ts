@@ -53,7 +53,11 @@ export function useMateriListQuery() {
         fullname: user?.fullname ?? '',
       });
       // Timeline: upload terbaru dulu (tanggal SUNAN asli, bukan jadwal cron).
-      return [...response.items].sort((a, b) => getMateriDisplayTime(b) - getMateriDisplayTime(a));
+      // Seri tanggal (modul tanpa berkas) dipecah pakai ID modul:
+      // ID lebih besar = modul lebih baru di SUNAN.
+      return [...response.items].sort(
+        (a, b) => getMateriDisplayTime(b) - getMateriDisplayTime(a) || b.moduleId - a.moduleId
+      );
     },
   });
 }
