@@ -17,14 +17,19 @@ export function isMateriRecent(updatedAt: string, nowMs = Date.now()): boolean {
  * fallback ke waktu snapshot. Ini tanggal upload yang sebenarnya,
  * bukan jadwal cron.
  */
-export function getMateriDisplayIso(item: MateriItem): string {
+export function getMateriDisplayTime(item: MateriItem): number {
   const fileTimes = (item.files ?? [])
     .map((file) => file.changedAt)
     .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
   if (fileTimes.length > 0) {
-    return new Date(Math.max(...fileTimes) * 1000).toISOString();
+    return Math.max(...fileTimes) * 1000;
   }
-  return item.updatedAt;
+  const fallback = new Date(item.updatedAt).getTime();
+  return Number.isFinite(fallback) ? fallback : 0;
+}
+
+export function getMateriDisplayIso(item: MateriItem): string {
+  return new Date(getMateriDisplayTime(item)).toISOString();
 }
 
 export function isMateriDisplayRecent(item: MateriItem, nowMs = Date.now()): boolean {
@@ -47,7 +52,8 @@ export function useMateriListQuery() {
         nim: user?.nim ?? '',
         fullname: user?.fullname ?? '',
       });
-      return response.items;
+      // Timeline: upload terbaru dulu (tanggal SUNAN asli, bukan jadwal cron).
+      return [...response.items].sort((a, b) => getMateriDisplayTime(b) - getMateriDisplayTime(a));
     },
   });
 }
