@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  FadeInDown,
+  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -21,7 +21,7 @@ export type StatSegment = {
   alertWhenPositive?: boolean;
 };
 
-function useCountUp(target: number | string, duration = 600): string | number {
+function useCountUp(target: number | string, duration = 450): string | number {
   const [display, setDisplay] = useState<number | string>(target);
 
   useEffect(() => {
@@ -51,7 +51,7 @@ function AlertDot({ color }: { color: string }) {
   const opacity = useSharedValue(1);
 
   useEffect(() => {
-    opacity.value = withRepeat(withTiming(0.25, { duration: 700 }), -1, true);
+    opacity.value = withRepeat(withTiming(0.3, { duration: 1200 }), -1, true);
   }, [opacity]);
 
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
@@ -78,14 +78,15 @@ export function StatSegmented({
   useEffect(() => {
     const layout = current ? layouts[current.key] : undefined;
     if (layout) {
-      thumbX.value = withSpring(layout.x, { damping: 22, stiffness: 260 });
-      thumbWidth.value = withSpring(layout.width, { damping: 22, stiffness: 260 });
+      thumbX.value = withSpring(layout.x, { damping: 26, stiffness: 210 });
+      thumbWidth.value = withSpring(layout.width, { damping: 26, stiffness: 210 });
     }
   }, [active, current, layouts, thumbX, thumbWidth]);
 
   const thumbStyle = useAnimatedStyle(() => ({
     left: thumbX.value,
     width: thumbWidth.value,
+    opacity: thumbWidth.value > 0 ? 1 : 0,
   }));
 
   const handleLayout = (key: string) => (event: LayoutChangeEvent) => {
@@ -99,7 +100,7 @@ export function StatSegmented({
 
   return (
     <View>
-      <Animated.View entering={FadeInDown.duration(400)}>
+      <Animated.View entering={FadeIn.duration(300)}>
         <View style={[styles.seg, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
           <Animated.View
             style={[
@@ -135,7 +136,7 @@ export function StatSegmented({
         </View>
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(80).duration(400)}>
+      <Animated.View entering={FadeIn.delay(60).duration(300)}>
         <Pressable
           disabled={!current.target}
           onPress={() => {
@@ -152,7 +153,7 @@ export function StatSegmented({
             },
           ]}
         >
-          <Animated.View key={current.key} entering={FadeInDown.duration(280)}>
+          <Animated.View key={current.key} entering={FadeIn.duration(200)}>
             <Text style={[styles.value, { color: isAlert ? colors.danger : colors.textPrimary }]}>
               {displayValue}
             </Text>
@@ -181,18 +182,20 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 9,
     borderRadius: 12,
-    gap: 5,
   },
   segmentLabel: {
     fontSize: 11,
     fontWeight: '800',
   },
   alertDot: {
+    position: 'absolute',
+    left: 10,
     width: 6,
     height: 6,
     borderRadius: 3,
@@ -210,11 +213,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -1,
     lineHeight: 56,
+    textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
   title: {
     fontSize: 12.5,
     fontWeight: '700',
     marginTop: 6,
+    textAlign: 'center',
   },
 });
