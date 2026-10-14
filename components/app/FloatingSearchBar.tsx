@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Animated, Easing, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Animated, Easing, Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Radius, Shadow, useTheme } from '@/components/Redesign';
@@ -23,9 +23,32 @@ export function FloatingSearchBar({
   const [open, setOpen] = useState(false);
   const [renderBar, setRenderBar] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
+  const keyboardShift = useRef(new Animated.Value(0)).current;
   const inputRef = useRef<TextInput>(null);
   const bottomOffset = getFloatingFilterBottomOffset(insets.bottom);
   const hasQuery = query.trim().length > 0;
+
+  // Angkat bar + tombol mengikuti keyboard agar tidak tertutup.
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (event) => {
+      Animated.timing(keyboardShift, {
+        toValue: event.endCoordinates.height,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      Animated.timing(keyboardShift, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [keyboardShift]);
 
   useEffect(() => {
     if (open) {
@@ -59,12 +82,17 @@ export function FloatingSearchBar({
   const toggle = () => {
     if (open) {
       onQueryChange('');
+      Keyboard.dismiss();
     }
     setOpen((value) => !value);
   };
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+      <Animated.View
+        pointerEvents="box-none"
+        style={[StyleSheet.absoluteFill, { transform: [{ translateY: Animated.multiply(keyboardShift, -1) }] }]}
+      >
       {renderBar ? (
         <Animated.View
           pointerEvents={open ? 'auto' : 'none'}
@@ -135,6 +163,7 @@ export function FloatingSearchBar({
         </Pressable>
         </Animated.View>
       </View>
+      </Animated.View>
     </View>
   );
 }
