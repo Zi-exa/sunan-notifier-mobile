@@ -3,22 +3,19 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   ActivityIndicator,
-  LayoutAnimation,
   Modal,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
-  UIManager,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, useTheme } from '@/components/Redesign';
 import { Radius } from '@/components/Redesign/theme';
 import { FloatingFilterMenu, type FloatingFilterOption } from '@/components/app/FloatingFilterMenu';
+import { FloatingSearchBar } from '@/components/app/FloatingSearchBar';
 import { TabScreenHeader } from '@/components/app/TabScreenHeader';
 import { getFloatingFilterContentPadding } from '@/components/app/floatingLayout';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
@@ -58,23 +55,10 @@ export default function MateriScreen() {
   const privateToken = useAuthStore((state) => state.privateToken);
   const materiQuery = useMateriListQuery();
   const [query, setQuery] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [selected, setSelected] = useState<MateriItem | null>(null);
   const [openingLink, setOpeningLink] = useState(false);
   const contentBottomPadding = getFloatingFilterContentPadding(insets.bottom);
-
-  useEffect(() => {
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
-  }, []);
-
-  const toggleSearch = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    if (searchOpen) setQuery('');
-    setSearchOpen(!searchOpen);
-  };
 
   const highlightModuleId = Number(params.moduleId);
 
@@ -136,33 +120,6 @@ export default function MateriScreen() {
           />
         }
       >
-        {searchOpen ? (
-          <View style={[styles.searchBox, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
-            <FontAwesome name="search" size={14} color={colors.textMuted} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Cari materi atau matkul..."
-              placeholderTextColor={colors.textMuted}
-              style={[styles.searchInput, { color: colors.textPrimary }]}
-              autoFocus
-            />
-            <Pressable onPress={toggleSearch} hitSlop={8}>
-              <FontAwesome name="close" size={14} color={colors.textMuted} />
-            </Pressable>
-          </View>
-        ) : (
-          <View style={styles.searchCollapsedRow}>
-            <Pressable
-              onPress={toggleSearch}
-              accessibilityLabel="Cari materi"
-              style={[styles.searchFab, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}
-            >
-              <FontAwesome name="search" size={15} color={colors.accent} />
-            </Pressable>
-          </View>
-        )}
-
         {materiQuery.isLoading ? (
           <View style={[styles.stateCard, { backgroundColor: colors.bgCard, borderColor: colors.borderSubtle }]}>
             <ActivityIndicator size="large" color={colors.accent} />
@@ -226,6 +183,11 @@ export default function MateriScreen() {
           })
         )}
       </ScrollView>
+      <FloatingSearchBar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Cari materi atau matkul..."
+      />
       <FloatingFilterMenu
         title="Filter Matkul"
         options={filterOptions}
@@ -283,25 +245,6 @@ export default function MateriScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { padding: 16, gap: 10 },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderRadius: Radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  searchInput: { flex: 1, fontSize: 14 },
-  searchCollapsedRow: { flexDirection: 'row', justifyContent: 'flex-end' },
-  searchFab: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   stateCard: {
     minHeight: 260,
     borderWidth: 1,
