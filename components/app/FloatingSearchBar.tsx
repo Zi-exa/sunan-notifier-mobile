@@ -53,8 +53,7 @@ export function FloatingSearchBar({
   // tombol saat keyboard buka sehingga gap sisa 12px saja.
   const keyboardClearance = 12;
   const keyboardShift = useMemo(() => {
-    const baseLift =
-      bottomOffset + SEARCH_FAB_SIZE + FAB_GAP + SEARCH_FAB_SIZE + FAB_GAP - keyboardClearance;
+    const baseLift = bottomOffset + SEARCH_FAB_SIZE + FAB_GAP - keyboardClearance;
     return keyboardShiftRaw.interpolate({
       inputRange: [0, baseLift, 1200],
       outputRange: [0, 0, -(1200 - baseLift)],
@@ -116,7 +115,7 @@ export function FloatingSearchBar({
               borderColor: colors.borderSubtle,
               left: 16,
               right: 16,
-              bottom: bottomOffset + SEARCH_FAB_SIZE + FAB_GAP + SEARCH_FAB_SIZE + FAB_GAP,
+              bottom: bottomOffset + SEARCH_FAB_SIZE + FAB_GAP,
               opacity: barOpacity,
               transform: [{ translateY: barTranslateY }, { scale: barScale }],
             },
