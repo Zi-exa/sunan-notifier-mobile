@@ -593,9 +593,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   tileColumnHalf: {
-    flexBasis: '49%',
-    maxWidth: '49%',
     flexGrow: 0,
+    flexBasis: 'auto',
+    maxWidth: '70%',
   },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(3, 8, 20, 0.68)' },
   overlayRoot: {
