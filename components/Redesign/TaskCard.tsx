@@ -33,11 +33,13 @@ const STATUS_BADGE_LABEL: Record<AssignmentItem['status'], string> = {
 };
 
 function getOpenBadge(
-  openDate: number | undefined
+  task: AssignmentItem
 ): { label: string; variant: React.ComponentProps<typeof Badge>['variant'] } | null {
-  if (!openDate || openDate <= 0) return null;
   const now = Math.floor(Date.now() / 1000);
-  if (now >= openDate) return { label: 'Dibuka', variant: 'accent' };
+  // Deadline kelewat → jangan tulis "Dibuka" lagi.
+  if (task.dueDate > 0 && now >= task.dueDate) return { label: 'Ditutup', variant: 'closed' };
+  if (!task.openDate || task.openDate <= 0) return null;
+  if (now >= task.openDate) return { label: 'Dibuka', variant: 'accent' };
   return { label: 'Akan Dibuka', variant: 'available' };
 }
 
@@ -77,7 +79,7 @@ export function TaskCard({ task, onPress, detailLabel, showPreview = true }: Tas
   const statusLabel = STATUS_BADGE_LABEL[task.status];
   const activityLabel = task.activityType === 'quiz' ? 'Kuis' : 'Tugas';
   const activityIcon = task.activityType === 'quiz' ? 'question-circle-o' : 'file-text-o';
-  const openBadge = getOpenBadge(task.openDate);
+  const openBadge = getOpenBadge(task);
   const showDetailAction = Boolean(detailLabel);
   const useThreeColumnTiles = task.openDate != null && task.openDate > 0;
   const preview = showPreview ? buildTaskPreview(task.intro) : undefined;
