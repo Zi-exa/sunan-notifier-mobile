@@ -38,6 +38,7 @@ export type MateriFileItem = {
   mimetype: string | null;
   size: number | null;
   changedAt: number | null;
+  url: string | null;
 };
 
 export type MateriItem = {

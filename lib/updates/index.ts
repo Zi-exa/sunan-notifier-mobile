@@ -8,6 +8,7 @@ import { CONFIG } from '@/lib/config';
 
 export type RemoteApkUpdateManifest = {
   version: string;
+  versionCode?: number;
   apkUrl: string;
   title?: string;
   notes?: string;
@@ -45,6 +46,11 @@ type RemoteApkUpdateEnvelope =
 
 export function getCurrentAppVersion(): string {
   return Constants.expoConfig?.version ?? '0.0.0';
+}
+
+export function getCurrentAppVersionCode(): number {
+  const code = Constants.expoConfig?.android?.versionCode;
+  return typeof code === 'number' && Number.isFinite(code) ? code : 0;
 }
 
 function readNestedString(
@@ -207,7 +213,21 @@ export async function checkForRemoteApkUpdateAsync(): Promise<RemoteApkUpdateMan
     throw new Error('Format manifest update APK tidak valid.');
   }
 
-  return compareVersions(manifest.version, getCurrentAppVersion()) > 0 ? manifest : null;
+  // Update tersedia bila versi nama lebih baru, ATAU versi sama tapi
+  // versionCode lebih baru (build baru tanpa ganti nama versi).
+  if (compareVersions(manifest.version, getCurrentAppVersion()) > 0) {
+    return manifest;
+  }
+
+  if (
+    compareVersions(manifest.version, getCurrentAppVersion()) === 0 &&
+    typeof manifest.versionCode === 'number' &&
+    manifest.versionCode > getCurrentAppVersionCode()
+  ) {
+    return manifest;
+  }
+
+  return null;
 }
 
 export async function openRemoteApkUpdateUrl(apkUrl: string): Promise<void> {

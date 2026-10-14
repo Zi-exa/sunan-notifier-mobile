@@ -22,6 +22,7 @@ import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { openSunanLink } from '@/lib/moodle/openSunanLink';
 import { useMateriListQuery, isMateriDisplayRecent, getMateriDisplayIso, type MateriItem } from '@/lib/queries/useMateriQuery';
 import { useAuthStore } from '@/lib/stores/authStore';
+import { downloadAndOpenMateriFileAsync } from '@/lib/materi/files';
 
 const MODNAME_ICON: Record<string, React.ComponentProps<typeof FontAwesome>['name']> = {
   resource: 'file-text-o',
@@ -34,6 +35,15 @@ const MODNAME_ICON: Record<string, React.ComponentProps<typeof FontAwesome>['nam
 function modnameIcon(modname: string): React.ComponentProps<typeof FontAwesome>['name'] {
   return MODNAME_ICON[modname] ?? 'file-o';
 }
+
+export function formatFileSize(size: number | null): string {
+  if (typeof size !== 'number' || !Number.isFinite(size) || size <= 0) return '';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+type FileDownloadState = { status: 'busy'; percent: number } | { status: 'error'; message: string };
 
 export function formatRelativeTime(iso: string): string {
   const time = new Date(iso).getTime();
@@ -53,11 +63,13 @@ export default function MateriScreen() {
   const token = useAuthStore((state) => state.token);
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const privateToken = useAuthStore((state) => state.privateToken);
+  const siteUrl = useAuthStore((state) => state.user?.siteUrl);
   const materiQuery = useMateriListQuery();
   const [query, setQuery] = useState('');
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [selected, setSelected] = useState<MateriItem | null>(null);
   const [openingLink, setOpeningLink] = useState(false);
+  const [fileStates, setFileStates] = useState<Record<number, FileDownloadState>>({});
   const contentBottomPadding = getFloatingFilterContentPadding(insets.bottom);
 
   const highlightModuleId = Number(params.moduleId);
@@ -106,6 +118,49 @@ export default function MateriScreen() {
     }
   };
 
+  const handleDownloadFile = async (fileIndex: number) => {
+    const file = selected?.files[fileIndex];
+    if (!file || fileStates[fileIndex]?.status === 'busy') return;
+    setFileStates((prev) => ({ ...prev, [fileIndex]: { status: 'busy', percent: 0 } }));
+    try {
+      await downloadAndOpenMateriFileAsync({
+        fileUrl: file.url,
+        fileName: file.name,
+        mimetype: file.mimetype,
+        token,
+        siteUrl,
+        onProgress: (progress) => {
+          setFileStates((prev) => ({
+            ...prev,
+            [fileIndex]: {
+              status: 'busy',
+              percent:
+                progress.total > 0 ? Math.min(99, Math.round((progress.written / progress.total) * 100)) : 0,
+            },
+          }));
+        },
+      });
+      setFileStates((prev) => {
+        const next = { ...prev };
+        delete next[fileIndex];
+        return next;
+      });
+    } catch (error) {
+      setFileStates((prev) => ({
+        ...prev,
+        [fileIndex]: {
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Unduhan gagal.',
+        },
+      }));
+    }
+  };
+
+  const handleSelectMateri = (item: MateriItem) => {
+    setFileStates({});
+    setSelected(item);
+  };
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.bgBase }]}>
       <TabScreenHeader routeKey="materi" />
@@ -149,7 +204,7 @@ export default function MateriScreen() {
             return (
               <Pressable
                 key={`${item.courseId}-${item.moduleId}`}
-                onPress={() => setSelected(item)}
+                onPress={() => handleSelectMateri(item)}
                 style={[
                   styles.item,
                   {
@@ -206,11 +261,43 @@ export default function MateriScreen() {
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{selected?.moduleName}</Text>
             {selected && selected.files.length > 0 && (
               <View style={styles.fileList}>
-                {selected.files.slice(0, 5).map((file, index) => (
-                  <Text key={index} style={[styles.fileName, { color: colors.textSecondary }]} numberOfLines={1}>
-                    📄 {file.name}
-                  </Text>
-                ))}
+                {selected.files.slice(0, 5).map((file, index) => {
+                  const state = fileStates[index];
+                  const busy = state?.status === 'busy';
+                  return (
+                    <Pressable
+                      key={index}
+                      disabled={busy || !file.url}
+                      onPress={() => void handleDownloadFile(index)}
+                      style={({ pressed }) => [
+                        styles.fileRow,
+                        { backgroundColor: colors.bgCardHover, borderColor: colors.borderSubtle },
+                        pressed && { opacity: 0.82 },
+                      ]}
+                    >
+                      <FontAwesome name="file-o" size={14} color={colors.accent} />
+                      <View style={styles.fileBody}>
+                        <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>
+                          {file.name}
+                        </Text>
+                        <Text style={[styles.fileMeta, { color: colors.textMuted }]}>
+                          {busy
+                            ? `Mengunduh... ${state.percent}%`
+                            : state?.status === 'error'
+                              ? state.message
+                              : [formatFileSize(file.size), 'Ketuk untuk unduh & buka']
+                                  .filter(Boolean)
+                                  .join(' • ')}
+                        </Text>
+                      </View>
+                      {busy ? (
+                        <ActivityIndicator size="small" color={colors.accent} />
+                      ) : (
+                        <FontAwesome name="download" size={14} color={colors.textMuted} />
+                      )}
+                    </Pressable>
+                  );
+                })}
               </View>
             )}
             <View style={styles.modalActions}>
@@ -281,8 +368,19 @@ const styles = StyleSheet.create({
   modal: { borderWidth: 1, borderRadius: Radius.lg, padding: 18, gap: 8 },
   modalCourse: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
   modalTitle: { fontSize: 18, fontWeight: '800', lineHeight: 26 },
-  fileList: { gap: 4, marginTop: 4 },
-  fileName: { fontSize: 13 },
+  fileList: { gap: 8, marginTop: 4 },
+  fileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  fileBody: { flex: 1, gap: 2 },
+  fileName: { fontSize: 13, fontWeight: '700' },
+  fileMeta: { fontSize: 11 },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
   modalButton: {
     flex: 1,

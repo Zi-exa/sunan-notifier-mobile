@@ -36,7 +36,7 @@
         "android.permission.VIBRATE",
         "android.permission.REQUEST_INSTALL_PACKAGES"
       ],
-      "versionCode": 3,
+      "versionCode": 4,
       "package": "id.umk.sunannotifier",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
