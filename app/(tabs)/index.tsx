@@ -19,7 +19,7 @@ import {
   useCoursesQuery,
 } from '@/lib/queries/useMoodleQueries';
 import { isMateriDisplayRecent, getMateriDisplayIso, useMateriListQuery } from '@/lib/queries/useMateriQuery';
-import { formatRelativeTime } from './materi';
+import { formatUploadDate } from './materi';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { getReadableErrorMessage } from '@/lib/moodle/errors';
 import { getAvatarInitial, getDisplayFirstName, getTimeBasedGreeting } from '@/lib/utils/displayName';
@@ -290,7 +290,7 @@ export default function DashboardScreen() {
                   {item.moduleName}
                 </Text>
                 <Text style={[styles.materiMeta, { color: colors.textMuted }]}>
-                  {formatRelativeTime(getMateriDisplayIso(item))}
+                  {formatUploadDate(getMateriDisplayIso(item))}
                 </Text>
               </View>
               {isMateriDisplayRecent(item) && (

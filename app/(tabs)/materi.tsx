@@ -46,6 +46,16 @@ export function formatFileSize(size: number | null): string {
 
 type FileDownloadState = { status: 'busy'; percent: number } | { status: 'error'; message: string };
 
+export function formatUploadDate(iso: string, long = false): string {
+  const time = new Date(iso).getTime();
+  if (!Number.isFinite(time)) return '';
+  return new Date(time).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: long ? 'long' : 'short',
+    year: 'numeric',
+  });
+}
+
 export function formatRelativeTime(iso: string): string {
   const time = new Date(iso).getTime();
   if (!Number.isFinite(time)) return '';
@@ -253,7 +263,7 @@ export default function MateriScreen() {
                     {item.moduleName}
                   </Text>
                   <Text style={[styles.meta, { color: colors.textMuted }]}>
-                    {formatRelativeTime(getMateriDisplayIso(item))}
+                    {formatUploadDate(getMateriDisplayIso(item))}
                     {item.files.length > 0 ? ` • ${item.files.length} berkas` : ''}
                   </Text>
                 </View>
@@ -288,6 +298,14 @@ export default function MateriScreen() {
               {selected?.courseName}
             </Text>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{selected?.moduleName}</Text>
+            {!!selected && (
+              <View style={styles.modalMetaRow}>
+                <FontAwesome name="calendar-o" size={12} color={colors.textMuted} />
+                <Text style={[styles.modalMeta, { color: colors.textSecondary }]}>
+                  Diunggah {formatUploadDate(getMateriDisplayIso(selected), true)}
+                </Text>
+              </View>
+            )}
             {!!selected?.sectionName && (
               <View style={styles.modalMetaRow}>
                 <FontAwesome name="folder-o" size={12} color={colors.textMuted} />
